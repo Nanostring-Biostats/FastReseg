@@ -1,156 +1,3 @@
-#' @title check_config_spatialNW
-#' @description check config used to create spatial network, assign default values if missing arguments
-#' @param config a list of config would be used to create spatial network via Giotto::createSpatialNetwork
-#' @param spat_locs a data.frame with spatial location info
-#' @importFrom SMITAP checkTypeLengthValue
-#' @return the corrected config list
-check_config_spatialNW <- function(config, spat_locs){
-  # check config, assign default value if NULL
-  if(is.null(config$method)){
-    config$method <- 'Delaunay'
-    message("Create Delanay network when config$method is NULL.")
-  }
-  config$method <- match.arg(config$method, c("Delaunay", "kNN"))
-  msg <- character()
-  
-  # check common config for both methods
-  if(!is.null(config$name)){
-    msg <- c(msg, SMITAP::checkTypeLengthValue(config, "name", expect_type = "character", 
-                                               expect_len = 1))
-  } else{
-    # assign default name based on method
-    config$name <- paste0(config$method,'_network')
-    message(sprintf("Name the spatial network based on method as `%s` when config$name is NULL.", 
-                    config$name))
-  }
-  
-  # check dimensions in spat_locs
-  if(!is.null(config$dimensions)){
-    # if integer vector, get column name based on index
-    if(is.numeric(config$dimensions) | is.integer(config$dimensions)){
-      locs_colnames <- colnames(spat_locs)[config$dimenions]
-      # must be within  c("sdimx", "sdimy","sdimz")
-      if(any(!(locs_colnames %in% c("sdimx","sdimy","sdimz")))){
-        msg <- c(msg, "dimensions in config have values other than c(\"sdimx\",\"sdimy\",\"sdimz\"). ")
-      } 
-    } else {
-      # if character, check column name
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config, "dimensions", expect_type = "character",
-                                                 expect_range = "within", 
-                                                 expect_value = c("all","sdimx","sdimy","sdimz")))
-    }
-    
-  } else{
-    # use 'all'
-    config$dimensions <- 'all'
-  }
-  # check minimum_k, non-negative integer
-  if(!is.null(config$minimum_k)){
-    msg <- c(msg, SMITAP::checkTypeLengthValue(config, "minimum_k", expect_type = c("numeric","integer"), 
-                                               expect_len = 1, expect_range = "larger", 
-                                               expect_value = (-1e-23)))
-  }else {
-    config$minimum_k <- 0
-  }
-  
-  # check config for delanay network
-  if(config$method == 'Delaunay'){
-    if(!is.null(config$delaunay_method)){
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config, "delaunay_method", 
-                                                 expect_type = "character", 
-                                                 expect_len = 1, expect_range = "within",
-                                                 expect_value = c("deldir", "delaunayn_geometry", "RTriangle")))
-    } else {
-      config$delaunay_method <- "delaunayn_geometry" # only method works for 3D
-    }
-    # distant cutoff = "auto" or non-negative number
-    if(!is.null(config$maximum_distance_delaunay)){
-      # check for character
-      msg1 <- SMITAP::checkTypeLengthValue(config,"maximum_distance_delaunay", 
-                                           expect_type = "character", expect_len = 1, 
-                                           expect_range = "within", expect_value = "auto")
-      if(length(msg1) > 0L){
-        # not character, check for numeric values
-        msg2 <- SMITAP::checkTypeLengthValue(config, "maximum_distance_delaunay",
-                                             expect_type = "numeric", expect_len = 1, 
-                                             expect_range = "larger", 
-                                             expect_value = (-1e-23))
-        # if both not satisfied, output both messages
-        if(length(msg2) > 0L){
-          msg <- c(msg, msg1, msg2)
-        }
-      }
-      
-    } else {
-      config$maximum_distance_delaunay <- 'auto'
-    }
-    
-    # options for "delaunayn_geometry", too many possible options to list here. 
-    # see details in http://www.qhull.org/html/qdelaun.htm
-    if(!is.null(config$options) & config$delaunay_method == "delaunayn_geometry"){
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config, "options", expect_type = "character"))
-    } else {
-      config$options <- 'Pp'
-    }
-    
-    if(!is.null(config$Y) & config$delaunay_method == "RTriangle"){
-      msg <- c(msg,SMITAP::checkTypeLengthValue(config,"Y", expect_type = "logical", 
-                                                expect_len = 1))
-    } else {
-      config$Y <- TRUE
-    }
-    if(!is.null(config$j) & config$delaunay_method == "RTriangle"){
-      msg <- c(msg,SMITAP::checkTypeLengthValue(config,"j", expect_type = "logical", 
-                                                expect_len = 1))
-    } else {
-      config$j <- TRUE
-    }
-    if(!is.null(config$S) & config$delaunay_method == "RTriangle"){
-      msg <- c(msg,SMITAP::checkTypeLengthValue(config,"S", expect_type = c("numeric","integer"), 
-                                                expect_len = 1, expect_range = "larger", 
-                                                expect_value = (-1e-23)))
-    } else {
-      config$S <- 0
-    }
-    
-  }
-  
-  # check config for kNN network
-  if(config$method == 'kNN'){
-    if(!is.null(config$knn_method)){
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config, "knn_method", expect_type = "character", 
-                                                 expect_len = 1, expect_range = "within", 
-                                                 expect_value = "dbscan"))
-    } else {
-      config$knn_method <- 'dbscan'
-    }
-    if(!is.null(config$k)){
-      # positive integer
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config,"k", expect_type = c("numeric","integer"), 
-                                                 expect_len = 1, expect_range = "larger", 
-                                                 expect_value = 0))
-    } else {
-      config$k <- 4
-    }
-    if(!is.null(config$maximum_distance_knn)){
-      # NULL or non-negative number
-      msg <- c(msg, SMITAP::checkTypeLengthValue(config, "maximum_distance_knn",
-                                                 expect_type = "numeric", expect_len = 1, 
-                                                 expect_range = "larger", 
-                                                 expect_value = (-1e-23)))
-    } else {
-      config$maximum_distance_knn <- NULL
-    }
-    
-  }
-  
-  if(length(msg) > 0L){
-    stop( "Configuration Issues:\n" , paste( msg , collapse = "\n" ) )
-  }
-  return(config)
-}
-
-
 #' @title createSpatialDelaunayNW_from_spatLocs
 #' @description generate delaunay network based on provided config and spatial location using Giotto functions
 #' @param config_spatNW configuration list 
@@ -300,3 +147,276 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW,
   return(delaunay_network_Obj)
   
 }
+
+
+#' checking whether a single value in config have correct data type, length and value range
+#' @param config the list storing config
+#' @param name parameter name in config list
+#' @param expect_type expected data type for vector, e.g. c("numeric","integer") for integer values, "character", "logical", etc
+#' @param expect_len expected length, NULL for any length
+#' @param expect_range expect value range; use "larger","smaller", "equal", "within" for numeric values, but use only "within" for character
+#' @param expect_value a single numeric value or a character vector that would be used to check against with expect_range, NULL for any value
+#' @return a message if config[[name]] does not satisfy the criteria
+#' @examples 
+#' config <- list(pos_Integer = 1, neg_value = -0.2, flag = TRUE, 
+#' length2character = c("a","b"))
+#' # check if positive integer of any length
+#' checkTypeLengthValue(config, "pos_Integer", 
+#'                      expect_type = c("numeric","integer"), 
+#'                      expect_range = "larger", expect_value = 0)
+#' # check if negative value of any length
+#' checkTypeLengthValue(config, "neg_value", 
+#'                      expect_type = "numeric", 
+#'                      expect_range = "smaller", expect_value = 0)
+#' # check if logical value
+#' checkTypeLengthValue(config, "flag", expect_type = "logical")
+#' # check if character has 2 elements within c("a","b")
+#' checkTypeLengthValue(config, "length2character", 
+#'                      expect_type = "character", expect_len = 2,
+#'                      expect_range = "within", expect_value = c("a","b"))
+#' @export
+#' 
+checkTypeLengthValue <- function(config, name, 
+                                 expect_type, 
+                                 expect_len = NULL,
+                                 expect_range = c("equal","larger","smaller","within"),
+                                 expect_value = NULL){
+  
+  expect_range = match.arg(expect_range, c("equal","larger","smaller","within"))
+  
+  msg <- character()
+  
+  # check class in general
+  if(!(class(config[[name]]) %in% expect_type)){
+    msg <- c(msg, sprintf("`%s` value in config is either not defined or not in class of `%s`. ", 
+                          name, paste0(expect_type, collapse = "`, `")))
+  }
+  
+  # if expect integer in numeric form, use expect_type = c("numeric","integer")
+  # check for the integer case
+  if(("integer" %in% expect_type) & (length(msg) == 0L)){
+    if(any(round(config[[name]]) != config[[name]])){
+      msg <- c(msg, sprintf( "`%s` value in config is not integer.", name))
+    }
+  }
+  
+  # check length 
+  if(!is.null(expect_len)){
+    if(length(expect_len) >1){
+      stop("expect_len has more than 1 element.")
+    }
+    if(!is.numeric(expect_len)){
+      stop("expect_len is not a number.")
+    }
+    # when expect_len is a single number, do length checking
+    if(length(config[[name]]) != expect_len){
+      msg <- c(msg, sprintf("`%s` value in config is not in expected length of %d.", name, round(expect_len)))
+    }
+  }
+  
+  
+  # check value only when correct type and length
+  if(!is.null(expect_value) & (length(msg) == 0L)){
+    
+    # if numeric values check if satisfy expect_range and values
+    if("numeric" %in% expect_type){
+      if(expect_range == "larger"){
+        if(any(config[[name]] <= expect_value)){
+          msg <- c(msg, sprintf( "`%s` value in config is no larger than %d.", 
+                                 name, round(expect_value)))
+        }
+      } else if (expect_range == "smaller"){
+        if(any(config[[name]] >= expect_value)){
+          msg <- c(msg, sprintf( "`%s` value in config is no smaller than %d.", 
+                                 name, round(expect_value)))
+        }
+      } else if (expect_range == "equal"){
+        if(any(config[[name]] != expect_value)){
+          msg <- c(msg, sprintf( "`%s` value in config is no equal to %d.", 
+                                 name, round(expect_value)))
+        } 
+      } else if(expect_range == "within"){
+        if(any(!(config[[name]] %in% expect_value))){
+          msg <- c(msg, sprintf( "`%s` value in config contains value other than `%s`.", 
+                                 name, paste0(expect_value, collapse = "`, `")))
+        }
+      } else {
+        stop(sprintf("`%s` cannot be used for expect_type = `%s`.", 
+                     expect_range, paste0(expect_type, collapse = "`, `")))
+      }
+      
+    }
+    
+    # if character values check if within expect_values
+    if("character" %in% expect_type){
+      if(expect_range == "within"){
+        if(any(!(config[[name]] %in% expect_value))){
+          msg <- c(msg, sprintf( "`%s` value in config contains value other than `%s`.", 
+                                 name, paste0(expect_value, collapse = "`, `")))
+        }
+      } else {
+        stop(sprintf("`%s` cannot be used for expect_type = `%s`.", 
+                     expect_range, paste0(expect_type, collapse = "`, `")))
+      }
+    }
+    
+  }
+  
+  return(msg)
+}
+
+
+
+#' @title check_config_spatialNW
+#' @description check config used to create spatial network, assign default values if missing arguments
+#' @param config a list of config would be used to create spatial network via Giotto::createSpatialNetwork
+#' @param spat_locs a data.frame with spatial location info
+#' @importFrom Giotto createSpatialNetwork
+#' @return the corrected config list
+check_config_spatialNW <- function(config, spat_locs){
+  # check config, assign default value if NULL
+  if(is.null(config$method)){
+    config$method <- 'Delaunay'
+    message("Create Delanay network when config$method is NULL.")
+  }
+  config$method <- match.arg(config$method, c("Delaunay", "kNN"))
+  msg <- character()
+  
+  # check common config for both methods
+  if(!is.null(config$name)){
+    msg <- c(msg, checkTypeLengthValue(config, "name", expect_type = "character", 
+                                               expect_len = 1))
+  } else{
+    # assign default name based on method
+    config$name <- paste0(config$method,'_network')
+    message(sprintf("Name the spatial network based on method as `%s` when config$name is NULL.", 
+                    config$name))
+  }
+  
+  # check dimensions in spat_locs
+  if(!is.null(config$dimensions)){
+    # if integer vector, get column name based on index
+    if(is.numeric(config$dimensions) | is.integer(config$dimensions)){
+      locs_colnames <- colnames(spat_locs)[config$dimenions]
+      # must be within  c("sdimx", "sdimy","sdimz")
+      if(any(!(locs_colnames %in% c("sdimx","sdimy","sdimz")))){
+        msg <- c(msg, "dimensions in config have values other than c(\"sdimx\",\"sdimy\",\"sdimz\"). ")
+      } 
+    } else {
+      # if character, check column name
+      msg <- c(msg, checkTypeLengthValue(config, "dimensions", expect_type = "character",
+                                                 expect_range = "within", 
+                                                 expect_value = c("all","sdimx","sdimy","sdimz")))
+    }
+    
+  } else{
+    # use 'all'
+    config$dimensions <- 'all'
+  }
+  # check minimum_k, non-negative integer
+  if(!is.null(config$minimum_k)){
+    msg <- c(msg, checkTypeLengthValue(config, "minimum_k", expect_type = c("numeric","integer"), 
+                                               expect_len = 1, expect_range = "larger", 
+                                               expect_value = (-1e-23)))
+  }else {
+    config$minimum_k <- 0
+  }
+  
+  # check config for delanay network
+  if(config$method == 'Delaunay'){
+    if(!is.null(config$delaunay_method)){
+      msg <- c(msg, checkTypeLengthValue(config, "delaunay_method", 
+                                                 expect_type = "character", 
+                                                 expect_len = 1, expect_range = "within",
+                                                 expect_value = c("deldir", "delaunayn_geometry", "RTriangle")))
+    } else {
+      config$delaunay_method <- "delaunayn_geometry" # only method works for 3D
+    }
+    # distant cutoff = "auto" or non-negative number
+    if(!is.null(config$maximum_distance_delaunay)){
+      # check for character
+      msg1 <- checkTypeLengthValue(config,"maximum_distance_delaunay", 
+                                           expect_type = "character", expect_len = 1, 
+                                           expect_range = "within", expect_value = "auto")
+      if(length(msg1) > 0L){
+        # not character, check for numeric values
+        msg2 <- checkTypeLengthValue(config, "maximum_distance_delaunay",
+                                             expect_type = "numeric", expect_len = 1, 
+                                             expect_range = "larger", 
+                                             expect_value = (-1e-23))
+        # if both not satisfied, output both messages
+        if(length(msg2) > 0L){
+          msg <- c(msg, msg1, msg2)
+        }
+      }
+      
+    } else {
+      config$maximum_distance_delaunay <- 'auto'
+    }
+    
+    # options for "delaunayn_geometry", too many possible options to list here. 
+    # see details in http://www.qhull.org/html/qdelaun.htm
+    if(!is.null(config$options) & config$delaunay_method == "delaunayn_geometry"){
+      msg <- c(msg, checkTypeLengthValue(config, "options", expect_type = "character"))
+    } else {
+      config$options <- 'Pp'
+    }
+    
+    if(!is.null(config$Y) & config$delaunay_method == "RTriangle"){
+      msg <- c(msg,checkTypeLengthValue(config,"Y", expect_type = "logical", 
+                                                expect_len = 1))
+    } else {
+      config$Y <- TRUE
+    }
+    if(!is.null(config$j) & config$delaunay_method == "RTriangle"){
+      msg <- c(msg,checkTypeLengthValue(config,"j", expect_type = "logical", 
+                                                expect_len = 1))
+    } else {
+      config$j <- TRUE
+    }
+    if(!is.null(config$S) & config$delaunay_method == "RTriangle"){
+      msg <- c(msg,checkTypeLengthValue(config,"S", expect_type = c("numeric","integer"), 
+                                                expect_len = 1, expect_range = "larger", 
+                                                expect_value = (-1e-23)))
+    } else {
+      config$S <- 0
+    }
+    
+  }
+  
+  # check config for kNN network
+  if(config$method == 'kNN'){
+    if(!is.null(config$knn_method)){
+      msg <- c(msg, checkTypeLengthValue(config, "knn_method", expect_type = "character", 
+                                                 expect_len = 1, expect_range = "within", 
+                                                 expect_value = "dbscan"))
+    } else {
+      config$knn_method <- 'dbscan'
+    }
+    if(!is.null(config$k)){
+      # positive integer
+      msg <- c(msg, checkTypeLengthValue(config,"k", expect_type = c("numeric","integer"), 
+                                                 expect_len = 1, expect_range = "larger", 
+                                                 expect_value = 0))
+    } else {
+      config$k <- 4
+    }
+    if(!is.null(config$maximum_distance_knn)){
+      # NULL or non-negative number
+      msg <- c(msg, checkTypeLengthValue(config, "maximum_distance_knn",
+                                                 expect_type = "numeric", expect_len = 1, 
+                                                 expect_range = "larger", 
+                                                 expect_value = (-1e-23)))
+    } else {
+      config$maximum_distance_knn <- NULL
+    }
+    
+  }
+  
+  if(length(msg) > 0L){
+    stop( "Configuration Issues:\n" , paste( msg , collapse = "\n" ) )
+  }
+  return(config)
+}
+
+

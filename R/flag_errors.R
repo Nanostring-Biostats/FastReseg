@@ -122,7 +122,6 @@ spatialModelScoreCell_hyperplane <- function(chosen_cells, transcript_df,
 #' @param spatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param model_cutoff the cutoff of transcript number to do spatial modeling (default = 50)
 #' @param score_cutoff the cutoff of score to separate between high and low score transcripts (default = -2)
-#' @import createSpatialDelaunayNW_from_spatLocs
 #' @return a data.frame 
 #' \enumerate{
 #'    \item{cellID_coln, original cell id}
@@ -312,7 +311,6 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
 #' @param model_cutoff the cutoff of transcript number to do spatial modeling (default = 50)
 #' @param score_cutoff the cutoff of score to separate between high and low score transcripts (default = -2)
 #' @param svm_args a list of arguments to pass to svm function, typically involve kernel, gamma, scale
-#' @import createSpatialDelaunayNW_from_spatLocs
 #' @return a data.frame 
 #' \enumerate{
 #'    \item{cellID_coln, original cell id}
@@ -485,7 +483,6 @@ flagTranscripts_SVM_hyperplane <- function(chosen_cells,
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
-#' @import createSpatialDelaunayNW_from_spatLocs
 #' @return data frame of connected transcripts among chosen_transcripts
 #' #' \enumerate{
 #'    \item{cellID_coln, orignal cell_ID}

@@ -1,18 +1,15 @@
 Package: FastReseg
-Type: Package
 Title: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 Version: 0.1.0
-Authors@R: c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut", "cre")),
+Authors@R: 
+    c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut", "cre")),
              person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut")))
-Maintainer: The package maintainer <yourself@somewhere.net>
 Description: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
-Imports: Ptolemy, Giotto, umap, mclust, Seurat, pheatmap, fs, future, digest, 
-         futile.logger, Hmisc, flextable, cowplot, scran
-Depends: data.table
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
 Encoding: UTF-8
 LazyData: true
+Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Suggests: 
     testthat (>= 3.0.0)
