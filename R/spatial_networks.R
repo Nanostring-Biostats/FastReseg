@@ -6,6 +6,7 @@
 #' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in spatLocs_df 
 #' @importFrom data.table as.data.table
 #' @return delaunay_network_Obj, a spatial network object created by Giotto function
+#' @export
 createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW, 
                                                   spatLocs_df, 
                                                   ID_column = 'cell_ID',

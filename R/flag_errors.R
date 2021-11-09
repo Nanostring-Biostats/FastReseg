@@ -491,6 +491,7 @@ flagTranscripts_SVM_hyperplane <- function(chosen_cells,
 #'    \item{transcript_group, group of chosen_transcripts}
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
+#' @export
 groupTranscripts_Delanuay <- function(chosen_transcripts = NULL, 
                                       config_spatNW_transcript, 
                                       distance_cutoff = "auto",

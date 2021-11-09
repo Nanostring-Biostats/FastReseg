@@ -19,6 +19,7 @@
 #'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
 #' }
 #' @details Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflic due to merging multiple query cells into one.  
+#' @export
 decide_ReSegment_Operations <- function(neighborhood_df,
                                         selfcellID_coln = 'CellId', 
                                         transNum_coln = 'transcript_num', 
@@ -159,6 +160,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 #'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
 #' }
 #' @details Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflic due to merging multiple query cells into one. In case of merging into neighbor cell, leiden clustering on transcript level of spatial network is performed to decide whether the merge should be allowed. 
+#' @export
 decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
                                                   selfcellID_coln = 'CellId', 
                                                   transNum_coln = 'transcript_num', 

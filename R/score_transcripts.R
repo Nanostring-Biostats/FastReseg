@@ -8,6 +8,7 @@
 #' @importFrom Matrix colMeans
 #' @return A matrix of cluster profiles, genes * clusters
 #' @details estimate each cluster's mean profile (Ptolemy Estep function)
+#' @export
 estimate_MeanProfile <- function(counts, clust, s, bg) {
   
   # scale counts:
@@ -37,6 +38,7 @@ estimate_MeanProfile <- function(counts, clust, s, bg) {
 #' @param genes a vector of gene name to score
 #' @param ref_profiles a gene x cell_type expression matrix for reference profiles
 #' @return loglik, a gene x cell_type matrix of loglik score for each gene
+#' @export
 scoreGenesInRef <- function(genes, ref_profiles){
   common_feats <- intersect(unique(genes), rownames(ref_profiles))
   if(length(common_feats) <1){
@@ -69,6 +71,7 @@ scoreGenesInRef <- function(genes, ref_profiles){
 #'    \item{cellType_DF, a data.frame of cell_ID and cell_type}
 #'    \item{score_TransMatrix, a transcript x cell-type score matrix when return_transMatrix = TRUE}
 #' }
+#' @export
 getCellType_maxScore <- function(score_GeneMatrix, 
                                  transcript_df, 
                                  transID_coln = 'transcript_id',
@@ -142,6 +145,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param celltype_coln the column name of cell type in transcript_df
 #' @return score_df, a data.frame of "[transID_coln]" and "score_[celltype_coln]" column for chosen cell-type
+#' @export
 getScoreCellType_gene <- function(score_GeneMatrix, transcript_df, 
                                   transID_coln = "transcript_id",
                                   transGene_coln = "target",

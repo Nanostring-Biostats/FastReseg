@@ -16,9 +16,6 @@ blockID = 'lung9'
 sub_out_dir3 <- fs::path(sub_out_dir2, paste0("Block_", blockID))
 load(fs::path(sub_out_dir3, paste0("NSCLC_1Mcell_980plx_Block_", blockID,"_data.RData")))
 
-# when search transcript data.frame directly, use smaller search range for xy
-config_dimension[['CellNeighbor_xy_in_transDF']] = config_dimension[['CellNeighbor_xy']]/3
-
 # extract info from saved RData
 targets <- rownames(meanCelltype_profiles)
 # cells in current block

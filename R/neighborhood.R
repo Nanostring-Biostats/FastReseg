@@ -31,6 +31,7 @@
 #'    \item{score_under_neighbor, score in query cell under neighbor_celltype}
 #' }
 #' @details If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
+#' @export
 neighborhood_for_resegment <- function(chosen_cells = NULL, 
                                        score_GeneMatrix,  
                                        score_baseline = NULL, 
@@ -450,6 +451,7 @@ neighborhood_for_resegment <- function(chosen_cells = NULL,
 #'    \item{query_CellId, original query cell id of transcript's neighborhood}
 #' }
 #' @details If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
+#' @export
 getNeighbors_transDF <- function(chosen_cells = NULL, 
                                  cell_networkDT = NULL, 
                                  network_cellID_split = '_g',

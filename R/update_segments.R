@@ -15,6 +15,7 @@
 #'    \item{perCell_expression, a gene x cell count table for updated transcript data.frame when return_perCellDF = TRUE}
 #' }
 #' @details Update transcript data.frame based on resegmentation action and get new cell type; when return_perCellDF = TRUE, return gene x cell count matrix and per cell data.frame with mean per cell spatial coordinates and new cell type.
+#' @export
 update_transDF_ResegActions <- function(transcript_df, 
                                         reseg_full_converter, 
                                         score_GeneMatrix, 
