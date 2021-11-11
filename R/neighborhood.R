@@ -18,7 +18,7 @@
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param gridSpat_coln an optional vector of column names in transcript_df that could act as grid to separate different transcripts in space, such as columns for FOV, slideID when using direct distance threshold to define neighborhood search range.
-#' @import dplyr
+#' @importFrom dplyr between
 #' @return a data.frame 
 #' #' \enumerate{
 #'    \item{CellId, original cell id of chosen cells}
@@ -451,6 +451,7 @@ neighborhood_for_resegment <- function(chosen_cells = NULL,
 #'    \item{query_CellId, original query cell id of transcript's neighborhood}
 #' }
 #' @details If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
+#' @importFrom dplyr between
 #' @export
 getNeighbors_transDF <- function(chosen_cells = NULL, 
                                  cell_networkDT = NULL, 
