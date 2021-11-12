@@ -274,11 +274,7 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
   
   # get score for each transcripts
   transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
-  # convert to sparse matrix which gave bigger size for unknown reason
-  transcriptGeneScore <- Matrix::Matrix(transcriptGeneScore,
-                                        dimnames = list(transcript_df[[transID_coln]],
-                                                        colnames(transcriptGeneScore)),
-                                        sparse = TRUE)
+  rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
   
   tmp_score <- as.data.frame(transcriptGeneScore)
   tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
@@ -453,11 +449,8 @@ flagTranscripts_SVM_hyperplane <- function(chosen_cells,
   
   # get score for each transcripts
   transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
-  # convert to matrix; sparse matrix which gave bigger size for unknown reason
-  transcriptGeneScore <- Matrix::Matrix(transcriptGeneScore,
-                                        dimnames = list(transcript_df[[transID_coln]],
-                                                        colnames(transcriptGeneScore)))
-  
+  rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
+
   tmp_score <- as.data.frame(transcriptGeneScore)
   tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
   tmp_score[['SVM_class']] <- transcript_df[['SVM_class']]
