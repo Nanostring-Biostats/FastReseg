@@ -70,12 +70,7 @@ update_transDF_ResegActions <- function(transcript_df,
   
   # get score for each transcripts
   transcriptGeneScore <- score_GeneMatrix[subTransDF[[transGene_coln]], ]
-  # convert to sparse matrix which gave bigger size for unknown reason
-  transcriptGeneScore <- Matrix::Matrix(transcriptGeneScore,
-                                        dimnames = list(NULL,
-                                                        colnames(transcriptGeneScore)),
-                                        sparse = TRUE)
-  
+
   tmp_score <- as.data.frame(transcriptGeneScore)
   tmp_score[['updated_cellID']] <- subTransDF[['updated_cellID']]
   
