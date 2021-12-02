@@ -1,7 +1,10 @@
 #### pipeline to process multi-FOV multi-slot data
 ## part 2:
-## (2.1) load exisitng RData containing data.frame for all transcripts and cells and the reference cell type profiles
-## (2.2)
+## (2.0) load exisitng RData containing data.frame for all transcripts and cells and the reference cell type profiles
+## (2.1) flag cells based on linear regression of transcript score using lrtest_-log10P cutoff
+## (2.2) use SVM~hyperplane to identify the connected transcripts group based on transcript score
+## (2.3) do network analysis on flagged transcript to split flagged transcript groups in space
+## (2.4) re-segmentation of each flagged transcript groups based on their neighborhood
 
 library(ggplot2)
 library(FastReseg)
@@ -15,6 +18,27 @@ setwd(sub_out_dir2)
 blockID = 'lung9'
 sub_out_dir3 <- fs::path(sub_out_dir2, paste0("Block_", blockID))
 load(fs::path(sub_out_dir3, paste0("NSCLC_1Mcell_980plx_Block_", blockID,"_data.RData")))
+
+# use cell-to-cell distance to find neighborhood, search range = 25um in xy
+config_dimension[['CellNeighbor_xy']] = 25
+config_dimension[['CellNeighbor_xy_in_transDF']] = 25
+
+# change flaging cutoff to 5
+config_dimension[['flagCell_lrtestCutoff']] = 5
+
+# change svm configuraiton
+config_dimension[['svm_config']] <- list(kernel = "radial", 
+                                         scale = FALSE, 
+                                         gamma =0.4)
+
+# create output folder for new configuration
+sub_out_dir2 <- fs::path(main_output_dir, "NSCLC1m_lr5_svm0p4")
+sub_out_dir3 <- fs::path(sub_out_dir2, paste0("Block_", blockID))
+if(!dir.exists(sub_out_dir3)){
+  dir.create(sub_out_dir3, recursive = T)
+}
+setwd(sub_out_dir2)
+
 
 # extract info from saved RData
 targets <- rownames(meanCelltype_profiles)
@@ -404,24 +428,19 @@ reseg_logInfo[['resegmentation_leiden']] <- list(score_baseline = score_baseline
 
 # did not consider extra cellular transcripts for neighbor identification. 
 
-### search within absolute distance, 6um in xy for transcript level search, 3.2um in z, consider 15 pixel = 2.7um to be direct neighbor.
+### search within absolute distance, 25um in xy for cell level search, consider 15 pixel = 2.7um to be direct neighbor at transcript level.
 # 1339 transcript groups flagged among 228449 common groups, done with in 43min
-system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment(chosen_cells = cells_to_use,
-                                                                    score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
-                                                                    score_baseline = score_baseline,
-                                                                    cell_networkDT = NULL,
-                                                                    config_spatNW_transcript = config_spatNW2,
-                                                                    neighbor_distance_xy = config_dimension[['CellNeighbor_xy_in_transDF']],
-                                                                    neighbor_distance_z = config_dimension[['CellNeighbor_z']],
-                                                                    distance_cutoff = config_dimension[['TransDistance_cutoff']],
-                                                                    transNum_cutoff = 4,
-                                                                    transcript_df = reseg_transcript_df,
-                                                                    cellID_coln = "tmp_cellID",
-                                                                    celltype_coln = "group_maxCellType",
-                                                                    transID_coln = "transcript_id",
-                                                                    transGene_coln = "target",
-                                                                    transSpatLocs_coln = c('x','y','z'), 
-                                                                    gridSpat_coln = c('fov', 'slide')))
+system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
+                                                                             score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
+                                                                             score_baseline = score_baseline,
+                                                                             neighbor_distance_xy = config_dimension[['CellNeighbor_xy_in_transDF']],
+                                                                             distance_cutoff = config_dimension[['TransDistance_cutoff']],
+                                                                             transcript_df = reseg_transcript_df,
+                                                                             cellID_coln = "tmp_cellID",
+                                                                             celltype_coln = "group_maxCellType",
+                                                                             transID_coln = "transcript_id",
+                                                                             transGene_coln = "target",
+                                                                             transSpatLocs_coln = c('x','y','z')))
 # user    system   elapsed 
 # 21520.758   847.863  2626.192 
 
@@ -545,16 +564,14 @@ altered_cells_cleanSVM_leiden <- list(
   updatedCells_kept = unique(reseg_actions$cells_to_keep))
 
 # get neighborhood transcript data.frame for cells receiving merge
-# zoom into smaller neighborhood for plotting; 6um margin outside each cell
+# 25um in xy search range for neighbor cells
 # 12.6min to get info for 241 cells among 227117 all cells
-system.time(neighborTransDF_cleanSVM_leiden <- getNeighbors_transDF(chosen_cells = altered_cells_cleanSVM_leiden$updatedCells_merged, 
-                                                                    neighbor_distance_xy = config_dimension[['CellNeighbor_xy_in_transDF']],
-                                                                    neighbor_distance_z = config_dimension[['CellNeighbor_z']],
-                                                                    transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF,
-                                                                    cellID_coln = "updated_cellID",
-                                                                    transID_coln = "transcript_id",
-                                                                    transSpatLocs_coln = c('x','y','z'), 
-                                                                    gridSpat_coln = c('fov', 'slide')))
+system.time(neighborTransDF_cleanSVM_leiden <- getNeighbors_transDF_spatstat(chosen_cells = altered_cells_cleanSVM_leiden$updatedCells_merged, 
+                                                                             neighbor_distance_xy = config_dimension[['CellNeighbor_xy_in_transDF']],
+                                                                             transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF,
+                                                                             cellID_coln = "updated_cellID",
+                                                                             transID_coln = "transcript_id",
+                                                                             transSpatLocs_coln = c('x','y','z')))
 # user   system  elapsed 
 # 7110.938  227.177  755.395 
 
