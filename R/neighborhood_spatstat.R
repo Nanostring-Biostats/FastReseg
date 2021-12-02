@@ -69,9 +69,9 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     if(!any(class(distance_cutoff) %in% c('numeric','integer'))){
       stop("To define the neighborhood to consider for transcript network, distance_cutoff must be either NULL to use 10 times of 90% quantile of minimal molecular distance within all chosen cells or a numeric value to define the largest molecule-to-molecule distance.")
     } else if (distance_cutoff <= 0){
-      stop("distance_cutoff must be either `auto` or positive number")
+      stop("distance_cutoff must be either `NULL` or positive number")
     } else{
-      message(sprintf('Use distance_cutoff = %.4f for .', distance_cutoff))
+      message(sprintf('Use distance_cutoff = %.4f for defining direct neighbor cells based on molecule-to-molecule distance.', distance_cutoff))
     }
   } 
   
@@ -213,6 +213,10 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     neighbor_distDF <- neighbor_distDF[order(neighbor_distDF$min_dist), ]
     # direct cell neighbors should be within the distance_cutoff
     directCell_neighbors <- neighbor_distDF$neighbor_cellID[neighbor_distDF$min_dist <= distance_cutoff]
+    
+    if(length(directCell_neighbors) ==0) {
+      directCell_neighbors <- NA
+    }
     
     # get score matrix for each transcript in query cell
     cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
