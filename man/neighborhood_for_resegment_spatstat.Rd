@@ -25,9 +25,9 @@ neighborhood_for_resegment_spatstat(
 
 \item{score_baseline}{a named vector of score baseline for all cell type listed in score_GeneMatrix}
 
-\item{neighbor_distance_xy}{the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average cell diameter.}
+\item{neighbor_distance_xy}{the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average 2D cell diameter.}
 
-\item{distance_cutoff}{maximum distance within connected transcript group. Default = NULL to use the 10 times of 90\% quantile of minimal molecular distance within all chosen cells.}
+\item{distance_cutoff}{maximum distance within connected transcript group. Default = NULL to use the 10 times of 90\% quantile of minimal molecular distance within no more than 2500 chosen cells.}
 
 \item{transcript_df}{the data.frame with transcript_id, target/geneName, x, y and cell_id}
 
@@ -58,5 +58,5 @@ a data.frame
 find neighbor cells with transcripts that are direct neighbor of chosen_cell, check tLLRv2 score under neighbor cell type, return neighborhood information
 }
 \details{
-Locate neighbor cells of each query cell in 1st and 2nd dimension, firstly via cell-to-cell distance within neighbor_distance_xy, then via molecule-to-molecule distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
+Locate neighbor cells of each query cell firstly via cell-to-cell distance in 2D plane within neighbor_distance_xy, then via molecule-to-molecule 3D distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
 }

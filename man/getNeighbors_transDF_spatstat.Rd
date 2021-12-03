@@ -40,5 +40,5 @@ find neighbor cells of chosen_cells and return the relevant transcript data.fram
 \details{
 get neighborhood transcript data frame for visualization
 
-Locate neighbor cells of each query cell in 1st and 2nd dimension, firstly via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
+Locate neighbor cells of each query cell in 1st and 2nd dimension via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
 }
