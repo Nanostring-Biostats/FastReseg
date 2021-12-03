@@ -4,15 +4,15 @@
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param score_baseline a named vector of score baseline for all cell type listed in score_GeneMatrix
-#' @param neighbor_distance_xy the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average cell diameter.
-#' @param distance_cutoff maximum distance within connected transcript group. Default = NULL to use the 10 times of 90% quantile of minimal molecular distance within all chosen cells.
+#' @param neighbor_distance_xy the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average 2D cell diameter.
+#' @param distance_cutoff maximum distance within connected transcript group. Default = NULL to use the 10 times of 90% quantile of minimal molecular distance within no more than 2500 chosen cells.
 #' @param transcript_df the data.frame with transcript_id, target/geneName, x, y and cell_id
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param celltype_coln the column name of cell_type in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
-#' @importFrom spatstat.geom ppp subset.ppp nncross
+#' @importFrom spatstat.geom ppp subset.ppp nncross pp3
 #' @return a data.frame 
 #' #' \enumerate{
 #'    \item{CellId, original cell id of chosen cells}
@@ -24,7 +24,7 @@
 #'    \item{neighbor_celltype, cell type that gives maximum score in query cell among all non-self neighbor cells}
 #'    \item{score_under_neighbor, score in query cell under neighbor_celltype}
 #' }
-#' @details Locate neighbor cells of each query cell in 1st and 2nd dimension, firstly via cell-to-cell distance within neighbor_distance_xy, then via molecule-to-molecule distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
+#' @details Locate neighbor cells of each query cell firstly via cell-to-cell distance in 2D plane within neighbor_distance_xy, then via molecule-to-molecule 3D distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
 #' @export
 neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL, 
                                                 score_GeneMatrix,  
@@ -81,7 +81,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   if(!(d2_or_d3 %in% c(2,3))){
     stop("spatLocs_colns must be the column names for 1st, 2nd, optional 3rd dimension of spatial coordinates in transcript_df.")
   } else {
-    message(sprintf("Use the 1st and 2nd Dimension out of the provided %dD data for neighborhood search.", d2_or_d3))
+    message(sprintf("Use first 2D for searching cell neighborhood, but all %d Dimension to identify direct neighbors based on molecular distance.", d2_or_d3))
   }
   
   # check format of transcript_df
@@ -132,10 +132,10 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   colnames(perCell_coordM)[1] <- cellID_coln
   if(is.null(neighbor_distance_xy)){
     neighbor_distance_xy <- max(colMeans(perCell_coordM[, c('Width','Height')]))*2
-    message(sprintf("Use 2 times of average cell diameter as neighbor_distance_xy = %.4f for searching of neighbor cells.", neighbor_distance_xy))
+    message(sprintf("Use 2 times of average 2D cell diameter as neighbor_distance_xy = %.4f for searching of neighbor cells.", neighbor_distance_xy))
   }
   
-  # get neighbors cells for all chosen cells
+  # get neighbors cells for all chosen cells, just in xy plane
   perCell_pp <- spatstat.geom::ppp(x = perCell_coordM[['CenterX']], 
                                    y = perCell_coordM[['CenterY']], 
                                    range(perCell_coordM[['CenterX']]), 
@@ -155,14 +155,33 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   # data for chosen cells only
   chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
   
-  # get distance cutoff for all chosen cells at transcript level
+  # get distance cutoff for 2500 randomly chosen cells at transcript level, just in xy plane
   if(is.null(distance_cutoff)){
-    queryTrans_pp <- spatstat.geom::ppp(x = chosen_transDF[[transSpatLocs_coln[1]]], 
-                                        y = chosen_transDF[[transSpatLocs_coln[2]]], 
-                                        range(chosen_transDF[[transSpatLocs_coln[1]]]), 
-                                        range(chosen_transDF[[transSpatLocs_coln[2]]]), 
-                                        marks = factor(chosen_transDF[[cellID_coln]]), 
-                                        unitname = c("um","um"))
+    if(length(chosen_cells)> 2500){
+      cutoff_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells[sample(seq_len(length(chosen_cells)), 2500)]), ]
+    } else {
+      cutoff_transDF <- data.table::copy(chosen_transDF)
+    }
+    
+    if(d2_or_d3 ==2){
+      queryTrans_pp <- spatstat.geom::ppp(x = cutoff_transDF[[transSpatLocs_coln[1]]], 
+                                          y = cutoff_transDF[[transSpatLocs_coln[2]]], 
+                                          range(cutoff_transDF[[transSpatLocs_coln[1]]]), 
+                                          range(cutoff_transDF[[transSpatLocs_coln[2]]]), 
+                                          marks = factor(cutoff_transDF[[cellID_coln]]), 
+                                          unitname = c("um","um"))
+    } else {
+      queryTrans_pp <- spatstat.geom::pp3(x = cutoff_transDF[[transSpatLocs_coln[1]]], 
+                                          y = cutoff_transDF[[transSpatLocs_coln[2]]], 
+                                          z = cutoff_transDF[[transSpatLocs_coln[3]]],
+                                          range(cutoff_transDF[[transSpatLocs_coln[1]]]), 
+                                          range(cutoff_transDF[[transSpatLocs_coln[2]]]), 
+                                          range(cutoff_transDF[[transSpatLocs_coln[3]]]),
+                                          marks = factor(cutoff_transDF[[cellID_coln]]), 
+                                          unitname = c("um","um","um"))
+    }
+    
+    
     # get distribution of minimal molecule-to-molecule distance for each transcript in query cell
     dist_profle <- quantile(spatstat.geom::nndist(queryTrans_pp), seq(0,1,by=0.1))
     message(sprintf("Distribution of minimal molecular distance within all chosen cells is %s, at quantile = %s.", 
@@ -170,8 +189,8 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                     paste0(names(dist_profile), collapse = ", ")))
     # define cutoff as 10 times of 90% quantile value
     distance_cutoff <- 10*dist_profile[['90%']]
-    message(sprintf("Use 10 times of 90% quantile of minimal molecular distance within all query cells as distance_cutoff = %.4f for defining direct neighbor cells.", distance_cutoff))
-    rm(queryTrans_pp)
+    message(sprintf("Use 10 times of 90% quantile of minimal molecular distance within no more than 2500 query cells as distance_cutoff = %.4f for defining direct neighbor cells.", distance_cutoff))
+    rm(queryTrans_pp, cutoff_transDF)
     }
   
                                    
@@ -192,19 +211,40 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     df_subsetQ <- transcript_df[get(cellID_coln) == each_cell, ]
     
     ### use spatstat to find direct neighbor cells based on transcript-to-transcript distance in xy
-    neighborhood_pp <- spatstat.geom::ppp(x = df_subsetNT[[transSpatLocs_coln[1]]], 
-                                          y = df_subsetNT[[transSpatLocs_coln[2]]], 
-                                          range(df_subsetNT[[transSpatLocs_coln[1]]]), 
-                                          range(df_subsetNT[[transSpatLocs_coln[2]]]), 
-                                          marks = factor(df_subsetNT[[cellID_coln]]), 
-                                          unitname = c("um","um"))
-    neiQuery_pp <- spatstat.geom::ppp(x = df_subsetQ[[transSpatLocs_coln[1]]], 
-                                      y = df_subsetQ[[transSpatLocs_coln[2]]], 
-                                      range(df_subsetQ[[transSpatLocs_coln[1]]]), 
-                                      range(df_subsetQ[[transSpatLocs_coln[2]]]), 
-                                      marks = factor(df_subsetQ[[cellID_coln]]), 
-                                      unitname = c("um","um"))
-    
+    if(d2_or_d3 ==2){
+      # 2D neighborhood find
+      neighborhood_pp <- spatstat.geom::ppp(x = df_subsetNT[[transSpatLocs_coln[1]]], 
+                                            y = df_subsetNT[[transSpatLocs_coln[2]]], 
+                                            range(df_subsetNT[[transSpatLocs_coln[1]]]), 
+                                            range(df_subsetNT[[transSpatLocs_coln[2]]]), 
+                                            marks = factor(df_subsetNT[[cellID_coln]]), 
+                                            unitname = c("um","um"))
+      neiQuery_pp <- spatstat.geom::ppp(x = df_subsetQ[[transSpatLocs_coln[1]]], 
+                                        y = df_subsetQ[[transSpatLocs_coln[2]]], 
+                                        range(df_subsetQ[[transSpatLocs_coln[1]]]), 
+                                        range(df_subsetQ[[transSpatLocs_coln[2]]]), 
+                                        marks = factor(df_subsetQ[[cellID_coln]]), 
+                                        unitname = c("um","um"))
+    } else {
+      # 3D neighborhood find
+      neighborhood_pp <- spatstat.geom::pp3(x = df_subsetNT[[transSpatLocs_coln[1]]], 
+                                            y = df_subsetNT[[transSpatLocs_coln[2]]], 
+                                            z = df_subsetNT[[transSpatLocs_coln[3]]],
+                                            range(df_subsetNT[[transSpatLocs_coln[1]]]), 
+                                            range(df_subsetNT[[transSpatLocs_coln[2]]]), 
+                                            range(df_subsetNT[[transSpatLocs_coln[3]]]),
+                                            marks = factor(df_subsetNT[[cellID_coln]]), 
+                                            unitname = c("um","um","um"))
+      neiQuery_pp <- spatstat.geom::pp3(x = df_subsetQ[[transSpatLocs_coln[1]]], 
+                                        y = df_subsetQ[[transSpatLocs_coln[2]]], 
+                                        z = df_subsetQ[[transSpatLocs_coln[3]]],
+                                        range(df_subsetQ[[transSpatLocs_coln[1]]]), 
+                                        range(df_subsetQ[[transSpatLocs_coln[2]]]), 
+                                        range(df_subsetQ[[transSpatLocs_coln[3]]]), 
+                                        marks = factor(df_subsetQ[[cellID_coln]]), 
+                                        unitname = c("um","um","um"))
+      
+    }
     # get minimal distance of each neighborhood cell to any transcript inside query cell
     neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
                                  list(neighborhood_pp$marks), FUN = min)
@@ -308,7 +348,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 #'    \item{CellId, original cell id of each transcript}
 #'    \item{query_CellId, original query cell id of transcript's neighborhood}
 #' }
-#' @details Locate neighbor cells of each query cell in 1st and 2nd dimension, firstly via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
+#' @details Locate neighbor cells of each query cell in 1st and 2nd dimension via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
 #' @importFrom dplyr between
 #' @export
 getNeighbors_transDF_spatstat <- function(chosen_cells = NULL, 
@@ -383,7 +423,7 @@ getNeighbors_transDF_spatstat <- function(chosen_cells = NULL,
   # data for chosen cells only
   chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
   
-  # get neighbors cells for all chosen cells
+  # get neighbors cells for all chosen cells, just xy plane
   perCell_pp <- spatstat.geom::ppp(x = perCell_coordM[['CenterX']], 
                                    y = perCell_coordM[['CenterY']], 
                                    range(perCell_coordM[['CenterX']]), 

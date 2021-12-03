@@ -184,7 +184,7 @@ if(TRUE){
 
 ####re-segmentation based on tLLRv2 score (1) flag cells, identify transcript groups ----
 ## (1) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-# 1215 cells, 0.0063 of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > 10.0
+#5640 cells, 0.0292 of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > 5.0.
 flagged_cells_cleaned <- modStats_cleaned_tLLRv2_3D[['cell_ID']][which(modStats_cleaned_tLLRv2_3D[['lrtest_-log10P']] > config_dimension[['flagCell_lrtestCutoff']])]
 message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
                 length(flagged_cells_cleaned), length(flagged_cells_cleaned)/nrow(modStats_cleaned_tLLRv2_3D),config_dimension[['flagCell_lrtestCutoff']]))
@@ -198,7 +198,7 @@ flagged_transDF3d_cleaned <- all_transDF[which(all_transDF[['cell_ID']] %in% fla
 
 
 ## SVM in 3D, vectorized operation
-# take ~0.5min to run 1215 cells, 45920416 transcripts for spatial 3D SVM, remove 1 cell
+# take ~1.5min to run 5640 cells, 45920416 transcripts for spatial 3D SVM, remove 2 cell
 # coordinate in um when doing SVM
 reseg_logInfo[['flagging_cleaned_SVM']] <- list(svm_config = config_dimension[['svm_config']])
 
@@ -213,7 +213,7 @@ system.time(tmp_df <- flagTranscripts_SVM_hyperplane(chosen_cells = flagged_cell
                                                      score_cutoff = flag_tLLRv2_cutoff, 
                                                      svm_args = reseg_logInfo[['flagging_cleaned_SVM']][['svm_config']]))
 # user  system elapsed 
-# 190.710   5.077  22.364 
+# 314.317  12.442  80.250 
 
 # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
 flagged_transDF_SVM3 <- tmp_df[, c('transcript_id','DecVal','SVM_class','SVM_cell_type')]
@@ -292,7 +292,7 @@ if(TRUE){
 ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
 ## try to do denaulay on flagged transcript only and identity groups in network
 # https://bookdown.org/markhoff/social_network_analysis/finding-groups-in-networks.html
-# take ~0.5min to run 16526 transcripts in 1215 cells (327 cells = 26.91% with same class based on SVM)
+# take ~1.5min to run 65651 transcripts in 5640 cells (451 cells = 8.00% with same class based on SVM)
 
 system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
                                                                    config_spatNW_transcript = config_spatNW2, 
@@ -302,7 +302,7 @@ system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transc
                                                                    transID_coln = "transcript_id",
                                                                    transSpatLocs_coln = c('x','y','z')))
 # user  system elapsed 
-# 55.190   2.936  29.268
+# 135.371   6.814  99.740
 
 reseg_logInfo[['flagging_cleaned_SVM']][['cellsWflagged_transGroup']] <- unique(flaggedSVM_transGroupDF3d[['cell_ID']][which(flaggedSVM_transGroupDF3d[['transcript_group']] >0)])
 
@@ -365,7 +365,7 @@ if(TRUE){
 
 # pause to save data
 if(FALSE){
-  # 25.86min to save before evaluate neighborhood
+  # 1min to save before evaluate neighborhood
   system.time(save(currentBlock, # slide, slide name, slide position of current block
                    block_cellNetWorkDT, #cell delaunay network data table only
                    celltype_metadata, # cell typing of gem
@@ -397,8 +397,8 @@ if(FALSE){
                    # neighborTransDF_cleanSVM_leiden, # neighborhood transcript data for cells receiving merge
                    # alteredOnly_modStats_resegcleanSVM_leiden_tLLRv2_3D, # linear regression on altered cells after resegmentation
                    file = fs::path(sub_out_dir3, paste0(blockID,"_NSCLC_1Mcell_980plx_reseg_cleanNBclust6_SVMleiden_log.RData"))))
-  # user   system  elapsed 
-  # 297.836  136.994 1551.676
+  # user  system elapsed 
+  # 44.150   7.367  65.584
   
 }
 
@@ -429,7 +429,8 @@ reseg_logInfo[['resegmentation_leiden']] <- list(score_baseline = score_baseline
 # did not consider extra cellular transcripts for neighbor identification. 
 
 ### search within absolute distance, 25um in xy for cell level search, consider 15 pixel = 2.7um to be direct neighbor at transcript level.
-# 1339 transcript groups flagged among 228449 common groups, done with in 43min
+# new function ussing spatstat to locate neighbor cells and rank them by minimal molecular distance to query cell
+# 13038 transcript groups flagged among 240148 common groups, done with in 5.67hr when in 2D
 system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
                                                                              score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
                                                                              score_baseline = score_baseline,
@@ -441,8 +442,17 @@ system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(cho
                                                                              transID_coln = "transcript_id",
                                                                              transGene_coln = "target",
                                                                              transSpatLocs_coln = c('x','y','z')))
+ 
+
+# ### when distance cutoff evaluation done in 2D
 # user    system   elapsed 
-# 21520.758   847.863  2626.192 
+# 18708.929  5745.984 20422.588 
+# neighborReSeg_df_cleanSVM2D <- neighborReSeg_df_cleanSVM
+# save(neighborReSeg_df_cleanSVM2D,
+#      file = fs::path(sub_out_dir3, paste0(blockID,"_NSCLC_neighborReSeg_df_2D.RData")))
+# rm(neighborReSeg_df_cleanSVM2D)
+
+### when distance cutoff evaluation done in 3D
 
 
 # pause to save data
