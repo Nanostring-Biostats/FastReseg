@@ -281,7 +281,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     # get neighbor cell type and check the query transcript cell type against it
     if(length(directCell_neighbors)>0){
       # found connected neighbor cells with close enough transcripts
-      neighbors_df <- df_subsetNT[which(df_subsetNT[[cellID_coln]] %in% directCell_neighbors),]
+      neighbors_df <- df_subset[which(df_subset[[cellID_coln]] %in% directCell_neighbors),]
       neighbors_df <- as.data.frame(neighbors_df)[, c(cellID_coln, celltype_coln)]
       neighbors_df <- unique(neighbors_df)
       neighbors_df[['score_under_neighbor']] <- cell_score[each_cell, neighbors_df[[celltype_coln]]]/nrow(query_df)

@@ -430,7 +430,7 @@ reseg_logInfo[['resegmentation_leiden']] <- list(score_baseline = score_baseline
 
 ### search within absolute distance, 25um in xy for cell level search, consider 15 pixel = 2.7um to be direct neighbor at transcript level.
 # new function ussing spatstat to locate neighbor cells and rank them by minimal molecular distance to query cell
-# 13038 transcript groups flagged among 240148 common groups, done with in 5.67hr when in 2D
+# 13038 transcript groups flagged among 240148 common groups, done with in 5.67hr in 2D, 4.82hr in 3D
 system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
                                                                              score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
                                                                              score_baseline = score_baseline,
@@ -447,13 +447,10 @@ system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(cho
 # ### when distance cutoff evaluation done in 2D
 # user    system   elapsed 
 # 18708.929  5745.984 20422.588 
-# neighborReSeg_df_cleanSVM2D <- neighborReSeg_df_cleanSVM
-# save(neighborReSeg_df_cleanSVM2D,
-#      file = fs::path(sub_out_dir3, paste0(blockID,"_NSCLC_neighborReSeg_df_2D.RData")))
-# rm(neighborReSeg_df_cleanSVM2D)
 
 ### when distance cutoff evaluation done in 3D
-
+# user   system  elapsed 
+# 13636.29  5294.41 17352.50
 
 # pause to save data
 if(FALSE){
