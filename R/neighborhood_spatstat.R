@@ -353,7 +353,6 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 #'    \item{query_CellId, original query cell id of transcript's neighborhood}
 #' }
 #' @details Locate neighbor cells of each query cell in 1st and 2nd dimension via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
-#' @importFrom dplyr between
 #' @export
 getNeighbors_transDF_spatstat <- function(chosen_cells = NULL, 
                                            neighbor_distance_xy = NULL,

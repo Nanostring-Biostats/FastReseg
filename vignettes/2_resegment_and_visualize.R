@@ -494,7 +494,7 @@ if(FALSE){
 reseg_logInfo[['resegmentation_leiden']][['leiden_config']] <- config_dimension[['leiden_config']]
 reseg_logInfo[['resegmentation_leiden']][['cutoff_sharedLeiden']] = config_dimension[['cutoff_sharedLeiden']]
 
-# it takes 5min to make resegemntation decision if use leiden clustering to judge on 401 merging events
+# it takes 22.22min to make resegemntation decision if use leiden clustering to judge on 2243 merging events
 system.time(reseg_actions <- decide_ReSegment_Operations_leidenCut(neighborhood_df = neighborReSeg_df_cleanSVM, 
                                                                    score_baseline = score_baseline, 
                                                                    lowerCutoff_transNum = transNum_lowCutoff, 
@@ -506,8 +506,8 @@ system.time(reseg_actions <- decide_ReSegment_Operations_leidenCut(neighborhood_
                                                                    transSpatLocs_coln = c('x','y','z'), 
                                                                    leiden_config = reseg_logInfo[['resegmentation_leiden']][['leiden_config']], 
                                                                    cutoff_sharedLeiden = reseg_logInfo[['resegmentation_leiden']][['cutoff_sharedLeiden']]))
-# user  system elapsed 
-# 324.331  34.401 297.437 
+# user   system  elapsed 
+# 1440.335  112.845 1333.174  
 
 reseg_logInfo[['resegmentation_leiden']][['reseg_actions']] <- reseg_actions
 reseg_logInfo[['resegmentation_leiden']][['feat_count']] <- data.frame(cellNum_discard = length(reseg_actions$cells_to_discard), 
@@ -523,7 +523,7 @@ reseg_logInfo[['resegmentation_leiden']][['feat_count']] <- data.frame(cellNum_d
 # update neighborReSeg_df_cleanSVM with resegmentaion actions
 neighborReSeg_df_cleanSVM[['corrected_CellId']] <- reseg_actions[['reseg_full_converter']][neighborReSeg_df_cleanSVM[['CellId']]]
 
-# # update the resegmentation data frame, remove cells_to_discard, take ~6min to update and get count matrix
+# # update the resegmentation data frame, remove cells_to_discard, take ~6.3min to update and get count matrix
 # > dim(reseg_transcript_df)
 # [1] 45920416       16
 # > dim(all_transDF)
@@ -540,20 +540,20 @@ system.time(post_reseg_results_cleanSVM_leiden <- update_transDF_ResegActions(tr
 
 # # return gene x cell count table
 # user  system elapsed 
-# 777.567  97.271 357.513
+# 501.915  94.484 378.297 
 # > dim(post_reseg_results_cleanSVM_leiden$updated_transDF)
-# [1] 45907617       19
+# [1] 45867194       18
 # > dim(post_reseg_results_cleanSVM_leiden$perCell_DT)
-# [1] 227117      5
+# [1] 227181      5
 
-# get tLLRv2 score under updated cell type, 1min for 45907617 transcripts
+# get tLLRv2 score under updated cell type, 1min for 45867194 transcripts
 system.time(tmp_df <- getScoreCellType_gene(score_GeneMatrix = tLLRv2_geneMatrix_cleaned, 
                                             transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF, 
                                             transID_coln = "transcript_id",
                                             transGene_coln = "target",
                                             celltype_coln = 'updated_celltype'))
 # user  system elapsed 
-# 45.187  17.257  60.870   
+# 34.244  18.445  51.620    
 
 post_reseg_results_cleanSVM_leiden$updated_transDF <- merge(post_reseg_results_cleanSVM_leiden$updated_transDF, tmp_df, by = 'transcript_id')
 
@@ -572,7 +572,7 @@ altered_cells_cleanSVM_leiden <- list(
 
 # get neighborhood transcript data.frame for cells receiving merge
 # 25um in xy search range for neighbor cells
-# 12.6min to get info for 241 cells among 227117 all cells
+# 29min to get info for 1238 cells among 227181 all cells
 system.time(neighborTransDF_cleanSVM_leiden <- getNeighbors_transDF_spatstat(chosen_cells = altered_cells_cleanSVM_leiden$updatedCells_merged, 
                                                                              neighbor_distance_xy = config_dimension[['CellNeighbor_xy_in_transDF']],
                                                                              transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF,
@@ -580,7 +580,7 @@ system.time(neighborTransDF_cleanSVM_leiden <- getNeighbors_transDF_spatstat(cho
                                                                              transID_coln = "transcript_id",
                                                                              transSpatLocs_coln = c('x','y','z')))
 # user   system  elapsed 
-# 7110.938  227.177  755.395 
+# 2526.725  677.435 1739.795 
 
 # add in cell type and cell_ID information
 neighborTransDF_cleanSVM_leiden <- merge(neighborTransDF_cleanSVM_leiden, 
