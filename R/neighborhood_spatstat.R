@@ -4,8 +4,9 @@
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param score_baseline a named vector of score baseline for all cell type listed in score_GeneMatrix
-#' @param neighbor_distance_xy the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average 2D cell diameter.
-#' @param distance_cutoff maximum distance within connected transcript group. Default = NULL to use the 10 times of 90% quantile of minimal molecular distance within no more than 2500 chosen cells.
+#' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
+#' @param distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
+#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `neighbor_distance_xy`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90% quantile of minimal molecular distance as `distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @param transcript_df the data.frame with transcript_id, target/geneName, x, y and cell_id
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param celltype_coln the column name of cell_type in transcript_df
@@ -30,7 +31,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                                 score_GeneMatrix,  
                                                 score_baseline = NULL, 
                                                 neighbor_distance_xy = NULL,
-                                                distance_cutoff = NULL,
+                                                distance_cutoff = 2.7,
                                                 transcript_df, 
                                                 cellID_coln = "CellId", 
                                                 celltype_coln = "cell_type", 
@@ -155,13 +156,47 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   # data for chosen cells only
   chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
   
-  # get distance cutoff for 2500 randomly chosen cells at transcript level, just in xy plane
+  ## get molecular_distance_cutoff between neighbor cells from 10 randomly selected ROIs with 5* neighbor_distance_xy 
   if(is.null(distance_cutoff)){
-    if(length(chosen_cells)> 2500){
-      cutoff_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells[sample(seq_len(length(chosen_cells)), 2500)]), ]
+    if(nrow(perCell_coordM)> 2500){
+      # random subset ROIs from whole transcript_df
+      n_ROIs = 10
+      radius_ROIs = 5*cellular_distance_cutoff
+      seed = 123
+      spatial_locs <- as.matrix(perCell_coordM[, -1])
+      rownames(spatial_locs) <- perCell_coordM[[cellID_coln]]
+      centroid_colns <- c("CenterX", "CenterY")
+      # indices of cells to keep:
+      cells_to_keep = c()
+      for (i in seq_len(n_ROIs)) {
+        # cells that haven't been picked yet:
+        available_cell_indices <- setdiff(seq_along(perCell_coordM[[cellID_coln]]), cells_to_keep)
+        if(length(available_cell_indices) ==0) break
+        
+        # pick a center cell:
+        randomStart <- sample(available_cell_indices, 1)
+        center <- as.vector(t(spatial_locs[randomStart, centroid_colns]))
+        search_range <- matrix(c(center - radius_ROIs, center + radius_ROIs), 
+                               nrow = 2, byrow = TRUE, dimnames = list(c(), centroid_colns))
+        # find cell within bounding box of radius_ROIs in length
+        closest_cells <- lapply(seq_len(ncol(search_range)),
+                                function(i) perCell_coordM[dplyr::between(get(centroid_colns[i]), 
+                                                                          search_range[1, i], search_range[2, i]), 
+                                                           which = TRUE])
+        
+        closest_cells <- Reduce(intersect, closest_cells)
+        cells_to_keep <- unique(c(cells_to_keep, closest_cells))
+        print(c(i,length(cells_to_keep)))
+        
+        if(length(cells_to_keep)>2500) break
+      }
+      cells_to_keep <- perCell_coordM[[cellID_coln]][cells_to_keep]
+      
     } else {
-      cutoff_transDF <- data.table::copy(chosen_transDF)
+      cells_to_keep <- perCell_coordM[[cellID_coln]]
     }
+    
+    cutoff_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% cells_to_keep), ]
     # drop the dimension without variance in coordinates
     spatLocs_to_use <- transSpatLocs_coln[apply(cutoff_transDF[, .SD, .SDcols = transSpatLocs_coln], 
                                                 2, function(x) diff(range(x)))>0]
@@ -187,14 +222,15 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     
     
     # get distribution of minimal molecule-to-molecule distance for each transcript in query cell
-    dist_profle <- quantile(spatstat.geom::nndist(queryTrans_pp), seq(0,1,by=0.1))
-    message(sprintf("Distribution of minimal molecular distance within all chosen cells is %s, at quantile = %s.", 
+    dist_profile <- quantile(spatstat.geom::nndist(queryTrans_pp), seq(0,1,by=0.1))
+    message(sprintf("Distribution of minimal molecular distance between %d cells: %s, at quantile = %s.", 
+                    length(cells_to_keep), 
                     paste0(round(dist_profile, 2), collapse = ", "), 
                     paste0(names(dist_profile), collapse = ", ")))
     # define cutoff as 10 times of 90% quantile value
     distance_cutoff <- 10*dist_profile[['90%']]
-    message(sprintf("Use 10 times of 90% quantile of minimal %dD molecular distance within no more than 2500 query cells as distance_cutoff = %.4f for defining direct neighbor cells.", 
-                    length(spatLocs_to_use), distance_cutoff))
+    message(sprintf("Use 10 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutofff` = %.4f for defining direct neighbor cells.", 
+                    length(spatLocs_to_use), molecular_distance_cutoff))
     rm(queryTrans_pp, cutoff_transDF)
     }
   
@@ -339,7 +375,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 #' @title getNeighbors_transDF_spatstat
 #' @description find neighbor cells of chosen_cells and return the relevant transcript data.frame for both query 
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
-#' @param neighbor_distance_xy the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average cell diameter.
+#' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average cell diameter.
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df

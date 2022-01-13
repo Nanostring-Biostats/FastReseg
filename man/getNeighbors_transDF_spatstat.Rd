@@ -16,7 +16,7 @@ getNeighbors_transDF_spatstat(
 \arguments{
 \item{chosen_cells}{the cell_ID of chosen cells need to be evaluate for re-segmentation}
 
-\item{neighbor_distance_xy}{the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average cell diameter.}
+\item{neighbor_distance_xy}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average cell diameter.}
 
 \item{cellID_coln}{the column name of cell_ID in transcript_df}
 

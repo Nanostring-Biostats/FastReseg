@@ -9,7 +9,7 @@ neighborhood_for_resegment_spatstat(
   score_GeneMatrix,
   score_baseline = NULL,
   neighbor_distance_xy = NULL,
-  distance_cutoff = NULL,
+  distance_cutoff = 2.7,
   transcript_df,
   cellID_coln = "CellId",
   celltype_coln = "cell_type",
@@ -25,9 +25,10 @@ neighborhood_for_resegment_spatstat(
 
 \item{score_baseline}{a named vector of score baseline for all cell type listed in score_GeneMatrix}
 
-\item{neighbor_distance_xy}{the distance in x, y from the center of each chosen cell to the center of neighborhood network building at transcript level. Default = NULL to use the 2 times of average 2D cell diameter.}
+\item{neighbor_distance_xy}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.}
 
-\item{distance_cutoff}{maximum distance within connected transcript group. Default = NULL to use the 10 times of 90\% quantile of minimal molecular distance within no more than 2500 chosen cells.}
+\item{distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron).
+If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{neighbor_distance_xy}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90\% quantile of minimal molecular distance as \code{distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
 \item{transcript_df}{the data.frame with transcript_id, target/geneName, x, y and cell_id}
 

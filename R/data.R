@@ -1,6 +1,6 @@
 #' Data for cell type specific reference profiles
 #'
-#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"refProfiles"} to be used as reference profiles. 
+#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"refProfiles"} to be used as reference profiles. 
 #'
 #' @docType data
 #'
@@ -16,15 +16,15 @@
 
 
 
-#' Transcript level data table from Example dataset for spatial transcriptional profiling of tissue
+#' Transcript level data frame from Example dataset for spatial transcriptional profiling of tissue
 #'
 #' The example dataset is based on one run of SMI RNA readout for FFPE melanoma tissue samples. It contains information for 1375 cells with 756783 transcripts within a cropped region of one single FOV of 1 tissue section.
 #'
 #' @docType data
 #'
-#' @usage data(transcriptDT)
+#' @usage data(transcriptDF)
 #'
-#' @format An object of class \code{"data.table"} with 756783 transcripts in row and 9 variables
+#' @format An object of class \code{"data.frame"} with 756783 transcripts in row and 9 variables
 #' \describe{
 #'    \item{transcript_id}{unique id for transcript}
 #'    \item{cell_ID}{unique id for cell based on original cell segmentaion assignment}
@@ -38,19 +38,19 @@
 #' }
 #'
 #' @keywords datasets
-"transcriptDT"
+"transcriptDF"
 
 
 
-#' Cell level data table from Example dataset for spatial transcriptional profiling of tissue
+#' Cell level data frame from Example dataset for spatial transcriptional profiling of tissue
 #'
 #' The example dataset is based on one run of SMI RNA readout for FFPE melanoma tissue samples. It contains information for 1375 cells with 756783 transcripts within a cropped region of one single FOV of 1 tissue section.
 #'
 #' @docType data
 #'
-#' @usage data(ori_CellStatsDT)
+#' @usage data(ori_CellStatsDF)
 #'
-#' @format An object of class \code{"data.table"} with 1375 cells in row and 10 variables
+#' @format An object of class \code{"data.frame"} with 1375 cells in row and 10 variables
 #' \describe{
 #'    \item{cell_ID}{unique id for cell based on original cell segmentaion assignment}
 #'    \item{slide}{slide ID of given cell}
@@ -65,7 +65,7 @@
 #' }
 #'
 #' @keywords datasets
-"ori_CellStatsDT"
+"ori_CellStatsDF"
 
 
 
@@ -81,3 +81,20 @@
 #'
 #' @keywords datasets
 "ori_RawExprs"
+
+
+#' Percentile profile for single cell distribution of transcript number and average tLLR score from example dataset for spatial transcriptional profiling of tissue
+#'
+#' The example dataset is based on one run of SMI RNA readout for FFPE melanoma tissue samples. The single cell distribution was calculated for transcript number per cell and average transcript tLLR score per cell, and then grouped by the assigned cell types based on the original cell segmentation outcome to get the percentile profile for each cell type at 25% increment step. 
+#'
+#' @docType data
+#'
+#' @usage data(baselineCT)
+#'
+#' @format An object of class \code{"list"} with 2 elements
+#' \describe{
+#'    \item{span_score}{a matrix of average transcript tLLR score per cell for 22 distinct cell types in rows, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
+#'    \item{span_transNum}{a matrix of transcript number per cell for 22 distinct cell types in rows, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
+#'    }
+#' @keywords datasets
+"baselineCT"

@@ -142,7 +142,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 #' @param neighborcellID_coln the column name of cell_ID of neighbor cell in neighborhood_df 
 #' @param neighborCellType_coln the column name of cell_type under neighbor cell in neighborhood_df 
 #' @param neighborScore_coln the column name of average transcript score under neighbor cell in neighborhood_df 
-#' @param score_baseline a named vector of score baseline for all cell type listed in neighborhood_df
+#' @param score_baseline a named vector of score baseline for all cell type listed in neighborhood_df such that per cell transcript score higher than the baseline is required to call a cell type of high enough confidence 
 #' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level
@@ -335,7 +335,7 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
           if(length(z_num) <2){
             # single z-plane, run as 2D
             message(sprintf("(`%s`) cell pair with all %d transcripts in same z plane, run 2D network analysis.", 
-                            paste0(merged_pair, collapse = "``, `"), nrow(df_subset)))
+                            paste0(merged_pair, collapse = "`, `"), nrow(df_subset)))
             delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
                                                                     spatLocs_df = df_subset, 
                                                                     ID_column = transID_coln,

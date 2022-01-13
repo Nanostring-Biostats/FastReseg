@@ -44,7 +44,7 @@ decide_ReSegment_Operations_leidenCut(
 
 \item{neighborScore_coln}{the column name of average transcript score under neighbor cell in neighborhood_df}
 
-\item{score_baseline}{a named vector of score baseline for all cell type listed in neighborhood_df}
+\item{score_baseline}{a named vector of score baseline for all cell type listed in neighborhood_df such that per cell transcript score higher than the baseline is required to call a cell type of high enough confidence}
 
 \item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is}
 
