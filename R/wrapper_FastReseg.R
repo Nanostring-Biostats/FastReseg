@@ -25,7 +25,7 @@
 #' @return a list 
 #' \enumerate{
 #'    \item{modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `spatialModelScoreCell_hyperplane` function, return when return_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM_hyperplane` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
 #'    \item{reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
 #'    \item{updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -49,8 +49,6 @@
 #'                                    lowerCutoff_transNum = lowerCutoff_transNum, 
 #'                                    higherCutoff_transNum= higherCutoff_transNum)
 #' @importFrom data.table as.data.table
-#' @importFrom dplyr between
-#' @importFrom spatstat.geom ppp pp3 box3 nndist
 #' @export
 fastReseg_externalRef <- function(refProfiles, 
                                   transcript_df, 
@@ -153,7 +151,7 @@ fastReseg_externalRef <- function(refProfiles,
   }
   
   #### (0) prepare transcript_df for resegmentation ----
-  ## (0.1) get transcript score matrix for each gene based on reference profile
+  ## (0.1) get transcript score matrix for each gene based on reference profile ----
   common_genes <- unique(transcript_df[[transGene_coln]])
   message(sprintf("%d unique genes are found in `transcript_df`.", length(common_genes)))
   common_genes <- intersect(common_genes, rownames(refProfiles))
@@ -170,9 +168,9 @@ fastReseg_externalRef <- function(refProfiles,
   # tLLRv2 score, re-center on maximum per row/transcript
   tmp_max <- apply(transcript_loglik, 1, max)
   tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
+  rm(tmp_max)
   
-  
-  ## (0.2) remove extracellular transcript from transcript_df
+  ## (0.2) remove extracellular transcript from transcript_df ----
   common_cells <- unique(transcript_df[[cellID_coln]])
   message(sprintf("Found %d transcript records and %d cells in input `transcript_df`.", nrow(transcript_df), length(common_cells)))
   
@@ -187,16 +185,53 @@ fastReseg_externalRef <- function(refProfiles,
     
   }
   
-  # get per cell data.table for centroid spatial coordinates and geometry information of bounding box
-  perCell_coordM <- data.table::as.data.table(transcript_df)[, list(CenterX = mean(get(transSpatLocs_coln[1])), 
-                                                                    CenterY = mean(get(transSpatLocs_coln[2])),
-                                                                    Width = diff(range(get(transSpatLocs_coln[1]))),
-                                                                    Height = diff(range(get(transSpatLocs_coln[2])))), 
-                                                             by = get(cellID_coln)]
-  colnames(perCell_coordM)[1] <- cellID_coln
   
+  ## (0.3) get distance cutoff for molecular-to-molecular and cell-to-cell ----
+  ## get distance cutoff for neighborhood at transcript level and cell level
+  if(is.null(cellular_distance_cutoff)){
+    # # get both distance cutoff with `choose_distance_cutoff` function
+    # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
+    # The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. 
+    # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
+    # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
+    # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
+    # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
+    # This calculation is slow and is not recommended for large transcript data.frame.
+    
+    if(is.null(molecular_distance_cutoff)){
+      distCutoffs <- choose_distance_cutoff(transcript_df, 
+                                            transID_coln = transID_coln,
+                                            cellID_coln = cellID_coln, 
+                                            spatLocs_colns = spatLocs_colns, 
+                                            extracellular_cellID = NULL, 
+                                            sampleSize_nROI = 10, 
+                                            sampleSize_cellNum = 2500, 
+                                            seed = 123, 
+                                            run_molecularDist = TRUE)
+      molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
+      
+    } else {
+      # get only cellular distance cutoff
+      distCutoffs <- choose_distance_cutoff(transcript_df, 
+                                            transID_coln = transID_coln,
+                                            cellID_coln = cellID_coln, 
+                                            spatLocs_colns = spatLocs_colns, 
+                                            extracellular_cellID = NULL, 
+                                            sampleSize_nROI = 10, 
+                                            sampleSize_cellNum = 2500, 
+                                            seed = 123, 
+                                            run_molecularDist = FALSE)
+    }
+    
+    cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+    
+    rm(distCutoffs)
+  }
   
-  ## (0.3) for each cell, get new cell type based on maximum score 
+
+  
+  ## (0.4) for each cell, get new cell type based on maximum score ----
+  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
   tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
                                  transcript_df = transcript_df, 
                                  transID_coln = transID_coln,
@@ -206,21 +241,25 @@ fastReseg_externalRef <- function(refProfiles,
   
   select_cellmeta <- tmp_df[['cellType_DF']]
   colnames(select_cellmeta) <- c(cellID_coln,'tLLRv2_maxCellType')
+  rm(tmp_df)
+  
   transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
   message(sprintf("Found %d cells and assigned cell type based on the provided 'refProfiles` cluster profiles.", nrow(select_cellmeta)))
   
   
-  ## (0.4) for each transcript, calculate tLLR score based on the max cell type
+  ## (0.5) for each transcript, calculate tLLR score based on the max cell type
+  # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
   tmp_df <- getScoreCellType_gene(score_GeneMatrix = tLLRv2_geneMatrix, 
                                   transcript_df = transcript_df, 
                                   transID_coln = transID_coln,
                                   transGene_coln = transGene_coln,
                                   celltype_coln = 'tLLRv2_maxCellType')
   transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
-  
+  rm(tmp_df)
   
   ####re-segmentation based on tLLRv2 score (1) flag cells, identify transcript groups ----
   ## (1.1) spatial modeling of tLLR score profile within each cell to identify cells with strong spatail dependency 
+  # `spatialModelScoreCell_hyperplane` function returns a data.frame with cell in row and spatial modeling outcomes in columns
   tmp_df <- spatialModelScoreCell_hyperplane(chosen_cells = common_cells, 
                                              transcript_df = transcript_df, 
                                              cellID_coln = cellID_coln, 
@@ -232,6 +271,8 @@ fastReseg_externalRef <- function(refProfiles,
   #-log10(P)
   tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
   modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
+  rm(tmp_df)
+  
   if(return_intermediates){
     final_res[['modStats_ToFlagCells']] <- modStats_tLLRv2_3D
   }
@@ -243,20 +284,21 @@ fastReseg_externalRef <- function(refProfiles,
                   length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
   
   ## (2) use SVM~hyperplane to identify the connected transcripts group based on tLLRv2 score ----
-  # it turns out SVM can separate continuous low score transcript from the rest.
+  # SVM can separate continuous low score transcript from the rest.
   # but observed flagged cells with no flagged transcripts or multiple groups of flagged transcripts
   flagged_transDF3d <- transcript_df[which(transcript_df[[cellID_coln]] %in% flagged_cells),]
   
-  tmp_df <- flagTranscripts_SVM_hyperplane(chosen_cells = flagged_cells,
-                                           score_GeneMatrix = transcript_loglik,
-                                           transcript_df = flagged_transDF3d, 
-                                           cellID_coln = cellID_coln, 
-                                           transID_coln = transID_coln, 
-                                           score_coln = 'score_tLLRv2_maxCellType',
-                                           spatLocs_colns = spatLocs_colns, 
-                                           model_cutoff = flagModel_TransNum_cutoff, 
-                                           score_cutoff = svmClass_score_cutoff, 
-                                           svm_args = svm_args)
+  # `flagTranscripts_SVM` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
+  tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells,
+                                score_GeneMatrix = transcript_loglik,
+                                transcript_df = flagged_transDF3d, 
+                                cellID_coln = cellID_coln, 
+                                transID_coln = transID_coln, 
+                                score_coln = 'score_tLLRv2_maxCellType',
+                                spatLocs_colns = spatLocs_colns, 
+                                model_cutoff = flagModel_TransNum_cutoff, 
+                                score_cutoff = svmClass_score_cutoff, 
+                                svm_args = svm_args)
   
   # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
   flagged_transDF_SVM3 <- merge(flagged_transDF3d, 
@@ -265,6 +307,7 @@ fastReseg_externalRef <- function(refProfiles,
   
   message(sprintf("Remove %d cells with raw transcript score all in same class based on cutoff %.2f when running spatial SVM model.", 
                   length(flagged_cells) - length(unique(flagged_transDF_SVM3[[cellID_coln]])), svmClass_score_cutoff))
+  rm(tmp_df)
   
   
   # flagged transcript ID, character vector
@@ -272,97 +315,11 @@ fastReseg_externalRef <- function(refProfiles,
   
   
   ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
-  ## try to do denaulay on flagged transcript only and identity groups in network
-  # https://bookdown.org/markhoff/social_network_analysis/finding-groups-in-networks.html
+  ## (3.1) perform delaunay on SVM-flagged transcripts within flagged cells ----
+  # # config for spatial network for transcripts
+  # this config would be used by two functions, `groupTranscripts_Delanuay` and `decide_ReSegment_Operations_leidenCut`, 
+  # below to separate transcripts that would likely be from two different source cells based on their spatial clustering.
   
-  ## (3.1) get distance cutoff for molecular-to-molecular and cell-to-cell ----
-  ## get distance cutoff for neighborhood at transcript level and cell level
-  if(is.null(cellular_distance_cutoff)){
-    cellular_distance_cutoff <- max(colMeans(perCell_coordM[, c('Width','Height')]))*2
-    message(sprintf("Use 2 times of average 2D cell diameter as cellular_distance_cutoff = %.4f for searching of neighbor cells.", cellular_distance_cutoff))
-  }
-  
-  ## get molecular_distance_cutoff between neighbor cells from 10 randomly selected ROIs with 5* cellular_distance_cutoff 
-  if(is.null(molecular_distance_cutoff)){
-    if(nrow(perCell_coordM)> 2500){
-      # random subset ROIs from whole transcript_df
-      n_ROIs = 10
-      radius_ROIs = 5*cellular_distance_cutoff
-      seed = 123
-      spatial_locs <- as.matrix(perCell_coordM[, -1])
-      rownames(spatial_locs) <- perCell_coordM[[cellID_coln]]
-      centroid_colns <- c("CenterX", "CenterY")
-      # indices of cells to keep:
-      cells_to_keep = c()
-      for (i in seq_len(n_ROIs)) {
-        # cells that haven't been picked yet:
-        available_cell_indices <- setdiff(seq_along(perCell_coordM[[cellID_coln]]), cells_to_keep)
-        if(length(available_cell_indices) ==0) break
-        
-        # pick a center cell:
-        randomStart <- sample(available_cell_indices, 1)
-        center <- as.vector(t(spatial_locs[randomStart, centroid_colns]))
-        search_range <- matrix(c(center - radius_ROIs, center + radius_ROIs), 
-                               nrow = 2, byrow = TRUE, dimnames = list(c(), centroid_colns))
-        # find cell within bounding box of radius_ROIs in length
-        closest_cells <- lapply(seq_len(ncol(search_range)),
-                                function(i) perCell_coordM[dplyr::between(get(centroid_colns[i]), 
-                                                                          search_range[1, i], search_range[2, i]), 
-                                                           which = TRUE])
-        
-        closest_cells <- Reduce(intersect, closest_cells)
-        cells_to_keep <- unique(c(cells_to_keep, closest_cells))
-        print(c(i,length(cells_to_keep)))
-        
-        if(length(cells_to_keep)>2500) break
-      }
-      cells_to_keep <- perCell_coordM[[cellID_coln]][cells_to_keep]
-      
-    } else {
-      cells_to_keep <- perCell_coordM[[cellID_coln]]
-    }
-    
-    cutoff_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% cells_to_keep), ]
-    # drop the dimension without variance in coordinates
-    spatLocs_to_use <- spatLocs_colns[apply(cutoff_transDF[, spatLocs_colns], 
-                                            2, function(x) diff(range(x)))>0]
-    message(sprintf("Provided `molecular_distance_cutoff` = NULL while identified %dD coordinates with variance. ", length(spatLocs_to_use)))
-    
-    if(length(spatLocs_to_use) ==2){
-      queryTrans_pp <- spatstat.geom::ppp(x = cutoff_transDF[[spatLocs_to_use[1]]], 
-                                          y = cutoff_transDF[[spatLocs_to_use[2]]], 
-                                          range(cutoff_transDF[[spatLocs_to_use[1]]]), 
-                                          range(cutoff_transDF[[spatLocs_to_use[2]]]), 
-                                          marks = factor(cutoff_transDF[[cellID_coln]]), 
-                                          unitname = c("um","um"))
-    } else {
-      queryTrans_pp <- spatstat.geom::pp3(x = cutoff_transDF[[spatLocs_colns[1]]], 
-                                          y = cutoff_transDF[[spatLocs_colns[2]]], 
-                                          z = cutoff_transDF[[spatLocs_colns[3]]],
-                                          spatstat.geom::box3(range(cutoff_transDF[[spatLocs_colns[1]]]), 
-                                                              range(cutoff_transDF[[spatLocs_colns[2]]]), 
-                                                              range(cutoff_transDF[[spatLocs_colns[3]]]),
-                                                              unitname = "um"),
-                                          marks = factor(cutoff_transDF[[cellID_coln]]))
-    }
-    
-    
-    # get distribution of minimal molecule-to-molecule distance for each transcript in query cell
-    dist_profile <- quantile(spatstat.geom::nndist(queryTrans_pp), seq(0,1,by=0.1))
-    message(sprintf("Distribution of minimal molecular distance between %d cells: %s, at quantile = %s.", 
-                    length(cells_to_keep), 
-                    paste0(round(dist_profile, 2), collapse = ", "), 
-                    paste0(names(dist_profile), collapse = ", ")))
-    # define cutoff as 10 times of 90% quantile value
-    molecular_distance_cutoff <- 10*dist_profile[['90%']]
-    message(sprintf("Use 10 times of 90%% quantile of minimal %dD molecular distance between picked cells as `molecular_distance_cutoff` = %.4f for defining direct neighbor cells.", 
-                    length(spatLocs_to_use), molecular_distance_cutoff))
-    rm(queryTrans_pp, cutoff_transDF)
-  }
-  
-  
-  ## (3.2) perform delaunay on SVM-flagged transcripts within flagged cells ----
-  # config for spatial network for transcripts
   config_spatNW <- list(
     # name for spatial network (default = 'Delaunay_network' or 'kNN_network' for method = 'Delaunay' or 'kNN', respectively if NULL)
     name = 'transcript_delaunay_network',
@@ -401,6 +358,8 @@ fastReseg_externalRef <- function(refProfiles,
     maximum_distance_knn = NULL
   )
   
+  # `groupTranscripts_Delanuay` function returns a data.frame of connected transcripts among chosen_transcripts, 
+  # with each transcript in row, the group ID for the connected transcript groups and the original cell ID, spatial coordinates in column.
   flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
                                                          config_spatNW_transcript = config_spatNW, 
                                                          distance_cutoff = molecular_distance_cutoff,
@@ -413,8 +372,10 @@ fastReseg_externalRef <- function(refProfiles,
                   length(unique(flagged_transDF_SVM3[[cellID_coln]])) - length(unique(flaggedSVM_transGroupDF3d[[cellID_coln]]))))
   
   
-  ## (3.3) generate tmp_cellID include group information and get max cell type for each group ----
-  # add in transcript group based on connectivity
+  ## (3.2) generate tmp_cellID include group information and get max cell type for each group ----
+  # assign group ID name for all transcripts
+  # transcripts with SVM class = 1 are high-score molecules and would get `connect_group` = 0 and thus keep the original cell ID as the tmp_cellID
+  # transcripts with SVM class = 0 are low-score molecules and would get `connect_group` to be same value as the group ID identified based on spatial network analysis and tmp_cellID modified from original cell_ID based on the `connect_group` value
   flagged_transDF_SVM3[['connect_group']] <- 1- as.numeric(as.character(flagged_transDF_SVM3[['SVM_class']]))
   group_converter <- flaggedSVM_transGroupDF3d[['transcript_group']] 
   names(group_converter) <- flaggedSVM_transGroupDF3d[[transID_coln]]
@@ -422,11 +383,14 @@ fastReseg_externalRef <- function(refProfiles,
   tmp_idx <- which(flagged_transDF_SVM3[['transcript_id']] %in% flaggedSVM_transGroupDF3d[[transID_coln]])
   flagged_transDF_SVM3[['connect_group']][tmp_idx] <- group_converter[flagged_transDF_SVM3[[transID_coln]][tmp_idx]]
   
+  rm(tmp_idx, group_converter)
+  
   # get new cell_id and cell type for each group
   flagged_transDF_SVM3 <- data.table::as.data.table(flagged_transDF_SVM3)
   flagged_transDF_SVM3[, tmp_cellID := ifelse(connect_group == 0, get(cellID_coln), paste0(get(cellID_coln),'_g', connect_group))]
   
   # get new cell type of each group based on maximum
+  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
   tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
                                  transcript_df = flagged_transDF_SVM3, 
                                  transID_coln = transID_coln,
@@ -436,6 +400,7 @@ fastReseg_externalRef <- function(refProfiles,
   colnames(tmp_df[['cellType_DF']]) <- c('tmp_cellID','group_maxCellType')
   flagged_transDF_SVM3 <- merge(flagged_transDF_SVM3, tmp_df[['cellType_DF']], by = 'tmp_cellID', all.x = TRUE)
   flagged_transDF_SVM3 <- as.data.frame(flagged_transDF_SVM3)
+  rm(tmp_df)
   
   if(return_intermediates){
     final_res[['groupDF_ToFlagTrans']] <- flagged_transDF_SVM3
@@ -455,6 +420,7 @@ fastReseg_externalRef <- function(refProfiles,
   reseg_transcript_df[['connect_group']][tmp_idx]<-rep(0, length(tmp_idx))
   reseg_transcript_df[['tmp_cellID']][tmp_idx] <- reseg_transcript_df[[cellID_coln]][tmp_idx]
   reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tLLRv2_maxCellType']][tmp_idx]
+  rm(tmp_idx)
   
   ## (4.3) evaluate the neighborhood of each group for re-segmentation ----
   cells_to_use <- unique(flagged_transDF_SVM3[which(flagged_transDF_SVM3[['connect_group']]!=0),][['tmp_cellID']])
@@ -464,6 +430,7 @@ fastReseg_externalRef <- function(refProfiles,
   
   ### search within absolute distance, consider 25um in xy for cell level search and 15 pixel = 2.7um to be direct neighbor at transcript level.
   # using spatstat to locate neighbor cells and rank them by minimal molecular distance to query cell
+  # `neighborhood_for_resegment_spatstat` function returns a data.frame with each cell in row and its neighborhood information in columns
   neighborReSeg_df <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
                                                           score_GeneMatrix = tLLRv2_geneMatrix,
                                                           score_baseline = score_baseline,
@@ -477,6 +444,11 @@ fastReseg_externalRef <- function(refProfiles,
                                                           transSpatLocs_coln = spatLocs_colns)
   
   #### (4.4) decide resegmentation operation: merge, new cell, or discard ----
+  # # `decide_ReSegment_Operations_leidenCut` function returns a list containing the following 4 elements:
+  # `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation
+  # `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with cell_ID in value.
+  # `cells_to_keep`: a vector of cell ID that should be kept as it is.
+  # `reseg_full_converter`: a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.
   reseg_actions <- decide_ReSegment_Operations_leidenCut(neighborhood_df = neighborReSeg_df, 
                                                          score_baseline = score_baseline, 
                                                          lowerCutoff_transNum = lowerCutoff_transNum, 
@@ -489,13 +461,18 @@ fastReseg_externalRef <- function(refProfiles,
                                                          leiden_config = leiden_args, 
                                                          cutoff_sharedLeiden = flagMerge_sharedLeiden_cutoff)
   
-  #### (4.5) update with new cells_to_update ----
+  #### (4.5) update the transcript data.frame based on reseg_actions ----
   # update neighborReSeg_df_cleanSVM with resegmentaion actions
   neighborReSeg_df[['corrected_CellId']] <- reseg_actions[['reseg_full_converter']][neighborReSeg_df[['CellId']]]
   if(return_intermediates){
     final_res[['neighborhoodDF_ToReseg']] <- neighborReSeg_df
     final_res[['reseg_actions']] <- reseg_actions
   } 
+  
+  # # `update_transDF_ResegActions` function returns a list containing the following 3 elements:
+  # `updated_transDF`, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter.
+  # `perCell_DT`, a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE.
+  # `perCell_expression`, a gene x cell count table for updated transcript data.frame when return_perCellDF = TRUE.
   
   post_reseg_results <- update_transDF_ResegActions(transcript_df = reseg_transcript_df, 
                                                     reseg_full_converter = reseg_actions$reseg_full_converter, 
@@ -508,6 +485,7 @@ fastReseg_externalRef <- function(refProfiles,
   
   
   # get tLLRv2 score under updated cell type
+  # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
   tmp_df <- getScoreCellType_gene(score_GeneMatrix = tLLRv2_geneMatrix, 
                                   transcript_df = post_reseg_results$updated_transDF, 
                                   transID_coln = transID_coln,
@@ -515,6 +493,7 @@ fastReseg_externalRef <- function(refProfiles,
                                   celltype_coln = 'updated_celltype')   
   
   post_reseg_results$updated_transDF <- merge(post_reseg_results$updated_transDF, tmp_df, by = transID_coln)
+  rm(tmp_df)
   
   final_res[['updated_transDF']] <- post_reseg_results$updated_transDF
   final_res[['updated_perCellDT']] <- post_reseg_results$perCell_DT

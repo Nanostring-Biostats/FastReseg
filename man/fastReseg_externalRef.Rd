@@ -75,7 +75,7 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 a list
 \enumerate{
 \item{modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, return when return_intermediates = TRUE}
-\item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM_hyperplane} and \code{groupTranscripts_Delanuay} functions, return when return_intermediates = TRUE}
+\item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, return when return_intermediates = TRUE}
 \item{neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, return when return_intermediates = TRUE}
 \item{reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, return when return_intermediates = TRUE}
 \item{updated_transDF, the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
@@ -85,4 +85,21 @@ a list
 }
 \description{
 wrapper for resegmentation pipeline using external reference profiles and cutoffs. The pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile, evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
+}
+\examples{
+data(refProfiles)
+data(transcriptDF)
+data(baselineCT)
+extracellular_cellID <- transcriptDF[which(transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+score_baseline <- baselineCT[['span_score']][,"25\%"]
+lowerCutoff_transNum  <- baselineCT[['span_transNum']][,"25\%"]
+higherCutoff_transNum  <- baselineCT[['span_transNum']][,"50\%"]
+final_res <- fastReseg_externalRef(refProfiles = refProfiles, 
+                                   transcript_df = transcriptDF,
+                                   extracellular_cellID = extracellular_cellID, 
+                                   molecular_distance_cutoff = 2.7,
+                                   cellular_distance_cutoff = 25,
+                                   score_baseline = score_baseline, 
+                                   lowerCutoff_transNum = lowerCutoff_transNum, 
+                                   higherCutoff_transNum= higherCutoff_transNum)
 }

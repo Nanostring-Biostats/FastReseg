@@ -52,9 +52,7 @@ a data.frame
 }
 }
 \description{
-find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model
-
-Score each cell for how much their transcripts change their goodness-of-fit over space.
+find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model which scores each cell for how much their transcripts change their goodness-of-fit over space.
 }
 \details{
 For score of transcripts within each cell, assign 0 or 1 label to each transcript based on whether the score is above score_cutoff; then run linear discriminant analysis on lda(above_cutoff ~ x + y + xy + x^2 + y^2) for 2D, lda(above_cutoff ~ x + y + z+ xy +xz + yz + x^2 + y^2 + z^2) for 3D. Coordinate variables with variance less than 1e-8 would not be used. Z-step of 5E-4mm or similar often resulted in too small of variables for z2.

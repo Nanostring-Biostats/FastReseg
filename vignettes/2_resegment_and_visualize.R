@@ -202,16 +202,17 @@ flagged_transDF3d_cleaned <- all_transDF[which(all_transDF[['cell_ID']] %in% fla
 # coordinate in um when doing SVM
 reseg_logInfo[['flagging_cleaned_SVM']] <- list(svm_config = config_dimension[['svm_config']])
 
-system.time(tmp_df <- flagTranscripts_SVM_hyperplane(chosen_cells = flagged_cells_cleaned,
-                                                     score_GeneMatrix = transcript_loglik_cleaned,
-                                                     transcript_df = flagged_transDF3d_cleaned, 
-                                                     cellID_coln = 'cell_ID', 
-                                                     transID_coln = 'transcript_id', 
-                                                     score_coln = 'score_cleaned_tLLRv2_maxCellType',
-                                                     spatLocs_colns = c('x','y','z'), 
-                                                     model_cutoff = 50, 
-                                                     score_cutoff = flag_tLLRv2_cutoff, 
-                                                     svm_args = reseg_logInfo[['flagging_cleaned_SVM']][['svm_config']]))
+system.time(tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells_cleaned,
+                                          score_GeneMatrix = transcript_loglik_cleaned,
+                                          transcript_df = flagged_transDF3d_cleaned, 
+                                          cellID_coln = 'cell_ID', 
+                                          transID_coln = 'transcript_id', 
+                                          score_coln = 'score_cleaned_tLLRv2_maxCellType',
+                                          spatLocs_colns = c('x','y','z'), 
+                                          model_cutoff = 50, 
+                                          score_cutoff = flag_tLLRv2_cutoff, 
+                                          svm_args = reseg_logInfo[['flagging_cleaned_SVM']][['svm_config']]))
+                                                     
 # user  system elapsed 
 # 314.317  12.442  80.250 
 

@@ -111,8 +111,7 @@ spatialModelScoreCell_hyperplane <- function(chosen_cells, transcript_df,
 
 
 #' @title flagTranscripts_LDA_hyperplane
-#' @description find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model
-#' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
+#' @description find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model which scores each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -295,9 +294,8 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
 }
 
 
-#' @title flagTranscripts_SVM_hyperplane
-#' @description find out the spatially connected transcripts among chosen_transcripts based on SVM hyperplane spatial model
-#' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
+#' @title flagTranscripts_SVM
+#' @description find out the spatially connected transcripts among chosen_transcripts based on SVM spatial model which scores each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -322,19 +320,19 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
 #' }
 #' @details For score of transcripts within each cell, assign 0 or 1 label to each transcript based on whether the score is above score_cutoff; then run support vector machine on svm(above_cutoff ~ x + y) for 2D, svm(above_cutoff ~ x + y + z) for 3D, default to do radial kernal with scale = TRUE and gamma = 0.1.  
 #' @export
-flagTranscripts_SVM_hyperplane <- function(chosen_cells, 
-                                           score_GeneMatrix, 
-                                           transcript_df, 
-                                           cellID_coln = "CellId", 
-                                           transID_coln = "transcript_id",
-                                           transGene_coln = "target",
-                                           score_coln = "score", 
-                                           spatLocs_colns = c("x","y","z"),
-                                           model_cutoff = 50, 
-                                           score_cutoff = -2, 
-                                           svm_args = list(kernel = "radial", 
-                                                           scale = TRUE, 
-                                                           gamma = 0.1)){
+flagTranscripts_SVM <- function(chosen_cells, 
+                                score_GeneMatrix, 
+                                transcript_df, 
+                                cellID_coln = "CellId", 
+                                transID_coln = "transcript_id",
+                                transGene_coln = "target",
+                                score_coln = "score", 
+                                spatLocs_colns = c("x","y","z"),
+                                model_cutoff = 50, 
+                                score_cutoff = -2, 
+                                svm_args = list(kernel = "radial", 
+                                                scale = TRUE, 
+                                                gamma = 0.1)){
   
   # check if model_cutoff making sense
   if(model_cutoff < 2){
