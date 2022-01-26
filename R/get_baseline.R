@@ -1,5 +1,5 @@
 #' @title choose_distance_cutoff
-#' @description Chose appropriate cellular distance cutoff and molecular distance cutoff based on input transcript data.frame for downstream resegmentation; cellular distance cutoff is defined as the search radius of direct neighbor cell, while molecular distance cutoff is defined as the maximum distance between two neighbor transcripts from same source cells.
+#' @description Choose appropriate cellular distance cutoff and molecular distance cutoff based on input transcript data.frame for downstream resegmentation; cellular distance cutoff is defined as the search radius of direct neighbor cell, while molecular distance cutoff is defined as the maximum distance between two neighbor transcripts from same source cells.
 #' @param transcript_df the data.frame for each transcript
 #' @param transID_coln the column name of transcript_ID in `transcript_df`
 #' @param cellID_coln the column name of cell_ID in `transcript_df`
@@ -166,3 +166,130 @@ choose_distance_cutoff <- function(transcript_df,
 
 
 
+#' @title get_baselineCT
+#' @description get cluster-specific quantile distribution of transcript number and per cell per molecule transcript score in the provided cell x gene expression matrix based on the reference profiles and cell cluster assignment
+#' @param refProfiles A matrix of cluster profiles, genes * clusters
+#' @param counts Counts matrix, cells * genes.
+#' @param clust Vector of cluster assignments for each cell in `counts`, default = NULL to automatically assign the cell cluster for each cell based on maximum transcript score  
+#' @return a list
+#' \enumerate{
+#'    \item{span_score, a matrix of average transcript tLLR score per molecule per cell for 22 distinct cell types in rows, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
+#'    \item{span_transNum, a matrix of transcript number per cell for each distinct cell types in row, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
+#'    \item{score_baseline, a named vector of 25% quantile of cluster-specific per cell transcript score, to be used as score baseline such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence} 
+#'    \item{lowerCutoff_transNum, a named vector of 25% quantile of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that higher than the cutoff is required to keep query cell as it is}
+#'    \item{higherCutoff_transNum, a named vector of median value of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}
+#'    \item{clust_used,  a named vector of cluster assignments for each cell used in baseline calculation, cell_ID in `counts` as name}
+#' }
+#' @details Calculate average per molecule transcript score for each cell in `counts` expression matrix based on the provided cluster profiles `refProfiles` and cluster assignment for each cell `clust`; then get the quantile distribution of transcript number and per molecule per cell transcript score under each cluster. The function would also recommend the cutoff for transcript score and transcript number to be used in re-segmentation pipeline based on the calculated quantile distribution. 
+#' @examples 
+#' data(refProfiles)
+#' data(ori_RawExprs)
+#' baselineData <- get_baselineCT(refProfiles = refProfiles, counts = ori_RawExprs, clust = NULL)
+#' @export
+get_baselineCT <- function(refProfiles, 
+                           counts, 
+                           clust = NULL){
+  # get common genes
+  common_genes <- intersect(rownames(refProfiles), colnames(counts))
+
+  if(length(common_genes)<1){
+    stop("Too few common genes to proceed. Check if `refProfiles` is a gene x cell-type matrix and `counts` is a cell x gene matrix.")
+  } else {
+    message(sprintf("Found %d common genes among `refProfiles` and `counts`. ", 
+                    length(common_genes)))
+  }
+  
+  if(!is.null(clust)){
+    if(!is.vector(clust)){
+      stop("The provided `clust` is not a vector of cluster assignment.")
+    }
+    
+    if(length(clust) != nrow(counts)){
+      message("`clust` has different length from the row number of `counts`.")
+      clust = NULL
+    } 
+  } 
+  
+  common_celltypes <- intersect(unique(clust), colnames(refProfiles))
+  if(length(common_celltypes) ==0){
+    message("No common cell types/clusters found between `clust` and `refProfiles`.")
+    clust = NULL
+    common_celltypes <- colnames(refProfiles)
+  } else {
+    # drop the cells with clusters not in refProfiles for baseline calculation
+    # cells with common clusters
+    tmp_idx <- which(clust %in% colnames(refProfiles))
+    if(length(tmp_idx) != length(clust)){
+      message(sprintf("%d cells with assigned `clust` not presented in `refProfiles`: `%s`; exclude those cells from baseline calcuation.", 
+                      length(clust) - length(tmp_idx),
+                      paste0(setdiff(unique(clust), colnames(refProfiles)), collapse = "`, `")))
+      clust <- clust[tmp_idx]
+      counts <- as.matrix(counts)[tmp_idx, ] 
+    }
+
+    rm(tmp_idx)
+
+  }
+  
+  # filter and re-order data
+  refProfiles <- as.matrix(refProfiles)[common_genes, common_celltypes]
+  counts <- as.matrix(counts)[, common_genes]
+  
+  # get score matrix based on refProfiles for each gene and cell ----
+  # replace zero in mean profiles with 1E-5
+  refProfiless <- pmax(refProfiles, 1e-5)
+  # tLL score
+  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
+  # tLLR score, re-center on maximum per row/transcript
+  tmp_max <- apply(transcript_loglik, 1, max)
+  tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
+  rm(tmp_max, transcript_loglik)
+  
+  # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
+  tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix
+  
+  # assign cell type for each cell if not provided ----
+  if(is.null(clust)){
+    message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
+
+    # assign cell type based on max values
+    max_idx_1st <- max.col(tLLRv2_cellMatrix, ties.method="first")
+    clust <- colnames(tLLRv2_cellMatrix)[max_idx_1st]
+
+    common_celltypes <- unique(clust)
+    rm(max_idx_1st)
+  }
+  
+  # get transcript number quantile profile ---
+  all_transNum <- rowSums(counts)
+  span_transNum_CellType <- tapply(all_transNum, 
+                                   clust, 
+                                   function(x) quantile(x, probs = seq(0, 1, 0.25)))
+  span_transNum_CellType <- do.call(rbind, span_transNum_CellType)
+  
+  # get transcript score quantile profile ----
+  # loop over each cell type to get score based on assigned clusters
+  all_tLLRv2 <- rep(NA, length(clust))
+  for (each_celltype in common_celltypes){
+    rowidx <- which(clust == each_celltype)
+    all_tLLRv2[rowidx] <- tLLRv2_cellMatrix[rowidx, each_celltype]
+  }
+  # normalized by transcript number to get per molecule transcript score for each cell
+  all_tLLRv2 <- all_tLLRv2/all_transNum
+  span_tLLRv2_CellType <- tapply(all_tLLRv2, 
+                                 clust, 
+                                 function(x) quantile(x, probs = seq(0, 1, 0.25)))
+  span_tLLRv2_CellType <- do.call(rbind, span_tLLRv2_CellType)
+  
+  # return final results ---
+  names(clust) <- rownames(counts)
+  final_res <- list(span_score = span_tLLRv2_CellType, 
+                    span_transNum = span_transNum_CellType, 
+                    score_baseline = span_tLLRv2_CellType[, "25%"],
+                    lowerCutoff_transNum = span_transNum_CellType[, "25%"], 
+                    higherCutoff_transNum = span_transNum_CellType[, "50%"], 
+                    clust_used = clust)
+  
+  return(final_res)
+
+}
