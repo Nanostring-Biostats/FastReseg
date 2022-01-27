@@ -10,11 +10,11 @@
 #' @param seed a random seed for sub-sampling cells from whole dataset for molecular distance cutoff estimation
 #' @param run_molecularDist flag to run molecular distant cutoff estimation, default = TRUE 
 #' @return a list
-#' \enumerate{
-#'    \item{cellular_distance_cutoff, maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. }
-#'    \item{perCell_coordDT, a data.table with cell in row, spatial XY coordiantes of centroid and dimensions of bounding box in column}
-#'    \item{molecular_distance_cutoff, maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate; return if run_molecularDist = TRUE}
-#'    \item{distance_profile, a named vector for the quantile profile of minimal molecular distance between transcripts belong to different cells at step size of 10% quantile; return if run_molecularDist = TRUE}
+#' \describe{
+#'    \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. }
+#'    \item{perCell_coordDT}{a data.table with cell in row, spatial XY coordiantes of centroid and dimensions of bounding box in column}
+#'    \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate; return if run_molecularDist = TRUE}
+#'    \item{distance_profile}{a named vector for the quantile profile of minimal molecular distance between transcripts belong to different cells at step size of 10% quantile; return if run_molecularDist = TRUE}
 #' }
 #' @details `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. The function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI` number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @examples 
@@ -237,7 +237,7 @@ get_baselineCT <- function(refProfiles,
   
   # get score matrix based on refProfiles for each gene and cell ----
   # replace zero in mean profiles with 1E-5
-  refProfiless <- pmax(refProfiles, 1e-5)
+  refProfiles <- pmax(refProfiles, 1e-5)
   # tLL score
   transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
   # tLLR score, re-center on maximum per row/transcript

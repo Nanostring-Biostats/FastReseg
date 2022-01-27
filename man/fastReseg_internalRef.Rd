@@ -24,11 +24,12 @@ fastReseg_internalRef(
   flagCell_lrtest_cutoff = 5,
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
-  molecular_distance_cutoff = NULL,
+  molecular_distance_cutoff = 2.7,
   cellular_distance_cutoff = NULL,
   score_baseline = NULL,
   lowerCutoff_transNum = NULL,
   higherCutoff_transNum = NULL,
+  imputeFlag_missingCTs = FALSE,
   leiden_args = list(python_path = "/usr/bin/python3", partition_type =
     c("RBConfigurationVertexPartition", "ModularityVertexPartition"), resolution = 1,
     n_iterations = 1000, set_seed = T, seed_number = 1234),
@@ -47,7 +48,8 @@ fastReseg_internalRef(
 
 \item{prefix_colns}{the column names of annotation in \code{transDF_fov_fileInfo}, to be added to the CellId as prefix when creating unique cell_ID for entire dataset; set to NULL if use the original \code{transID_coln} or \code{cellID_coln}}
 
-\item{fovOffset_colns}{the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in \code{transDF_fileInfo}, unit in micrometer}
+\item{fovOffset_colns}{the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in \code{transDF_fileInfo}, unit in micron
+Notice that some assays like SMI has XY axes swapped between stage and each FOV such that \code{fovOffset_colns} should be c("stage_Y", "stage_X").}
 
 \item{pixel_size}{the micrometer size of image pixel listed in 1st and 2nd dimension of \code{spatLocs_colns} of each \code{transcript_df}}
 
@@ -73,16 +75,18 @@ fastReseg_internalRef(
 
 \item{svm_args}{a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale}
 
-\item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron).
+\item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, unit in micron (default = 2.7 micron).
 If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
-\item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.}
+\item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Default = NULL to use the 2 times of average 2D cell diameter.}
 
-\item{score_baseline}{a named vector of score baseline under each cell type listed in \code{refProfiles} such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence}
+\item{score_baseline}{a named vector of score baseline under each cell type listed in \code{refProfiles} such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence; default = NULL to calculate from \code{counts} and \code{refProfiles}}
 
-\item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is}
+\item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is; default = NULL to calculate from \code{counts} and \code{refProfiles}}
 
-\item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}
+\item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type; default = NULL to calculate from \code{counts} and \code{refProfiles}}
+
+\item{imputeFlag_missingCTs}{flag to impute \code{score_baseline}, \code{lowerCutoff_transNum},\code{higherCutoff_transNum} for cell types present in \code{refProfiles} but missing in the provided transcript data files or the provided baseline and cutoffs; when TRUE, the median values of existing cell types would be used as the values for missing cell types.}
 
 \item{leiden_args}{a list of arguments to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number.}
 
@@ -100,12 +104,13 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 }
 \value{
 a list
-\enumerate{
-\item{refProfiles, a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
-\item{cutoffs_list, a list of cutoffs used in resegmentation pipeline, including, \code{score_baseline}, \code{lowerCutoff_transNum}, \code{highCutoff_transNum}, \code{cellular_distance_cutoff}, \code{molecular_distance_cutoff}}
-\item{updated_perCellDT, a per cell data.table with mean sptial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs, a gene x cell count table for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
-\item{reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
+\describe{
+\item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
+\item{baselineData}{a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; \code{span_score} is for the average per molecule transcript tLLR score of each cell, \code{span_transNum} is for the transcript number of each cell.}
+\item{cutoffs_list}{a list of cutoffs used in resegmentation pipeline, including, \code{score_baseline}, \code{lowerCutoff_transNum}, \code{higherCutoff_transNum}, \code{cellular_distance_cutoff}, \code{molecular_distance_cutoff}}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
 }
 }
 \description{
@@ -120,21 +125,112 @@ identify the low-score transcript groups within cells that has strong spatial de
 evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
 The pipeline would save the each per FOV output as individual file in \code{path_to_output} directory; \code{updated_transDF} would be saved as csv file.
 When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
-\itemize{
-\item{modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, save when save_intermediates = TRUE}
-\item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, save when save_intermediates = TRUE}
-\item{neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when save_intermediates = TRUE}
-\item{reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
-\item{updated_transDF, the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
-\item{updated_perCellDT, a per cell data.table with mean sptial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs, a gene x cell count table for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\describe{
+\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, save when save_intermediates = TRUE}
+\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, save when save_intermediates = TRUE}
+\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when save_intermediates = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
+\item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 }
 The pipeline would also combine per cell data for all FOVs, save and return the combined data when return_perCellData = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would be save as single .RData object in \code{path_to_output} directory.
-\itemize{
-\item{updated_perCellDT, a per cell data.table with mean sptial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs, a gene x cell count table for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\describe{
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 }
 }
 \examples{
+# get example based on example dataset
+data("transcriptDF")
+data("ori_RawExprs")
+data("refProfiles")
+data("baselineCT")
+extracellular_cellID <- transcriptDF[which(transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
 
+# case #1: provide `transcript_df` directly, 
+# do auto-calculation of distance cutoff from data while using the provided cutoffs for score and transcript numbers. 
+res1 <- fastReseg_internalRef(counts = ori_RawExprs, 
+                              clust = NULL, 
+                              refProfiles = refProfiles,
+                              pixel_size = 1, 
+                              zstep_size = 1, 
+                              transcript_df = transcriptDF, 
+                              transID_coln = "transcript_id", 
+                              transGene_coln = "target", 
+                              cellID_coln = "cell_ID",
+                              spatLocs_colns = c("x","y","z"), 
+                              extracellular_cellID = extracellular_cellID, 
+                              molecular_distance_cutoff = NULL,
+                              cellular_distance_cutoff = NULL,
+                              score_baseline = baselineCT[['score_baseline']], 
+                              lowerCutoff_transNum = baselineCT[['lowerCutoff_transNum']], 
+                              higherCutoff_transNum= baselineCT[['higherCutoff_transNum']],
+                              imputeFlag_missingCTs = TRUE,
+                              path_to_output = "res1_directDF")
+
+# case #2: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV, 
+# do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster assignment of each cell, `clust`, 
+# do auto-calculation of distance cutoff from the 1st per FOV transcript data. 
+data("counts")
+data("clust")
+# the example individual transcript files are stored under `data` directory of this package
+# update your path accordingly
+# Notice that some assays like SMI has XY axes swapped between stage and each FOV;
+# coordinates for each FOV should have units in micron
+fileInfo_DF <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv", 
+                                        "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"), 
+                          slide = c(1, 1), 
+                          fov = c(1,2), 
+                          stage_X = 1000*c(5.13, -2.701), 
+                          stage_Y = 1000*c(-0.452, 0.081))
+
+res2 <- fastReseg_internalRef(counts = counts, 
+                              clust = clust, 
+                              refProfiles = NULL,
+                              transDF_fileInfo =fileInfo_DF, 
+                              filepath_coln = 'file_path', 
+                              prefix_colns = c('slide','fov'), 
+                              fovOffset_colns = c('stage_Y','stage_X'), # match XY axes between stage and each FOV
+                              pixel_size = 0.18, # 0.18 micron per pixel in transcript data
+                              zstep_size = 0.8, # 0.8 micron per z step in transcript data
+                              transcript_df = NULL, 
+                              transID_coln = NULL, # row index as transcript_id
+                              transGene_coln = "target", 
+                              cellID_coln = "CellId",
+                              spatLocs_colns = c("x","y","z"), 
+                              extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data 
+                              molecular_distance_cutoff = NULL,
+                              cellular_distance_cutoff = NULL,
+                              score_baseline = NULL, 
+                              lowerCutoff_transNum = NULL, 
+                              higherCutoff_transNum= NULL,
+                              imputeFlag_missingCTs = TRUE,
+                              path_to_output = "res2_multiFiles")
+
+# case #3: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV, 
+# do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster-specific reference profiles, `refProfiles`, 
+# use the provided distance cutoff for `molecular_distance_cutoff` but calculate the `cellular_distance_cutoff`
+res3 <- fastReseg_internalRef(counts = counts, 
+                              clust = NULL, 
+                              refProfiles = refProfiles,
+                              transDF_fileInfo =fileInfo_DF, 
+                              filepath_coln = 'file_path', 
+                              prefix_colns = c('slide','fov'), 
+                              fovOffset_colns = c('stage_Y','stage_X'), # match XY axes between stage and each FOV
+                              pixel_size = 0.18, # 0.18 micron per pixel in transcript data
+                              zstep_size = 0.8, # 0.8 micron per z step in transcript data
+                              transcript_df = NULL, 
+                              transID_coln = NULL, # row index as transcript_id
+                              transGene_coln = "target", 
+                              cellID_coln = "CellId",
+                              spatLocs_colns = c("x","y","z"), 
+                              extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data 
+                              molecular_distance_cutoff = 2.7,
+                              cellular_distance_cutoff = NULL,
+                              score_baseline = NULL, 
+                              lowerCutoff_transNum = NULL, 
+                              higherCutoff_transNum= NULL,
+                              imputeFlag_missingCTs = TRUE,
+                              path_to_output = "res3_multiFiles")
 }

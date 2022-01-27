@@ -34,10 +34,10 @@ update_transDF_ResegActions(
 }
 \value{
 a list
-\enumerate{
-\item{updated_transDF, the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
-\item{perCell_DT, a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE}
-\item{perCell_expression, a gene x cell count table for updated transcript data.frame when return_perCellDF = TRUE}
+\describe{
+\item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
+\item{perCell_DT}{a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE}
+\item{perCell_expression}{a gene x cell count sparse matrix for updated transcript data.frame when return_perCellDF = TRUE}
 }
 }
 \description{

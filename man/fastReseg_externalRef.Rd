@@ -73,14 +73,14 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 }
 \value{
 a list
-\enumerate{
-\item{modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, return when return_intermediates = TRUE}
-\item{groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, return when return_intermediates = TRUE}
-\item{neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, return when return_intermediates = TRUE}
-\item{reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, return when return_intermediates = TRUE}
-\item{updated_transDF, the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
-\item{updated_perCellDT, a per cell data.table with mean sptial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs, a gene x cell count table for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\describe{
+\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, return when return_intermediates = TRUE}
+\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, return when return_intermediates = TRUE}
+\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, return when return_intermediates = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, return when return_intermediates = TRUE}
+\item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 }
 }
 \description{
