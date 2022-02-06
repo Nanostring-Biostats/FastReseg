@@ -960,30 +960,40 @@ fastReseg_internalRef <- function(counts,
                                   fov_centerLocs = unlist(transDF_fileInfo[1, fovOffset_colns]),
                                   prefix_vals = unlist(transDF_fileInfo[1, prefix_colns]))
   
-  if(is.null(cellular_distance_cutoff)){
-    # # get both distance cutoff with `choose_distance_cutoff` function
-    # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
-    # The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. 
-    # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
-    # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
-    # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
-    # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
-    # This calculation is slow and is not recommended for large transcript data.frame.
+  # # get both distance cutoff with `choose_distance_cutoff` function
+  # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
+  # The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. 
+  # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
+  # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
+  # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
+  # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
+  # This calculation is slow and is not recommended for large transcript data.frame.
+  
+  # get molecular_distance_cutoff
+  if(is.null(molecular_distance_cutoff)){
+    distCutoffs <- choose_distance_cutoff(transcript_df, 
+                                          transID_coln = 'UMI_transID',
+                                          cellID_coln = 'UMI_cellID', 
+                                          spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
+                                          extracellular_cellID = NULL, 
+                                          sampleSize_nROI = 10, 
+                                          sampleSize_cellNum = 2500, 
+                                          seed = 123, 
+                                          run_molecularDist = TRUE)
+    molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
+    message(sprintf('Use `molecular_distance_cutoff` = %.4f for defining direct neighbor cells based on molecule-to-molecule distance.', molecular_distance_cutoff))
     
-    if(is.null(molecular_distance_cutoff)){
-      distCutoffs <- choose_distance_cutoff(transcript_df, 
-                                            transID_coln = 'UMI_transID',
-                                            cellID_coln = 'UMI_cellID', 
-                                            spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
-                                            extracellular_cellID = NULL, 
-                                            sampleSize_nROI = 10, 
-                                            sampleSize_cellNum = 2500, 
-                                            seed = 123, 
-                                            run_molecularDist = TRUE)
-      molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
-      
-    } else {
-      # get only cellular distance cutoff
+    # get cellular_distance_cutoff from estimation outcomes if not NULL
+    if(is.null(cellular_distance_cutoff)){
+      cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+      message(sprintf("Use cellular_distance_cutoff = %.4f for searching of neighbor cells.", cellular_distance_cutoff))
+    }
+    
+    rm(distCutoffs)
+    
+  } else {
+    # get only cellular_distance_cutoff
+    if(is.null(cellular_distance_cutoff)){
       distCutoffs <- choose_distance_cutoff(transcript_df, 
                                             transID_coln = 'UMI_transID',
                                             cellID_coln = 'UMI_cellID', 
@@ -993,13 +1003,15 @@ fastReseg_internalRef <- function(counts,
                                             sampleSize_cellNum = 2500, 
                                             seed = 123, 
                                             run_molecularDist = FALSE)
+      
+      cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+      message(sprintf("Use cellular_distance_cutoff = %.4f for searching of neighbor cells.", cellular_distance_cutoff))
+      rm(distCutoffs)
     }
-    
-    cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
-    
-    rm(distCutoffs)
+
   }
   
+
   ## initialize list to collect each FOV outputs ----
   all_segRes <- list()
   
@@ -1012,6 +1024,7 @@ fastReseg_internalRef <- function(counts,
                                        higherCutoff_transNum = higherCutoff_transNum, 
                                        cellular_distance_cutoff = cellular_distance_cutoff, 
                                        molecular_distance_cutoff = molecular_distance_cutoff)
+
   rm(baselineData)
   
   # holder for perCell data and intermediate files that would be returned
@@ -1050,6 +1063,11 @@ fastReseg_internalRef <- function(counts,
     }
     
     # resegment current FOV
+    message(sprintf("\n##############\nProcessing file `%d`: %s\n\n\n",
+                    idx, path_to_transDF))
+    
+    
+    
     # # `fastReseg_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
     # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `spatialModelScoreCell_hyperplane` function, return when return_intermediates = TRUE
