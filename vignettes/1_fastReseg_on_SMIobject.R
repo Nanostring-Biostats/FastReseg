@@ -24,6 +24,9 @@ zStep_size = 0.8
 
 # cell type coln to use: `nb_clus` for nbclust outcomes, `leiden_clus` for leiden clustering outcomes
 refClus_coln <- "nb_clus"
+# exclude cells with low confident cell typing outcomes from reference profile estimation
+# NULL, if include all cell typing outcomes
+cellClus_to_exclude <- 'NotDet' 
 
 # flag to remove FOVs with unpaired target call files and fov position information
 # if FALSE, stop processing when missing target call files
@@ -54,6 +57,7 @@ if(is_980plx){
 smi_inputs <- prepSMI_for_fastReseg(path_to_SMIobject = path_to_SMIobject,  
                                     config_loading = config_loading, 
                                     refClus_coln = refClus_coln,
+                                    cellClus_to_exclude = cellClus_to_exclude, 
                                     removeUnpaired = removeUnpaired,
                                     blacklist_genes = blacklist_genes,
                                     pixel_size = pixel_size)

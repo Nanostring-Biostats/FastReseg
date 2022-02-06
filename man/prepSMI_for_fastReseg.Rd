@@ -8,6 +8,7 @@ prepSMI_for_fastReseg(
   path_to_SMIobject,
   config_loading,
   refClus_coln = "nb_clus",
+  cellClus_to_exclude = NULL,
   removeUnpaired = FALSE,
   blacklist_genes = NULL,
   pixel_size = 0.18
@@ -19,6 +20,8 @@ prepSMI_for_fastReseg(
 \item{config_loading}{a list holding arguments passed to \code{SMITAP::data_loading_from_config} when creating SMI object; this list should contain file path information for the raw data used for creating the corresponding multi-slide multi-FOV object.}
 
 \item{refClus_coln}{the column name of cell cluster assignment saved in \code{cell_metadata} of the existing SMI object}
+
+\item{cellClus_to_exclude}{a vector of cell cluster name to be excluded for calculation of reference profiles (default = NULL)}
 
 \item{removeUnpaired}{flag to remove FOVs with unpaired target call files and fov position information; default = FALSE, to stop processing when missing target call files}
 

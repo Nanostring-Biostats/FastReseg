@@ -4,6 +4,7 @@
 #' @param path_to_SMIobject file path to \code{"Giotto"} object for existing SMI multi-FOV multi-slide data that was save in `.RData` format
 #' @param config_loading a list holding arguments passed to `SMITAP::data_loading_from_config` when creating SMI object; this list should contain file path information for the raw data used for creating the corresponding multi-slide multi-FOV object.
 #' @param refClus_coln the column name of cell cluster assignment saved in `cell_metadata` of the existing SMI object
+#' @param cellClus_to_exclude a vector of cell cluster name to be excluded for calculation of reference profiles (default = NULL)
 #' @param removeUnpaired flag to remove FOVs with unpaired target call files and fov position information; default = FALSE, to stop processing when missing target call files
 #' @param blacklist_genes a vector of genes to be excluded from reference profile estimation (default = NULL)
 #' @param pixel_size the micrometer size of image pixel listed in `Width` and `Height` dimension of each cell stored in `cell_metadata` of the existing SMI object (default = 0.18)
@@ -37,6 +38,7 @@
 prepSMI_for_fastReseg <- function(path_to_SMIobject, 
                                   config_loading, 
                                   refClus_coln = 'nb_clus',
+                                  cellClus_to_exclude = NULL, 
                                   removeUnpaired = FALSE,
                                   blacklist_genes = NULL,
                                   pixel_size = 0.18){
@@ -152,13 +154,16 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   
   
   #### (3) get reference profiles based on previous cell typing outcomes of entire dataset ----
-  # remove cells with `NotDet`in case of nb_clus
-  if(refClus_coln == 'nb_clus'){
-    cells_to_keep <- celltype_metadata[celltype_metadata[["cell_type"]] != 'NotDet', 'cell_ID']
-    message(sprintf("Remove %d cells, %.2f%% of all, with `NotDet` cell type assignment in `%s` from reference profile estimation. ", 
+  # remove cells with certain cell cluster assignment, e.g `NotDet`in case of nb_clus
+  if(!is.null(cellClus_to_exclude)){
+    tmp_idx <- which(!(grepl(paste0(unique(cellClus_to_exclude), collapse = '|'), celltype_metadata[["cell_type"]])))
+    cells_to_keep <- celltype_metadata[['cell_ID']][tmp_idx]
+    message(sprintf("Remove %d cells, %.2f%% of all, with cell type assignment of `%s` in `%s` from reference profile estimation. ", 
                     nrow(celltype_metadata) - length(cells_to_keep), 
                     100-length(cells_to_keep)/nrow(celltype_metadata)*100, 
+                    paste0(unique(cellClus_to_exclude), collapse = '`, `'), 
                     refClus_coln))
+    rm(tmp_idx)
   } else {
     cells_to_keep <- celltype_metadata[["cell_ID"]]
   }
