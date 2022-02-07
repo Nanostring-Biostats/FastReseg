@@ -162,37 +162,9 @@ expr_lists[['falsecode']] <- list(raw = matrix(0, nrow = 5,
 
 ## (5.2) prepare cell annotation file
 cell_annotDF <- as.data.frame(reseg_outputs[['updated_perCellDT']])
-colnames(cell_annotDF) <- c('cell_ID', paste0('reSeg_', refClus_coln), 'CenterX', 'CenterY', 'CenterZ')
+colnames(cell_annotDF) <- c('cell_ID', paste0('reSeg_', refClus_coln), 'CenterX', 'CenterY', 'CenterZ','reSeg_action')
 cell_annotDF[['slide']] <- as.numeric(sapply(strsplit(cell_annotDF[['cell_ID']], '_'),'[[',2))
 cell_annotDF[['fov']] <- as.numeric(sapply(strsplit(cell_annotDF[['cell_ID']], '_'),'[[',3))
-
-## add in type of resegmentation action applied to each cell
-# cells altered by fastReseg pipeline
-reseg_actions <- reseg_outputs[['reseg_actions']]
-altered_cells <- list(
-  # original cell_ID with transcripts got discarded
-  oriCells_trimmed = unique(sapply(strsplit(reseg_actions[['cells_to_discard']],"_g"),"[[",1)), 
-  # original cell_ID with transcripts got split, the split groups were kept as new cells
-  oriCells_split = unique(sapply(strsplit(reseg_actions[['cells_to_keep']],"_g"),"[[",1)), 
-  # new cell_ID that received merge cells
-  updatedCells_merged = unique(reseg_actions[['cells_to_update']]), 
-  # new cell_ID that got split and kept as separate new cells
-  updatedCells_kept = unique(reseg_actions[['cells_to_keep']]))
-
-# mark each cell with the type of resegmetaion actions applied to them
-cell_annotDF[['reSeg_action']] <- 'none'
-
-tmp_idx <- which(cell_annotDF[['cell_ID']] %in% c(altered_cells[['oriCells_trimmed']], 
-                                            altered_cells[['oriCells_split']]))
-cell_annotDF[['reSeg_action']][tmp_idx] <- 'trim'
-
-tmp_idx <- which(cell_annotDF[['cell_ID']] %in% altered_cells[['updatedCells_kept']])
-cell_annotDF[['reSeg_action']][tmp_idx] <- 'new'
-
-tmp_idx <- which(cell_annotDF[['cell_ID']] %in% altered_cells[['updatedCells_merged']])
-cell_annotDF[['reSeg_action']][tmp_idx] <- 'merge'
-
-rm(tmp_idx)
 
 ## add in meta data for each slide that is stored in `config_loading$annotfile`
 cell_annotDF <- merge(cell_annotDF, 
@@ -214,4 +186,4 @@ save(smi_inputs,
      updated_SMIobj,
      file = fs::path(sub_out_dir, 'fastReseg01_outputs_SMIobj.RData'))
 
-### (5) visualization of segmenation outputs ----
+#### (6) visualization of segmenation outputs ----

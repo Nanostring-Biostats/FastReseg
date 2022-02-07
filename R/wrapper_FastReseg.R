@@ -29,7 +29,7 @@
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 #' }
 #' @details The pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile, evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell. 
@@ -189,30 +189,38 @@ fastReseg_externalRef <- function(refProfiles,
   
   ## (0.3) get distance cutoff for molecular-to-molecular and cell-to-cell ----
   ## get distance cutoff for neighborhood at transcript level and cell level
-  if(is.null(cellular_distance_cutoff)){
-    # # get both distance cutoff with `choose_distance_cutoff` function
-    # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
-    # The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. 
-    # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
-    # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
-    # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
-    # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
-    # This calculation is slow and is not recommended for large transcript data.frame.
+  # # get both distance cutoff with `choose_distance_cutoff` function
+  # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
+  # The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. 
+  # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
+  # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
+  # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
+  # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
+  # This calculation is slow and is not recommended for large transcript data.frame.
+  
+  if(is.null(molecular_distance_cutoff)){
+    distCutoffs <- choose_distance_cutoff(transcript_df, 
+                                          transID_coln = transID_coln,
+                                          cellID_coln = cellID_coln, 
+                                          spatLocs_colns = spatLocs_colns, 
+                                          extracellular_cellID = NULL, 
+                                          sampleSize_nROI = 10, 
+                                          sampleSize_cellNum = 2500, 
+                                          seed = 123, 
+                                          run_molecularDist = TRUE)
+    molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
+    message(sprintf('Use `molecular_distance_cutoff` = %.4f for defining direct neighbor cells based on molecule-to-molecule distance.', molecular_distance_cutoff))
     
-    if(is.null(molecular_distance_cutoff)){
-      distCutoffs <- choose_distance_cutoff(transcript_df, 
-                                            transID_coln = transID_coln,
-                                            cellID_coln = cellID_coln, 
-                                            spatLocs_colns = spatLocs_colns, 
-                                            extracellular_cellID = NULL, 
-                                            sampleSize_nROI = 10, 
-                                            sampleSize_cellNum = 2500, 
-                                            seed = 123, 
-                                            run_molecularDist = TRUE)
-      molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
-      
-    } else {
-      # get only cellular distance cutoff
+    # get cellular_distance_cutoff from estimation outcomes if not NULL
+    if(is.null(cellular_distance_cutoff)){
+      cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+      message(sprintf("Use cellular_distance_cutoff = %.4f for searching of neighbor cells.", cellular_distance_cutoff))
+    }
+    
+    rm(distCutoffs)
+  }else {
+    # get only cellular_distance_cutoff
+    if(is.null(cellular_distance_cutoff)){
       distCutoffs <- choose_distance_cutoff(transcript_df, 
                                             transID_coln = transID_coln,
                                             cellID_coln = cellID_coln, 
@@ -222,14 +230,12 @@ fastReseg_externalRef <- function(refProfiles,
                                             sampleSize_cellNum = 2500, 
                                             seed = 123, 
                                             run_molecularDist = FALSE)
+      cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+      message(sprintf("Use cellular_distance_cutoff = %.4f for searching of neighbor cells.", cellular_distance_cutoff))
+      rm(distCutoffs)
     }
-    
-    cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
-    
-    rm(distCutoffs)
   }
   
-
   
   ## (0.4) for each cell, get new cell type based on maximum score ----
   # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
@@ -496,6 +502,37 @@ fastReseg_externalRef <- function(refProfiles,
   post_reseg_results$updated_transDF <- merge(post_reseg_results$updated_transDF, tmp_df, by = transID_coln)
   rm(tmp_df)
   
+  
+  #### (4.6) add in type of resegmentation action applied to each cells ----
+  # cells altered by fastReseg pipeline
+  altered_cells <- list(
+    # original cell_ID with transcripts got discarded
+    oriCells_trimmed = unique(sapply(strsplit(reseg_actions[['cells_to_discard']],"_g"),"[[",1)), 
+    # original cell_ID with transcripts got split, the split groups were kept as new cells
+    oriCells_split = unique(sapply(strsplit(reseg_actions[['cells_to_keep']],"_g"),"[[",1)), 
+    # new cell_ID that received merge cells
+    updatedCells_merged = unique(reseg_actions[['cells_to_update']]), 
+    # new cell_ID that got split and kept as separate new cells
+    updatedCells_kept = unique(reseg_actions[['cells_to_keep']]))
+  
+  # mark each cell with the type of resegmetaion actions applied to them
+  post_reseg_results$perCell_DT[['reSeg_action']] <- 'none'
+  
+  tmp_idx <- which(post_reseg_results$perCell_DT[['updated_cellID']] %in% c(altered_cells[['oriCells_trimmed']], 
+                                                                     altered_cells[['oriCells_split']]))
+  post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'trim'
+  
+  tmp_idx <- which(post_reseg_results$perCell_DT[['updated_cellID']] %in% altered_cells[['updatedCells_kept']])
+  post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'new'
+  
+  tmp_idx <- which(post_reseg_results$perCell_DT[['updated_cellID']] %in% altered_cells[['updatedCells_merged']])
+  post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'merge'
+  
+  rm(tmp_idx)
+  
+  
+  
+  #### (5) return final results ----
   final_res[['updated_transDF']] <- post_reseg_results$updated_transDF
   final_res[['updated_perCellDT']] <- post_reseg_results$perCell_DT
   if(return_perCellData){
@@ -547,7 +584,7 @@ fastReseg_externalRef <- function(refProfiles,
 #'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
 #'    \item{baselineData}{a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.}
 #'    \item{cutoffs_list}{a list of cutoffs used in resegmentation pipeline, including, `score_baseline`, `lowerCutoff_transNum`, `higherCutoff_transNum`, `cellular_distance_cutoff`, `molecular_distance_cutoff`}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
 #' }
@@ -565,12 +602,12 @@ fastReseg_externalRef <- function(refProfiles,
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when save_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 #' }
 #' The pipeline would also combine per cell data for all FOVs, save and return the combined data when return_perCellData = TRUE; `updated_perCellDT` and `updated_perCellExprs` would be save as single .RData object in `path_to_output` directory.
 #' \describe{
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
 #' }
 #' @examples 
@@ -1075,7 +1112,7 @@ fastReseg_internalRef <- function(counts,
     # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE
     # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE
     # updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter
-    # updated_perCellDT, a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE
+    # updated_perCellDT, a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE
     # updated_perCellExprs, a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE
     
     each_segRes <- fastReseg_externalRef(refProfiles = refProfiles,
