@@ -6,7 +6,7 @@
 #' @param score_baseline a named vector of score baseline for all cell type listed in score_GeneMatrix
 #' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
-#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `neighbor_distance_xy`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90% quantile of minimal molecular distance as `distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
+#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `neighbor_distance_xy`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @param transcript_df the data.frame with transcript_id, target/geneName, x, y and cell_id
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param celltype_coln the column name of cell_type in transcript_df
@@ -68,7 +68,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   
   if(!is.null(distance_cutoff)){
     if(!any(class(distance_cutoff) %in% c('numeric','integer'))){
-      stop("To define the neighborhood to consider for transcript network, distance_cutoff must be either NULL to use 10 times of 90% quantile of minimal molecular distance within all chosen cells or a numeric value to define the largest molecule-to-molecule distance.")
+      stop("To define the neighborhood to consider for transcript network, distance_cutoff must be either NULL to use 5 times of 90% quantile of minimal molecular distance within all chosen cells or a numeric value to define the largest molecule-to-molecule distance.")
     } else if (distance_cutoff <= 0){
       stop("distance_cutoff must be either `NULL` or positive number")
     } else{
@@ -227,9 +227,9 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                     length(cells_to_keep), 
                     paste0(round(dist_profile, 2), collapse = ", "), 
                     paste0(names(dist_profile), collapse = ", ")))
-    # define cutoff as 10 times of 90% quantile value
-    distance_cutoff <- 10*dist_profile[['90%']]
-    message(sprintf("Use 10 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutofff` = %.4f for defining direct neighbor cells.", 
+    # define cutoff as 5 times of 90% quantile value
+    distance_cutoff <- 5*dist_profile[['90%']]
+    message(sprintf("Use 5 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutofff` = %.4f for defining direct neighbor cells.", 
                     length(spatLocs_to_use), molecular_distance_cutoff))
     rm(queryTrans_pp, cutoff_transDF)
     }

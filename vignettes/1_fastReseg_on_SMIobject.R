@@ -106,6 +106,9 @@ sink(logHandle, type = "message")
 # updated_perCellExprs: a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE.
 # reseg_actions: a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE.
 
+# For automatic calculation of `molecular_distance_cutoff` based on 1st FOV, set `molecular_distance_cutoff` to NULL
+# But for SMI dataset, it's recommended to use `molecular_distance_cutoff` = 2.7 um as hard cutoff given the footprint of fiducials
+
 reseg_outputs <- fastReseg_internalRef(counts = smi_inputs[['counts']],
                                        clust = NULL,
                                        refProfiles = smi_inputs[['refProfiles']],
@@ -121,7 +124,7 @@ reseg_outputs <- fastReseg_internalRef(counts = smi_inputs[['counts']],
                                        cellID_coln = "CellId",
                                        spatLocs_colns = c("x","y","z"),
                                        extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
-                                       molecular_distance_cutoff = NULL, # automatic calculation based on 1st FOV
+                                       molecular_distance_cutoff = 2.7, # recommend to use footprint of fiducials as cutoff in SMI dataset; if NULL, automatic calculation based on 1st FOV
                                        cellular_distance_cutoff = smi_inputs[['cellular_distance_cutoff']], # if NULL, automatic calculation based on 1st FOV
                                        score_baseline = smi_inputs[['score_baseline']],
                                        lowerCutoff_transNum = smi_inputs[['lowerCutoff_transNum']],

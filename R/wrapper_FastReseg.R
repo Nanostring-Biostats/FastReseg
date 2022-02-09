@@ -14,7 +14,7 @@
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param molecular_distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
-#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
+#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @param score_baseline a named vector of score baseline under each cell type listed in `refProfiles` such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence 
 #' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
@@ -115,7 +115,7 @@ fastReseg_externalRef <- function(refProfiles,
   
   if(!is.null(molecular_distance_cutoff)){
     if(!any(class(molecular_distance_cutoff) %in% c('numeric','integer'))){
-      stop("To define the neighborhood to consider for transcript network, `molecular_distance_cutoff` must be either NULL to use 10 times of 90% quantile of minimal molecular distance within no more than 2500 randomly chosen cells or a numeric value to define the largest molecule-to-molecule distance.")
+      stop("To define the neighborhood to consider for transcript network, `molecular_distance_cutoff` must be either NULL to use 5 times of 90% quantile of minimal molecular distance within no more than 2500 randomly chosen cells or a numeric value to define the largest molecule-to-molecule distance.")
     } else if (molecular_distance_cutoff <= 0){
       stop("`molecular_distance_cutoff` must be either `NULL` or positive number")
     } else{
@@ -193,7 +193,7 @@ fastReseg_externalRef <- function(refProfiles,
   # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
   # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
   # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
-  # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
+  # The function would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
   # This calculation is slow and is not recommended for large transcript data.frame.
   
   if(is.null(molecular_distance_cutoff)){
@@ -569,7 +569,7 @@ fastReseg_externalRef <- function(refProfiles,
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param molecular_distance_cutoff maximum molecule-to-molecule distance within connected transcript group, unit in micron (default = 2.7 micron). 
-#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
+#' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @param score_baseline a named vector of score baseline under each cell type listed in `refProfiles` such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence; default = NULL to calculate from `counts` and `refProfiles` 
 #' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is; default = NULL to calculate from `counts` and `refProfiles` 
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type; default = NULL to calculate from `counts` and `refProfiles` 
@@ -1001,7 +1001,7 @@ fastReseg_internalRef <- function(counts,
   # `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. 
   # When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs
   # with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. 
-  # The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
+  # The function would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. 
   # This calculation is slow and is not recommended for large transcript data.frame.
   
   # get molecular_distance_cutoff

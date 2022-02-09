@@ -16,7 +16,7 @@
 #'    \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate; return if run_molecularDist = TRUE}
 #'    \item{distance_profile}{a named vector for the quantile profile of minimal molecular distance between transcripts belong to different cells at step size of 10% quantile; return if run_molecularDist = TRUE}
 #' }
-#' @details `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. The function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI` number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The function would further use the 10 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
+#' @details `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. The function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI` number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The function would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @examples 
 #' data(transcriptDF)
 #' extracellular_cellID <- transcriptDF[which(transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
@@ -150,9 +150,9 @@ choose_distance_cutoff <- function(transcript_df,
                     length(cells_to_keep), 
                     paste0(round(dist_profile, 2), collapse = ", "), 
                     paste0(names(dist_profile), collapse = ", ")))
-    # define cutoff as 10 times of 90% quantile value
-    molecular_distance_cutoff <- 10*dist_profile[['90%']]
-    message(sprintf("Use 10 times of 90%% quantile of minimal %dD molecular distance between picked cells as `molecular_distance_cutoff` = %.4f for defining direct neighbor cells.", 
+    # define cutoff as 5 times of 90% quantile value
+    molecular_distance_cutoff <- 5*dist_profile[['90%']]
+    message(sprintf("Use 5 times of 90%% quantile of minimal %dD molecular distance between picked cells as `molecular_distance_cutoff` = %.4f for defining direct neighbor cells.", 
                     length(spatLocs_to_use), molecular_distance_cutoff))
     rm(queryTrans_pp, cutoff_transDF)
     # final results list
