@@ -30,9 +30,8 @@ fastReseg_internalRef(
   lowerCutoff_transNum = NULL,
   higherCutoff_transNum = NULL,
   imputeFlag_missingCTs = FALSE,
-  leiden_args = list(python_path = "/usr/bin/python3", partition_type =
-    c("RBConfigurationVertexPartition", "ModularityVertexPartition"), resolution = 1,
-    n_iterations = 1000, set_seed = T, seed_number = 1234),
+  leiden_args = list(objective_function = c("CPM", "modularity"), resolution_parameter
+    = 1, beta = 0.01, n_iterations = 200),
   flagMerge_sharedLeiden_cutoff = 0.5,
   path_to_output = "reSeg_res",
   save_intermediates = TRUE,
@@ -76,7 +75,7 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 \item{svm_args}{a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale}
 
 \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, unit in micron (default = 2.7 micron).
-If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
+If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
 \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Default = NULL to use the 2 times of average 2D cell diameter.}
 
@@ -88,7 +87,7 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{imputeFlag_missingCTs}{flag to impute \code{score_baseline}, \code{lowerCutoff_transNum},\code{higherCutoff_transNum} for cell types present in \code{refProfiles} but missing in the provided transcript data files or the provided baseline and cutoffs; when TRUE, the median values of existing cell types would be used as the values for missing cell types.}
 
-\item{leiden_args}{a list of arguments to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number.}
+\item{leiden_args}{a list of configuration to pass to reticulate and \code{igraph::cluster_leiden} function, including objective_function, resolution_parameter, beta, n_iterations.}
 
 \item{flagMerge_sharedLeiden_cutoff}{minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50\% cutoff}
 

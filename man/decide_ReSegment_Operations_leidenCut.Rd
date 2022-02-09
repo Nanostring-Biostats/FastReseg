@@ -21,9 +21,8 @@ decide_ReSegment_Operations_leidenCut(
   cellID_coln = "CellId",
   transID_coln = "transcript_id",
   transSpatLocs_coln = c("x", "y", "z"),
-  leiden_config = list(python_path = "/usr/bin/python3", partition_type =
-    c("RBConfigurationVertexPartition", "ModularityVertexPartition"), resolution = 1,
-    n_iterations = 1000, set_seed = T, seed_number = 1234),
+  leiden_config = list(objective_function = c("CPM", "modularity"),
+    resolution_parameter = 1, beta = 0.01, n_iterations = 200),
   cutoff_sharedLeiden = 0.5
 )
 }
@@ -60,7 +59,7 @@ decide_ReSegment_Operations_leidenCut(
 
 \item{transSpatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
 
-\item{leiden_config}{a list of configuration to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number.}
+\item{leiden_config}{a list of configuration to pass to reticulate and \code{igraph::cluster_leiden} function, including objective_function, resolution_parameter, beta, n_iterations.}
 
 \item{cutoff_sharedLeiden}{minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50\% cutoff}
 }

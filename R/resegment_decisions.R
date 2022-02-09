@@ -153,7 +153,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
-#' @param leiden_config a list of configuration to pass to reticulate and \code{\link[=igraph::cluster_leiden]{igraph::cluster_leiden}} function, including objective_function, resolution_parameter, beta, n_iterations. 
+#' @param leiden_config a list of configuration to pass to reticulate and `igraph::cluster_leiden` function, including objective_function, resolution_parameter, beta, n_iterations. 
 #' @param cutoff_sharedLeiden minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 #' @return a list 
 #' \enumerate{
