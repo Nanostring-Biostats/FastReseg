@@ -19,6 +19,7 @@
 #'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
 #' }
 #' @details Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflic due to merging multiple query cells into one.  
+#' @importFrom igraph components graph_from_data_frame
 #' @export
 decide_ReSegment_Operations <- function(neighborhood_df,
                                         selfcellID_coln = 'CellId', 
@@ -132,6 +133,8 @@ decide_ReSegment_Operations <- function(neighborhood_df,
   return(reseg_operations)
 }
 
+
+
 #' @title decide_ReSegment_Operations_leidenCut
 #' @description Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. 
 #' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of neighborhood_for_resegment function.Use leiden clustering to determine whether a merge event is allowed.
@@ -150,7 +153,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
-#' @param leiden_config a list of configuration to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number. 
+#' @param leiden_config a list of configuration to pass to reticulate and \code{\link[=igraph::cluster_leiden]{igraph::cluster_leiden}} function, including objective_function, resolution_parameter, beta, n_iterations. 
 #' @param cutoff_sharedLeiden minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 #' @return a list 
 #' \enumerate{
@@ -160,6 +163,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 #'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
 #' }
 #' @details Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflic due to merging multiple query cells into one. In case of merging into neighbor cell, leiden clustering on transcript level of spatial network is performed to decide whether the merge should be allowed. 
+#' @importFrom igraph cluster_leiden graph_from_data_frame membership components
 #' @export
 decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
                                                   selfcellID_coln = 'CellId', 
@@ -177,12 +181,10 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
                                                   cellID_coln = "CellId",
                                                   transID_coln = "transcript_id",
                                                   transSpatLocs_coln = c('x','y','z'), 
-                                                  leiden_config = list(python_path = "/usr/bin/python3", 
-                                                                       partition_type = c("RBConfigurationVertexPartition", "ModularityVertexPartition"),
-                                                                       resolution =1,
-                                                                       n_iterations = 1000,
-                                                                       set_seed = T,
-                                                                       seed_number = 1234), 
+                                                  leiden_config = list(objective_function = c("CPM", "modularity"),
+                                                                       resolution_parameter = 1,
+                                                                       beta = 0.01,
+                                                                       n_iterations = 200), 
                                                   cutoff_sharedLeiden = 0.5){
   
   
@@ -248,42 +250,34 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
     message(sprintf("A valid merging event must have query cell with %.3f transcript shared same membership as neighbor cell of consistent cell type. ", cutoff_sharedLeiden))
   }
   
-  if(is.null(leiden_config$python_path)){
-    leiden_config$python_path <- "/usr/bin/python3"
-  }
-  if(!file.exists(leiden_config$python_path)){
-    stop(sprintf("The provided python path does not exist, %s. ", leiden_config$python_path))
-  } else {
-    reticulate::use_python(required = T, python = leiden_config$python_path)
-    python_leiden_function = system.file("python", "python_leiden.py", 
-                                         package = "Giotto")
-    reticulate::source_python(file = python_leiden_function)
-  }
-  if (leiden_config$set_seed == TRUE && !is.null(leiden_config$seed_number)) {
-    leiden_config$seed_number = as.integer(leiden_config$seed_number)
-  } else {
-    leiden_config$seed_number = as.integer(sample(x = 1:10000, size = 1))
-  }
-  reticulate::py_set_seed(seed = leiden_config$seed_number, disable_hash_randomization = TRUE)
   
-  if(is.null(leiden_config$partition_type)){
-    leiden_config$partition_type <-  "RBConfigurationVertexPartition"
+  if(is.null(leiden_config$objective_function)){
+    leiden_config$objective_function <-  "CPM"
   }else {
-    leiden_config$partition_type <- match.arg(leiden_config$partition_type, 
-                                              choices = c("RBConfigurationVertexPartition", 
-                                                          "ModularityVertexPartition"))
+    leiden_config$objective_function <- match.arg(leiden_config$objective_function, 
+                                              choices = c("CPM", "modularity"))
   }
   if(is.null(leiden_config$n_iterations)){
-    leiden_config$n_iterations = 1000
+    leiden_config$n_iterations = 200
   }
-  if(is.null(leiden_config$resolution)){
-    leiden_config$resolution = 1
+  
+  # Parameter affecting the randomness in the Leiden algorithm. This affects only the refinement step of the algorithm.
+  if(is.null(leiden_config$beta)){
+    leiden_config$beta = 0.01
   } else {
-    if(leiden_config$resolution >1 | leiden_config$resolution <1e-10){
-      stop(sprintf("The provided resolution for leiden_config = %.3f, which is outside of (0,1].", leiden_config$resolution))
+    if(leiden_config$beta >1 | leiden_config$beta <1e-10){
+      stop(sprintf("The provided `beta` for leiden_config = %.3f, which is outside of (0,1].", leiden_config$beta))
     }
   }
-  message(sprintf("Perform leiden clustering at resolution = %.3f.", leiden_config$resolution))
+  
+  if(is.null(leiden_config$resolution_parameter)){
+    leiden_config$resolution_parameter = 1
+  } else {
+    if(leiden_config$resolution_parameter >1 | leiden_config$resolution_parameter <1e-10){
+      stop(sprintf("The provided `resolution_parameter` for leiden_config = %.3f, which is outside of (0,1].", leiden_config$resolution_parameter))
+    }
+  }
+  message(sprintf("Perform leiden clustering at resolution_parameter = %.3f.", leiden_config$resolution_parameter))
   
   
   # (1) whether consistent neighbor
@@ -361,24 +355,29 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
           init_membership <- as.integer(df_subset[[cellID_coln]] == query_cellID) +1
           names(init_membership) <- df_subset[[transID_coln]]
           
-          # for unknown reason init_membership does not always have consistent length with leiden cluster
-          # use NULL instead
+          # undirected graph needed for igraph:::cluster_leiden, igraph >= 1.2.7
+          all_index = unique(c(network_edge_dt$from, network_edge_dt$to))
+          network_igraph = igraph::graph_from_data_frame(as.data.frame(network_edge_dt), directed = FALSE, vertices = all_index)
+          # igraph::community object
+          leid_result <- igraph:::cluster_leiden(network_igraph, 
+                                                 objective_function = leiden_config$objective_function,
+                                                 resolution_parameter = leiden_config$resolution_parameter,
+                                                 beta = leiden_config$ beta,
+                                                 initial_membership = NULL,
+                                                 n_iterations = leiden_config$n_iterations)
+          # igraph::membership object
+          leid_result <- igraph::membership(leid_result)
           
-          pyth_leid_result = python_leiden(df = network_edge_dt, partition_type = leiden_config$partition_type, 
-                                           initial_membership = NULL, weights = "weight", 
-                                           n_iterations = leiden_config$n_iterations, 
-                                           seed = leiden_config$seed_number, 
-                                           resolution_parameter = leiden_config$resolution)
+          ident_clusters_DF <- data.frame(transcript_id = names(leid_result), 
+                                         clusterID = as.vector(leid_result))
           
-          ident_clusters_DT = data.table::data.table(transcript_id = pyth_leid_result[[1]], 
-                                                     clusterID = pyth_leid_result[[2]])
           # check if how many transcripts in query cell shared same clusterID as neighbor cell
-          ident_clusters_DT[['init_cluster']] <- init_membership[ident_clusters_DT[['transcript_id']]]
+          ident_clusters_DF[['init_cluster']] <- init_membership[ident_clusters_DF[['transcript_id']]]
           
           # use orignal input for total transcript since some transcripts would be missing in spatial network
           n_query <- sum(df_subset[[cellID_coln]] == query_cellID)
-          lc_in_neighbor <- unique(ident_clusters_DT[['clusterID']][which(ident_clusters_DT[['init_cluster']] ==1)])
-          n_sharedLC <- sum(ident_clusters_DT[['clusterID']][which(ident_clusters_DT[['init_cluster']] ==2)] %in% lc_in_neighbor)
+          lc_in_neighbor <- unique(ident_clusters_DF[['clusterID']][which(ident_clusters_DF[['init_cluster']] ==1)])
+          n_sharedLC <- sum(ident_clusters_DF[['clusterID']][which(ident_clusters_DF[['init_cluster']] ==2)] %in% lc_in_neighbor)
           
           if(n_sharedLC/n_query < cutoff_sharedLeiden){
             outputs[['merge']] <- FALSE

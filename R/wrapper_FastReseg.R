@@ -18,7 +18,7 @@
 #' @param score_baseline a named vector of score baseline under each cell type listed in `refProfiles` such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence 
 #' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
-#' @param leiden_args a list of arguments to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number. 
+#' @param leiden_args a list of configuration to pass to reticulate and \code{\link[=igraph::cluster_leiden]{igraph::cluster_leiden}} function, including objective_function, resolution_parameter, beta, n_iterations.
 #' @param flagMerge_sharedLeiden_cutoff minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 #' @param return_intermediates flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell,  
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
@@ -69,12 +69,10 @@ fastReseg_externalRef <- function(refProfiles,
                                   score_baseline = NULL, 
                                   lowerCutoff_transNum = NULL, 
                                   higherCutoff_transNum= NULL, 
-                                  leiden_args = list(python_path = "/usr/bin/python3", 
-                                                     partition_type = c("RBConfigurationVertexPartition", "ModularityVertexPartition"),
-                                                     resolution =1,
-                                                     n_iterations = 1000,
-                                                     set_seed = T,
-                                                     seed_number = 1234), 
+                                  leiden_args = llist(objective_function = c("CPM", "modularity"),
+                                                      resolution_parameter = 1,
+                                                      beta = 0.01,
+                                                      n_iterations = 200), 
                                   flagMerge_sharedLeiden_cutoff = 0.5,
                                   return_intermediates = TRUE,
                                   return_perCellData = TRUE){
@@ -525,8 +523,10 @@ fastReseg_externalRef <- function(refProfiles,
   tmp_idx <- which(post_reseg_results$perCell_DT[['updated_cellID']] %in% altered_cells[['updatedCells_kept']])
   post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'new'
   
+  # some cells might have no change in cellID but still presence in this category, 
+  # if they have been flagged for evaluation but does not satisfy the rules of merging 
   tmp_idx <- which(post_reseg_results$perCell_DT[['updated_cellID']] %in% altered_cells[['updatedCells_merged']])
-  post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'merge'
+  post_reseg_results$perCell_DT[['reSeg_action']][tmp_idx] <- 'merge_or_flagged'
   
   rm(tmp_idx)
   
@@ -574,7 +574,7 @@ fastReseg_externalRef <- function(refProfiles,
 #' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is; default = NULL to calculate from `counts` and `refProfiles` 
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type; default = NULL to calculate from `counts` and `refProfiles` 
 #' @param imputeFlag_missingCTs flag to impute `score_baseline`, `lowerCutoff_transNum`,`higherCutoff_transNum` for cell types present in `refProfiles` but missing in the provided transcript data files or the provided baseline and cutoffs; when TRUE, the median values of existing cell types would be used as the values for missing cell types.
-#' @param leiden_args a list of arguments to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number. 
+#' @param leiden_args a list of configuration to pass to reticulate and \code{\link[=igraph::cluster_leiden]{igraph::cluster_leiden}} function, including objective_function, resolution_parameter, beta, n_iterations.
 #' @param flagMerge_sharedLeiden_cutoff minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 #' @param path_to_output the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame `updated_transDF` is saved as individual csv files for each FOV, where cell data of all FOVs, `updated_perCellDT` and `updated_perCellExprs`, are combined to save as .RData object.
 #' @param save_intermediates flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,  
@@ -733,12 +733,10 @@ fastReseg_internalRef <- function(counts,
                                   lowerCutoff_transNum = NULL, 
                                   higherCutoff_transNum= NULL, 
                                   imputeFlag_missingCTs = FALSE,
-                                  leiden_args = list(python_path = "/usr/bin/python3", 
-                                                     partition_type = c("RBConfigurationVertexPartition", "ModularityVertexPartition"),
-                                                     resolution =1,
-                                                     n_iterations = 1000,
-                                                     set_seed = T,
-                                                     seed_number = 1234), 
+                                  leiden_args = list(objective_function = c("CPM", "modularity"),
+                                                     resolution_parameter = 1,
+                                                     beta = 0.01,
+                                                     n_iterations = 200), 
                                   flagMerge_sharedLeiden_cutoff = 0.5,
                                   path_to_output = "reSeg_res", 
                                   save_intermediates = TRUE,

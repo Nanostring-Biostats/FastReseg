@@ -81,13 +81,11 @@ write.csv(smi_inputs[['transDF_fov_fileInfo']],
 #                 scale = FALSE, 
 #                 gamma = 0.4)
 # 
-# # a list of arguments to pass to reticulate and Giotto:::python_leiden function, including python path, resolution, partition_type, n_iterations, set_seed, seed_number. 
-# leiden_args = list(python_path = "/usr/bin/python3", 
-#                    partition_type = c("RBConfigurationVertexPartition", "ModularityVertexPartition"),
-#                    resolution =1,
-#                    n_iterations = 1000,
-#                    set_seed = T,
-#                    seed_number = 1234) 
+# # a list of configuration to pass to reticulate and `igraph::cluster_leiden` function, including objective_function, resolution_parameter, beta, n_iterations.
+# leiden_args = list(objective_function = c("CPM", "modularity"),
+#                    resolution_parameter = 1,
+#                    beta = 0.01,
+#                    n_iterations = 200) 
 # 
 # # minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 # flagMerge_sharedLeiden_cutoff = 0.5

@@ -52,12 +52,11 @@ config_dimension[['svm_config']] <- list(kernel = "radial",
                                          gamma =0.8)
 
 # config for leiden clustering for merging check in re-segmentation action
-config_dimension[['leiden_config']] <- list(python_path = "/usr/bin/python3", 
-                                            partition_type = "RBConfigurationVertexPartition",
-                                            resolution =1,
-                                            n_iterations = 1000,
-                                            set_seed = T,
-                                            seed_number = 1234)
+config_dimension[['leiden_config']] <- list(objective_function = c("CPM", "modularity"),
+                                            resolution_parameter = 1,
+                                            beta = 0.01,
+                                            n_iterations = 200)
+
 config_dimension[['cutoff_sharedLeiden']] = 0.5
 
 
