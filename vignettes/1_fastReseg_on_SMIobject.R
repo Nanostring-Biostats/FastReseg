@@ -130,7 +130,8 @@ reseg_outputs <- fastReseg_internalRef(counts = smi_inputs[['counts']],
                                        lowerCutoff_transNum = smi_inputs[['lowerCutoff_transNum']],
                                        higherCutoff_transNum= smi_inputs[['higherCutoff_transNum']],
                                        imputeFlag_missingCTs = TRUE,
-                                       path_to_output = sub_out_dir)
+                                       path_to_output = sub_out_dir, 
+                                       combine_extra = FALSE) # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
 
 ## revert output back to the console -- only then access the file!
 sink(type = "message")

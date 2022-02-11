@@ -81,7 +81,7 @@ fastReseg_externalRef <- function(refProfiles,
   #### check inputs ----
   # check format of transcript_df
   if(any(!c(transID_coln, transGene_coln, spatLocs_colns, cellID_coln) %in% colnames(transcript_df))){
-    stop(sprintf("Not all necessary columns can be found in provided `transcript_df`, missing columns include `%s`.",
+    stop(sprintf("Not all necessary columns can be found in provided `transcript_df`, missing columns include: `%s`.",
                  paste0(setdiff(c(transID_coln, transGene_coln, spatLocs_colns, cellID_coln), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
@@ -579,6 +579,7 @@ fastReseg_externalRef <- function(refProfiles,
 #' @param path_to_output the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame `updated_transDF` is saved as individual csv files for each FOV, where cell data of all FOVs, `updated_perCellDT` and `updated_perCellExprs`, are combined to save as .RData object.
 #' @param save_intermediates flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,  
 #' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
+#' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -740,7 +741,8 @@ fastReseg_internalRef <- function(counts,
                                   flagMerge_sharedLeiden_cutoff = 0.5,
                                   path_to_output = "reSeg_res", 
                                   save_intermediates = TRUE,
-                                  return_perCellData = TRUE){
+                                  return_perCellData = TRUE, 
+                                  combine_extra = FALSE){
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -908,6 +910,7 @@ fastReseg_internalRef <- function(counts,
   }
   
   # function to get unique IDs for cells and transcripts, and convert pixel coordinates to um
+  # return a list contains transcript_df for downstream process and extracellular transcript data.frame
   myFun_fov_prep <- function(each_transDF, fov_centerLocs, prefix_vals = NULL){
 
     # check format of transcript_df
@@ -926,14 +929,7 @@ fastReseg_internalRef <- function(counts,
       rm(tmp_df)
     }
     
-    
-    # remove extracellular transcript from each_transDF
-    if(!is.null(extracellular_cellID)){
-      if(length(extracellular_cellID)>0){
-        each_transDF <- each_transDF[which(!(each_transDF[[cellID_coln]] %in% extracellular_cellID)), ]
-      }
-    }
-    
+
     # use row idx as transcript id if transID_coln = NULL
     if(is.null(transID_coln)){
       tmp_transID_coln = "transcript_id"
@@ -954,9 +950,11 @@ fastReseg_internalRef <- function(counts,
                                             function(x) paste0(c('c', x), collapse = '_'))
       
     } else {
-      # rename the existing ID columns with UMI
+      # rename the existing transcript ID columns with UMI
       colnames(each_transDF)[which(colnames(each_transDF) == tmp_transID_coln)] <- 'UMI_transID'
-      colnames(each_transDF)[which(colnames(each_transDF) == cellID_coln)] <- 'UMI_cellID'
+      
+      # keep the original copy of cellID_coln for extracelllar transcript filtering downstream
+      each_transDF[['UMI_cellID']] <- each_transDF[[cellID_coln]]
     }
     
     # rename transGene_coln 
@@ -978,8 +976,36 @@ fastReseg_internalRef <- function(counts,
       raw_locs[, 3] <- raw_locs[, 3]*zstep_size
     }
     
+    # remove extracellular transcript from each_transDF
+    if(!is.null(extracellular_cellID)){
+      if(length(extracellular_cellID)>0){
+        extraC_idx <- which(each_transDF[[cellID_coln]] %in% extracellular_cellID)
+        intraC_idx <- setdiff(seq_len(nrow(each_transDF)), extraC_idx)
+        
+      } else {
+        extraC_idx <- NULL
+      }
+    }else {
+      extraC_idx <- NULL
+    }
+    
     each_transDF <- cbind(each_transDF[, c("UMI_cellID","UMI_transID", "target")], raw_locs)
-    return(each_transDF)
+    
+    # remove extracellular transcript from each_transDF
+    if(!is.null(extraC_idx)){
+      if(length(extraC_idx)>0){
+        
+        res <- list(intraC = each_transDF[intraC_idx, ],  
+                    extraC = each_transDF[extraC_idx, ])
+
+      }
+    } else {
+      res <- list(intraC = each_transDF, 
+                  extraC = NULL)
+    } 
+    
+    
+    return(res)
     
   }
   
@@ -991,6 +1017,7 @@ fastReseg_internalRef <- function(counts,
   }
   
   # fovOffset_colns must have XY axes of stage matched to XY axes of images
+  # return a list with two data.frame, `intraC` and `extraC` for intracelllular and extracellular transcripts, respectively
   transcript_df <- myFun_fov_prep(each_transDF = transcript_df, 
                                   fov_centerLocs = unlist(transDF_fileInfo[1, fovOffset_colns]),
                                   prefix_vals = unlist(transDF_fileInfo[1, prefix_colns]))
@@ -1006,7 +1033,7 @@ fastReseg_internalRef <- function(counts,
   
   # get molecular_distance_cutoff
   if(is.null(molecular_distance_cutoff)){
-    distCutoffs <- choose_distance_cutoff(transcript_df, 
+    distCutoffs <- choose_distance_cutoff(transcript_df[['intraC']], 
                                           transID_coln = 'UMI_transID',
                                           cellID_coln = 'UMI_cellID', 
                                           spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
@@ -1029,7 +1056,7 @@ fastReseg_internalRef <- function(counts,
   } else {
     # get only cellular_distance_cutoff
     if(is.null(cellular_distance_cutoff)){
-      distCutoffs <- choose_distance_cutoff(transcript_df, 
+      distCutoffs <- choose_distance_cutoff(transcript_df[['intraC']], 
                                             transID_coln = 'UMI_transID',
                                             cellID_coln = 'UMI_cellID', 
                                             spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
@@ -1092,6 +1119,7 @@ fastReseg_internalRef <- function(counts,
         transcript_df <- myFun_fov_load(path_to_fov = path_to_transDF)
       }
       # fovOffset_colns must have XY axes of stage matched to XY axes of images
+      # return a list with two data.frame, `intraC` and `extraC` for intracelllular and extracellular transcripts, respectively
       transcript_df <- myFun_fov_prep(each_transDF = transcript_df, 
                                       fov_centerLocs = unlist(transDF_fileInfo[idx, fovOffset_colns]),
                                       prefix_vals = unlist(transDF_fileInfo[idx, prefix_colns]))
@@ -1100,8 +1128,12 @@ fastReseg_internalRef <- function(counts,
     # resegment current FOV
     message(sprintf("\n##############\nProcessing file `%d`: %s\n\n\n",
                     idx, path_to_transDF))
-    
-    
+    if(!is.null(transcript_df[['extraC']])){
+      message(sprintf("Exclude %d extracellular transcripts from downstream, %.4f of total molecules.\n\n", 
+                      nrow(transcript_df[['extraC']]), 
+                      nrow(transcript_df[['extraC']])/(nrow(transcript_df[['extraC']]) + nrow(transcript_df[['intraC']]))))
+    }
+
     
     # # `fastReseg_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
@@ -1114,7 +1146,7 @@ fastReseg_internalRef <- function(counts,
     # updated_perCellExprs, a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE
     
     each_segRes <- fastReseg_externalRef(refProfiles = refProfiles,
-                                         transcript_df = transcript_df,
+                                         transcript_df = transcript_df[['intraC']],
                                          extracellular_cellID = NULL,
                                          molecular_distance_cutoff = molecular_distance_cutoff,
                                          cellular_distance_cutoff = cellular_distance_cutoff,
@@ -1133,6 +1165,56 @@ fastReseg_internalRef <- function(counts,
                                          flagMerge_sharedLeiden_cutoff = flagMerge_sharedLeiden_cutoff,
                                          return_intermediates = save_intermediates,
                                          return_perCellData = return_perCellData)
+    
+    # intracellular in original and updated segmentation
+    each_segRes[['updated_transDF']][['transComp']] <- 'intraC' 
+    
+    # merge original transcript_df to updated results, NA for trimmed or extracellular transcripts
+    # slow process when large transcript data.frame for given FOV
+    if(combine_extra){
+      # flag transcripts that got trimmed during resegmentation
+      trimmed_transIDs <- setdiff(transcript_df[['intraC']][['UMI_transID']], 
+                                  each_segRes[['updated_transDF']][['UMI_transID']])
+      if(length(trimmed_transIDs)>0){
+        message(sprintf("\n\nTrim %d transcripts during resegmentation, %.4f of all intracellular molecules.\nCombine extracellular and trimmed transcripts to the updated transcript data.frame.\n", 
+                        length(trimmed_transIDs), 
+                        length(trimmed_transIDs)/nrow(transcript_df[['intraC']])))
+        trimmed_transDF <- transcript_df[['intraC']][transcript_df[['intraC']][['UMI_transID']] %in% trimmed_transIDs, ]
+        trimmed_transDF[['transComp']] <- 'trimmed'
+      }
+      
+      
+      # combined trimmed transcripts with original extracellular
+      if(!is.null(transcript_df[['extraC']])){
+        transcript_df[['extraC']][['transComp']] <- 'extraC'
+        if(length(trimmed_transIDs)>0){
+          trimmed_transDF <- rbind(trimmed_transDF, transcript_df[['extraC']])
+        } else {
+          trimmed_transDF <- transcript_df[['extraC']]
+        }
+        
+      } 
+
+      
+      # combine all transcript, fill missing value as NA
+      if(any(length(trimmed_transIDs)>0, !is.null(transcript_df[['extraC']]))){
+        colns_segRes_only <- setdiff(colnames(each_segRes[['updated_transDF']]), 
+                                     colnames(trimmed_transDF))
+        tmp_data <- matrix(NA, nrow = nrow(trimmed_transDF), ncol = length(colns_segRes_only))
+        colnames(tmp_data) <- colns_segRes_only
+        tmp_data <- as.data.frame(tmp_data)
+        trimmed_transDF <- cbind(trimmed_transDF, tmp_data)
+        each_segRes[['updated_transDF']] <- rbind(each_segRes[['updated_transDF']], trimmed_transDF)
+        
+        rm(trimmed_transIDs, colns_segRes_only, tmp_data, trimmed_transDF)
+      }
+    } else if(nrow(each_segRes[['updated_transDF']]) != nrow(transcript_df[['intraC']])){
+      message(sprintf("\n\nTrim %d transcripts during resegmentation, %.4f of all intracellular molecules.\nThe updated transcript data.frame contains NO extracellular or trimmed transcripts.\n", 
+                      nrow(transcript_df[['intraC']]) - nrow(each_segRes[['updated_transDF']]), 
+                      1- nrow(each_segRes[['updated_transDF']])/ nrow(transcript_df[['intraC']])))
+    }
+    
+    rm(transcript_df)
     
     # save `updated_transDF` into csv file for each FOV 
     write.csv(each_segRes[['updated_transDF']], 

@@ -35,7 +35,8 @@ fastReseg_internalRef(
   flagMerge_sharedLeiden_cutoff = 0.5,
   path_to_output = "reSeg_res",
   save_intermediates = TRUE,
-  return_perCellData = TRUE
+  return_perCellData = TRUE,
+  combine_extra = FALSE
 )
 }
 \arguments{
@@ -96,6 +97,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 \item{save_intermediates}{flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,}
 
 \item{return_perCellData}{flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
+
+\item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
 \item{transDF_fov_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided \code{transcript_df} directly}
 
