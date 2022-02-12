@@ -116,7 +116,7 @@ a list
 }
 }
 \description{
-wrapper for resegmentation pipeline using internal reference profiles and cutoffs.
+wrapper for resegmentation pipeline using internal reference profiles and cutoffs. This function first estimates proper refernece profiles and cutoffs from the provided data and then use \code{fastReseg_core_externalRef} function to process each transcript data.frame.
 }
 \details{
 The pipeline would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set.
@@ -128,7 +128,7 @@ evaluate the neighborhood environment of low-score transcript groups and perform
 The pipeline would save the each per FOV output as individual file in \code{path_to_output} directory; \code{updated_transDF} would be saved as csv file.
 When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
 \describe{
-\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{spatialModelScoreCell_hyperplane} function, save when save_intermediates = TRUE}
+\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when save_intermediates = TRUE}
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, save when save_intermediates = TRUE}
 \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when save_intermediates = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
@@ -144,20 +144,20 @@ The pipeline would also combine per cell data for all FOVs, save and return the 
 }
 \examples{
 # get example based on example dataset
-data("transcriptDF")
+data("mini_transcriptDF")
 data("ori_RawExprs")
-data("refProfiles")
-data("baselineCT")
-extracellular_cellID <- transcriptDF[which(transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+data("example_refProfiles")
+data("example_baselineCT")
+extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
 
 # case #1: provide `transcript_df` directly, 
 # do auto-calculation of distance cutoff from data while using the provided cutoffs for score and transcript numbers. 
 res1 <- fastReseg_internalRef(counts = ori_RawExprs, 
                               clust = NULL, 
-                              refProfiles = refProfiles,
+                              refProfiles = example_refProfiles,
                               pixel_size = 1, 
                               zstep_size = 1, 
-                              transcript_df = transcriptDF, 
+                              transcript_df = mini_transcriptDF, 
                               transID_coln = "transcript_id", 
                               transGene_coln = "target", 
                               cellID_coln = "cell_ID",
@@ -165,17 +165,17 @@ res1 <- fastReseg_internalRef(counts = ori_RawExprs,
                               extracellular_cellID = extracellular_cellID, 
                               molecular_distance_cutoff = NULL,
                               cellular_distance_cutoff = NULL,
-                              score_baseline = baselineCT[['score_baseline']], 
-                              lowerCutoff_transNum = baselineCT[['lowerCutoff_transNum']], 
-                              higherCutoff_transNum= baselineCT[['higherCutoff_transNum']],
+                              score_baseline = example_baselineCT[['score_baseline']], 
+                              lowerCutoff_transNum = example_baselineCT[['lowerCutoff_transNum']], 
+                              higherCutoff_transNum= example_baselineCT[['higherCutoff_transNum']],
                               imputeFlag_missingCTs = TRUE,
                               path_to_output = "res1_directDF")
 
 # case #2: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV, 
 # do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster assignment of each cell, `clust`, 
 # do auto-calculation of distance cutoff from the 1st per FOV transcript data. 
-data("counts")
-data("clust")
+data("example_CellGeneExpr")
+data("example_clust")
 # the example individual transcript files are stored under `data` directory of this package
 # update your path accordingly
 # Notice that some assays like SMI has XY axes swapped between stage and each FOV;
@@ -187,8 +187,8 @@ fileInfo_DF <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell
                           stage_X = 1000*c(5.13, -2.701), 
                           stage_Y = 1000*c(-0.452, 0.081))
 
-res2 <- fastReseg_internalRef(counts = counts, 
-                              clust = clust, 
+res2 <- fastReseg_internalRef(counts = example_CellGeneExpr, 
+                              clust = example_clust, 
                               refProfiles = NULL,
                               transDF_fileInfo =fileInfo_DF, 
                               filepath_coln = 'file_path', 
@@ -213,9 +213,9 @@ res2 <- fastReseg_internalRef(counts = counts,
 # case #3: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV, 
 # do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster-specific reference profiles, `refProfiles`, 
 # use the provided distance cutoff for `molecular_distance_cutoff` but calculate the `cellular_distance_cutoff`
-res3 <- fastReseg_internalRef(counts = counts, 
+res3 <- fastReseg_internalRef(counts = example_CellGeneExpr, 
                               clust = NULL, 
-                              refProfiles = refProfiles,
+                              refProfiles = example_refProfiles,
                               transDF_fileInfo =fileInfo_DF, 
                               filepath_coln = 'file_path', 
                               prefix_colns = c('slide','fov'), 

@@ -31,7 +31,7 @@ get cluster-specific quantile distribution of transcript number and per cell per
 Calculate average per molecule transcript score for each cell in \code{counts} expression matrix based on the provided cluster profiles \code{refProfiles} and cluster assignment for each cell \code{clust}; then get the quantile distribution of transcript number and per molecule per cell transcript score under each cluster. The function would also recommend the cutoff for transcript score and transcript number to be used in re-segmentation pipeline based on the calculated quantile distribution.
 }
 \examples{
-data(refProfiles)
+data(example_refProfiles)
 data(ori_RawExprs)
-baselineData <- get_baselineCT(refProfiles = refProfiles, counts = ori_RawExprs, clust = NULL)
+baselineData <- get_baselineCT(refProfiles = example_refProfiles, counts = ori_RawExprs, clust = NULL)
 }

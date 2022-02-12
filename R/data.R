@@ -1,18 +1,18 @@
 #' Data for cell type specific reference profiles
 #'
-#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"refProfiles"} to be used as reference profiles. 
+#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"example_refProfiles"} to be used as reference profiles. 
 #'
 #' @docType data
 #'
-#' @usage data(refProfiles)
+#' @usage data(example_refProfiles)
 #'
 #' @format An object of class \code{"matrix"} with 960 genes in rows, 22 distinct cell types in columns.
 #'
 #' @keywords datasets
 #'
 #' @examples
-#' data(refProfiles)
-"refProfiles"
+#' data(example_refProfiles)
+"example_refProfiles"
 
 
 
@@ -22,7 +22,7 @@
 #'
 #' @docType data
 #'
-#' @usage data(transcriptDF)
+#' @usage data(mini_transcriptDF)
 #'
 #' @format An object of class \code{"data.frame"} with 756783 transcripts in row and 9 variables
 #' \describe{
@@ -38,7 +38,7 @@
 #' }
 #'
 #' @keywords datasets
-"transcriptDF"
+"mini_transcriptDF"
 
 
 
@@ -89,7 +89,7 @@
 #'
 #' @docType data
 #'
-#' @usage data(baselineCT)
+#' @usage data(example_baselineCT)
 #'
 #' @format An object of class \code{"list"} with 2 elements
 #' \describe{
@@ -97,7 +97,7 @@
 #'    \item{span_transNum}{a matrix of transcript number per cell for 22 distinct cell types in rows, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
 #'    }
 #' @keywords datasets
-"baselineCT"
+"example_baselineCT"
 
 
 
@@ -121,12 +121,12 @@
 #'
 #' @docType data
 #'
-#' @usage data(counts)
+#' @usage data(example_CellGeneExpr)
 #'
 #' @format An object of class \code{"matrix"} with 754 cells in row and 960 genes in columns
 #'
 #' @keywords datasets
-"counts"
+"example_CellGeneExpr"
 
 
 
@@ -146,15 +146,15 @@
 #'    \item{target}{gene identity of given transcript}
 #'    \item{CellId}{the cell label assignment of given transcript within given FOV based on original cell segmentation}
 #' } 
-#' The cluster assignment for each cell is calculated based on the corresponding per cell gene expression profiles, `data/counts.RData`, and reference profiles, `data/refProfiles.RData`. 
+#' The cluster assignment for each cell is calculated based on the corresponding per cell gene expression profiles, `data/example_CellGeneExpr.RData`, and reference profiles, `data/example_refProfiles.RData`. 
 #'
 #' @docType data
 #'
-#' @usage data(clust)
+#' @usage data(example_clust)
 #'
-#' @format An object of class \code{"character"} with 754 cells in same order as the cells in the row of `data/counts.RData`. 
+#' @format An object of class \code{"character"} with 754 cells in same order as the cells in the row of `data/example_CellGeneExpr.RData`. 
 #'
 #' @keywords datasets
-"clust"
+"example_clust"
 
 

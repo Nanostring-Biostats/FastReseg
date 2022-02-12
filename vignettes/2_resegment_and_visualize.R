@@ -137,13 +137,13 @@ message(sprintf("Raw data has %d cells, %d transcripts; only %.4f cells have ori
 # 4528.534 3272.732 1590.532
 
 if(TRUE){
-  system.time(tmp_df <- spatialModelScoreCell_hyperplane(chosen_cells = common_cells, 
-                                                         transcript_df = all_transDF, 
-                                                         cellID_coln = 'cell_ID', 
-                                                         transID_coln = 'transcript_id', 
-                                                         score_coln = 'score_cleaned_tLLRv2_maxCellType',
-                                                         spatLocs_colns = c('x','y','z'), 
-                                                         model_cutoff = 50))
+  system.time(tmp_df <- score_cell_segmentation_error(chosen_cells = common_cells, 
+                                                      transcript_df = all_transDF, 
+                                                      cellID_coln = 'cell_ID', 
+                                                      transID_coln = 'transcript_id', 
+                                                      score_coln = 'score_cleaned_tLLRv2_maxCellType',
+                                                      spatLocs_colns = c('x','y','z'), 
+                                                      model_cutoff = 50))
   #-log10(P)
   tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
   modStats_cleaned_tLLRv2_3D <- merge(tmp_df, select_cellmeta[, c('cell_ID','cleaned_tLLRv2_maxCellType','slide')], by = 'cell_ID')
@@ -212,7 +212,7 @@ system.time(tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells_cleaned,
                                           model_cutoff = 50, 
                                           score_cutoff = flag_tLLRv2_cutoff, 
                                           svm_args = reseg_logInfo[['flagging_cleaned_SVM']][['svm_config']]))
-                                                     
+
 # user  system elapsed 
 # 314.317  12.442  80.250 
 
@@ -443,7 +443,7 @@ system.time(neighborReSeg_df_cleanSVM <- neighborhood_for_resegment_spatstat(cho
                                                                              transID_coln = "transcript_id",
                                                                              transGene_coln = "target",
                                                                              transSpatLocs_coln = c('x','y','z')))
- 
+
 
 # ### when distance cutoff evaluation done in 2D
 # user    system   elapsed 
@@ -772,13 +772,13 @@ if(TRUE){
 # check p-value range, skip 631 cells, only 2076 altered cells being evlauated 
 if(TRUE){
   tmp_cellID <- unique(c(altered_cells_cleanSVM_leiden$updatedCells_merged, altered_cells_cleanSVM_leiden$updatedCells_kept))
-  tmp_df <- spatialModelScoreCell_hyperplane(chosen_cells = tmp_cellID, 
-                                             transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF, 
-                                             cellID_coln = 'updated_cellID', 
-                                             transID_coln = 'transcript_id', 
-                                             score_coln = 'score_updated_celltype',
-                                             spatLocs_colns = c('x','y','z'), 
-                                             model_cutoff = 50)
+  tmp_df <- score_cell_segmentation_error(chosen_cells = tmp_cellID, 
+                                          transcript_df = post_reseg_results_cleanSVM_leiden$updated_transDF, 
+                                          cellID_coln = 'updated_cellID', 
+                                          transID_coln = 'transcript_id', 
+                                          score_coln = 'score_updated_celltype',
+                                          spatLocs_colns = c('x','y','z'), 
+                                          model_cutoff = 50)
   
   #-log10(P)
   tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])

@@ -1,4 +1,4 @@
-#' @title spatialModelScoreCell_hyperplane
+#' @title score_cell_segmentation_error
 #' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -17,12 +17,12 @@
 #' }
 #' @details For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D and a null model: mod_null = lm(tLLRv2 ~ 1); then run lmtest::lrtest(mod_alternative, mod_null). Return statistics for mod_alternative$fitted.values (standard deviation and minimal value), summary(mod_alternative)$r.squared and as well as lrtest chi-squared value.  
 #' @export
-spatialModelScoreCell_hyperplane <- function(chosen_cells, transcript_df, 
-                                             cellID_coln = "CellId", 
-                                             transID_coln = "transcript_id",
-                                             score_coln = "score", 
-                                             spatLocs_colns = c("x","y","z"),
-                                             model_cutoff = 50){
+score_cell_segmentation_error <- function(chosen_cells, transcript_df, 
+                                          cellID_coln = "CellId", 
+                                          transID_coln = "transcript_id",
+                                          score_coln = "score", 
+                                          spatLocs_colns = c("x","y","z"),
+                                          model_cutoff = 50){
   
   # check if model_cutoff making sense
   if(model_cutoff < 2){
@@ -448,7 +448,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   # get score for each transcripts
   transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
   rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
-
+  
   tmp_score <- as.data.frame(transcriptGeneScore)
   tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
   tmp_score[['SVM_class']] <- transcript_df[['SVM_class']]

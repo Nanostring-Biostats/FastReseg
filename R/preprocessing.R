@@ -144,7 +144,7 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
     
     rm("cellsize_df")
   }else {
-    ## if not exist, one could use the automatic estimation capacity of `fastReseg_externalRef` function
+    ## if not exist, one could use the automatic estimation capacity of `fastReseg_core_externalRef` function
     cellular_distance_cutoff <- NULL
   }
   
