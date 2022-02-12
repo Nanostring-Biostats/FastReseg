@@ -265,10 +265,27 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.ppp(local_pp, marks != each_cell)
-
-      # get minimal distance of each neighborhood cell to any transcript inside query cell
-      neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
-                                   list(neighborhood_pp$marks), FUN = min)
+      
+      # found at least 1 neighbor cell
+      if(nrow(neighborhood_pp$data) >0){
+        # 2D ppp outcomes
+        # get minimal distance of each neighborhood cell to any transcript inside query cell
+        neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
+                                     list(neighborhood_pp$marks), FUN = min)
+        
+        colnames(neighbor_distDF) <- c('neighbor_cellID', 'min_dist')
+        # re-order based on minimal molecular distance of neighbor cells to query cell
+        neighbor_distDF <- neighbor_distDF[order(neighbor_distDF$min_dist), ]
+        # direct cell neighbors should be within the distance_cutoff
+        directCell_neighbors <- neighbor_distDF$neighbor_cellID[neighbor_distDF$min_dist <= distance_cutoff]
+        
+      } else {
+        # no neighbor cells
+        directCell_neighbors <- NULL
+      }
+      
+      
+      
     } else {
       # 3D neighborhood find
       local_pp <- spatstat.geom::pp3(x = df_subset[[transSpatLocs_coln[1]]], 
@@ -279,24 +296,33 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                                          range(df_subset[[transSpatLocs_coln[3]]]),
                                                          unitname = "um"), 
                                      marks = factor(df_subset[[cellID_coln]]))
-                                                        
+      
       # query cell only
       neiQuery_pp <- spatstat.geom::subset.pp3(local_pp, marks == each_cell)
       
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.pp3(local_pp, marks != each_cell)
       
-      # get minimal distance of each neighborhood cell to any transcript inside query cell
-      neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
-                                   list(neighborhood_pp$data$marks), FUN = min)
+      # found at least 1 neighbor cell
+      if(nrow(neighborhood_pp$data) >0){
+        # 3D pp3 outcome
+        # get minimal distance of each neighborhood cell to any transcript inside query cell
+        neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
+                                     list(neighborhood_pp$data$marks), FUN = min)
+        
+        colnames(neighbor_distDF) <- c('neighbor_cellID', 'min_dist')
+        # re-order based on minimal molecular distance of neighbor cells to query cell
+        neighbor_distDF <- neighbor_distDF[order(neighbor_distDF$min_dist), ]
+        # direct cell neighbors should be within the distance_cutoff
+        directCell_neighbors <- neighbor_distDF$neighbor_cellID[neighbor_distDF$min_dist <= distance_cutoff]
+        
+      } else {
+        # no neighbor cells
+        directCell_neighbors <- NULL
+      }
       
     }
-
-    colnames(neighbor_distDF) <- c('neighbor_cellID', 'min_dist')
-    # re-order based on minimal molecular distance of neighbor cells to query cell
-    neighbor_distDF <- neighbor_distDF[order(neighbor_distDF$min_dist), ]
-    # direct cell neighbors should be within the distance_cutoff
-    directCell_neighbors <- neighbor_distDF$neighbor_cellID[neighbor_distDF$min_dist <= distance_cutoff]
+    
     
     # get score matrix for each transcript in query cell
     cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
@@ -363,6 +389,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     outputs <- cbind(queryPerCell_df, neighborInfo_df)
     return(outputs)
   }
+  
   
   # for each chosen cell, find out its neighborhood
   resegmented_df <- by(chosen_transDF, chosen_transDF[[cellID_coln]], my_fun_eachCell)
