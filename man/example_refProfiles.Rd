@@ -11,7 +11,7 @@ An object of class \code{"matrix"} with 960 genes in rows, 22 distinct cell type
 data(example_refProfiles)
 }
 \description{
-Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"example_refProfiles"} to be used as reference profiles.
+Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \code{data("example_refProfiles")} to be used as reference profiles.
 }
 \examples{
 data(example_refProfiles)

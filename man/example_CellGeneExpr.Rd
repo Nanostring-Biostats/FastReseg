@@ -27,4 +27,7 @@ Each raw transcript data files have 1 transcript per row with 25 different meta 
 }
 The per cell gene expression matrix is calculated from the raw transcript data files to include only the 960 true target genes without including control probes.
 }
+\seealso{
+\link{example_clust} for corresponding cell cluster assignment
+}
 \keyword{datasets}

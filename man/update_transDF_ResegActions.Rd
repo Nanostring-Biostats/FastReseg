@@ -18,15 +18,15 @@ update_transDF_ResegActions(
 \arguments{
 \item{transcript_df}{the data.frame of transcript to be updated}
 
-\item{reseg_full_converter}{a named converter to update the cell ID in transcript_df, cell_ID in name would be converted to cell_ID in value; discard cell_ID with value = NA}
+\item{reseg_full_converter}{a named converter to update the cell ID in \code{transcript_df}, cell_ID in name would be converted to cell_ID in value; discard cell_ID with value = NA}
 
-\item{score_GeneMatrix}{the column name of cell_ID of query cell in neighborhood_df}
+\item{score_GeneMatrix}{a gene x cell-type score matrix}
 
-\item{transGene_coln}{the column name of target or gene name in transcript_df}
+\item{transGene_coln}{the column name of target or gene name in \code{transcript_df}}
 
-\item{cellID_coln}{the column name of cell_ID in transcript_df}
+\item{cellID_coln}{the column name of cell_ID in \code{transcript_df}}
 
-\item{celltype_coln}{the column name of cell type in transcript_df}
+\item{celltype_coln}{the column name of cell type in \code{transcript_df}}
 
 \item{spatLocs_colns}{column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in transcript_df}
 

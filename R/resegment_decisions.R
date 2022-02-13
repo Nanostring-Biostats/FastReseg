@@ -395,16 +395,21 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
     return(outputs)
   }
   
-  neighDF_for_mergeCheck <- neighborhood_df[idx_to_merge, ]
-  neighDF_for_mergeCheck[['origin_Idx']] <- idx_to_merge
   
-  message(sprintf("Perform ledien clustering on %d potential merging events. ", nrow(neighDF_for_mergeCheck)))
-  
-  mergeCheck_res <- by(neighDF_for_mergeCheck, neighDF_for_mergeCheck[[selfcellID_coln]], myfun_NWclustering)
-  mergeCheck_res <- do.call(rbind, mergeCheck_res)
-  
-  # update the idx_to_merge after merge checking with leiden clustering
-  idx_to_merge <- mergeCheck_res[['origin_Idx']][which(mergeCheck_res[['merge']] == TRUE)]
+  # check merging interface if any merging candidate
+  if(length(idx_to_merge) >0){
+    neighDF_for_mergeCheck <- neighborhood_df[idx_to_merge, ]
+    neighDF_for_mergeCheck[['origin_Idx']] <- idx_to_merge
+    
+    message(sprintf("Perform ledien clustering on %d potential merging events. ", length(idx_to_merge)))
+
+    mergeCheck_res <- by(neighDF_for_mergeCheck, neighDF_for_mergeCheck[[selfcellID_coln]], myfun_NWclustering)
+    mergeCheck_res <- do.call(rbind, mergeCheck_res)
+    
+    # update the idx_to_merge after merge checking with leiden clustering
+    idx_to_merge <- mergeCheck_res[['origin_Idx']][which(mergeCheck_res[['merge']] == TRUE)]
+    
+  } 
   
   # assign new cell id, NA to discard the cells with no consistent neighbor, few transcripts and low self score
   neighborhood_df[['corrected_cellID']] <- rep(NA, nrow(neighborhood_df))

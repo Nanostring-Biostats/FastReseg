@@ -25,7 +25,8 @@ fastReseg_core_externalRef(
     = 1, beta = 0.01, n_iterations = 200),
   flagMerge_sharedLeiden_cutoff = 0.5,
   return_intermediates = TRUE,
-  return_perCellData = TRUE
+  return_perCellData = TRUE,
+  includeAllRefGenes = FALSE
 )
 }
 \arguments{
@@ -66,9 +67,11 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{flagMerge_sharedLeiden_cutoff}{minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50\% cutoff}
 
-\item{return_intermediates}{flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell,}
+\item{return_intermediates}{flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell}
 
 \item{return_perCellData}{flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
+
+\item{includeAllRefGenes}{flag to include all genes in \code{refProfiles} in the returned \code{updated_perCellExprs} with missing genes of value 0 (default = FALSE)}
 }
 \value{
 a list

@@ -20,8 +20,9 @@
 #' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
 #' @param leiden_args a list of configuration to pass to reticulate and `igraph::cluster_leiden` function, including objective_function, resolution_parameter, beta, n_iterations.
 #' @param flagMerge_sharedLeiden_cutoff minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
-#' @param return_intermediates flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell,  
+#' @param return_intermediates flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell  
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
+#' @param includeAllRefGenes flag to include all genes in `refProfiles` in the returned `updated_perCellExprs` with missing genes of value 0 (default = FALSE)
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE}
@@ -75,7 +76,8 @@ fastReseg_core_externalRef <- function(refProfiles,
                                                           n_iterations = 200), 
                                        flagMerge_sharedLeiden_cutoff = 0.5,
                                        return_intermediates = TRUE,
-                                       return_perCellData = TRUE){
+                                       return_perCellData = TRUE, 
+                                       includeAllRefGenes = FALSE){
   # final results
   final_res <- list()
   #### check inputs ----
@@ -124,6 +126,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   } 
   
   all_celltypes <- colnames(refProfiles)
+  all_genes <- rownames(refProfiles)
   
   # check the format for all cutoff, make sure it's number and has names for all cell types used.
   for(cutoff_var in c("score_baseline", "lowerCutoff_transNum", "higherCutoff_transNum")){
@@ -536,6 +539,21 @@ fastReseg_core_externalRef <- function(refProfiles,
   final_res[['updated_transDF']] <- post_reseg_results$updated_transDF
   final_res[['updated_perCellDT']] <- post_reseg_results$perCell_DT
   if(return_perCellData){
+    # impute zero value for missing genes not in `post_reseg_results$perCell_expression` but in `all_genes`
+    if(includeAllRefGenes){
+      missingGenes <- setdiff(all_genes, rownames(post_reseg_results$perCell_expression))
+      if(length(missingGenes)>0){
+        message(sprintf("%d genes do not present in updated transcript data.frame, impute 0 for missing genes: `%s`.", 
+                        length(missingGenes), paste0(missingGenes, collapse = '`, `')))
+        mockExprs <- matrix(0, nrow = length(missingGenes), 
+                            ncol = ncol(post_reseg_results$perCell_expression), 
+                            dimnames = list(missingGenes, 
+                                            colnames(post_reseg_results$perCell_expression)))
+        mockExprs <- Matrix::Matrix(mockExprs, sparse = TRUE)
+        post_reseg_results$perCell_expression <- rbind(post_reseg_results$perCell_expression, 
+                                                       mockExprs)
+      }
+    }
     final_res[['updated_perCellExprs']] <- post_reseg_results$perCell_expression
   }
   
@@ -1146,6 +1164,8 @@ fastReseg_internalRef <- function(counts,
     # updated_perCellDT, a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE
     # updated_perCellExprs, a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE
     
+    # set `includeAllRefGenes` to TRUE, to ensure return of all genes in `refProfiles` to `each_segRes[['updated_perCellExprs']]`
+    # mising genes would have imputed value of zero
     each_segRes <- fastReseg_core_externalRef(refProfiles = refProfiles,
                                               transcript_df = transcript_df[['intraC']],
                                               extracellular_cellID = NULL,
@@ -1165,7 +1185,8 @@ fastReseg_internalRef <- function(counts,
                                               leiden_args = leiden_args, 
                                               flagMerge_sharedLeiden_cutoff = flagMerge_sharedLeiden_cutoff,
                                               return_intermediates = save_intermediates,
-                                              return_perCellData = return_perCellData)
+                                              return_perCellData = return_perCellData, 
+                                              includeAllRefGenes = TRUE)
     
     # intracellular in original and updated segmentation
     each_segRes[['updated_transDF']][['transComp']] <- 'intraC' 

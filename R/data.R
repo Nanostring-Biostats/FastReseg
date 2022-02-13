@@ -1,6 +1,6 @@
 #' Data for cell type specific reference profiles
 #'
-#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \data{"example_refProfiles"} to be used as reference profiles. 
+#' Semi-supervised cell typing is conducted on the example SMI RNA readout for FFPE melanoma tissue samples that contains 2 tissue sections with 3 FOVs per section. The resulting cell typing outcomes are then used to estimate the mean profile of each identified cell type/cluster using \code{"estimate_MeanProfile"}. The corresponding average cell-type-specific profiles are then stored in \code{data("example_refProfiles")} to be used as reference profiles. 
 #'
 #' @docType data
 #'
@@ -36,7 +36,7 @@
 #'    \item{fov}{fov ID of given transcript}
 #'    \item{CellId}{the cell label assignment of given transcript within given FOV based on original cell segmentation}
 #' }
-#'
+#' @seealso [ori_CellStatsDF] for corresponding cell level dataset, [ori_RawExprs] for corresponding cell x gene expression matrix
 #' @keywords datasets
 "mini_transcriptDF"
 
@@ -63,7 +63,7 @@
 #'    \item{Area}{the area of given cell segment, unit in square micron}
 #'    \item{AspectRatio}{the aspect ratio of boundingbox width over height for given cell segment}
 #' }
-#'
+#' @seealso [mini_transcriptDF] for corresponding transcript level dataset, [ori_RawExprs] for corresponding cell x gene expression matrix
 #' @keywords datasets
 "ori_CellStatsDF"
 
@@ -78,7 +78,9 @@
 #' @usage data(ori_RawExprs)
 #'
 #' @format An object of class \code{"matrix"} with 4619 cells in row and 960 genes in columns
-#'
+#' 
+#' @seealso [mini_transcriptDF] for corresponding transcript level dataset, [ori_CellStatsDF] for corresponding cell level dataset
+#' 
 #' @keywords datasets
 "ori_RawExprs"
 
@@ -125,6 +127,8 @@
 #'
 #' @format An object of class \code{"matrix"} with 754 cells in row and 960 genes in columns
 #'
+#' @seealso [example_clust] for corresponding cell cluster assignment
+#' 
 #' @keywords datasets
 "example_CellGeneExpr"
 
@@ -154,6 +158,8 @@
 #'
 #' @format An object of class \code{"character"} with 754 cells in same order as the cells in the row of `data/example_CellGeneExpr.RData`. 
 #'
+#' @seealso [example_CellGeneExpr] for corresponding cell x gene expression matrix, [example_refProfiles] for the reference profiles used for cluster assignment
+#' 
 #' @keywords datasets
 "example_clust"
 

@@ -25,4 +25,7 @@ data(ori_CellStatsDF)
 \description{
 The example dataset is based on one run of SMI RNA readout for FFPE melanoma tissue samples. It contains information for 1375 cells with 756783 transcripts within a cropped region of one single FOV of 1 tissue section.
 }
+\seealso{
+\link{mini_transcriptDF} for corresponding transcript level dataset, \link{ori_RawExprs} for corresponding cell x gene expression matrix
+}
 \keyword{datasets}

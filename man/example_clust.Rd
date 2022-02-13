@@ -27,4 +27,7 @@ Each raw transcript data files have 1 transcript per row with 25 different meta 
 }
 The cluster assignment for each cell is calculated based on the corresponding per cell gene expression profiles, \code{data/example_CellGeneExpr.RData}, and reference profiles, \code{data/example_refProfiles.RData}.
 }
+\seealso{
+\link{example_CellGeneExpr} for corresponding cell x gene expression matrix, \link{example_refProfiles} for the reference profiles used for cluster assignment
+}
 \keyword{datasets}
