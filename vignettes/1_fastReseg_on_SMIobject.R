@@ -173,6 +173,9 @@ cell_annotDF <- merge(cell_annotDF,
                       smi_inputs[['sample_annot']], 
                       by.x = 'slide', by.y = 'slide_ID_numeric', all.x = TRUE)
 
+# rearrange cell order to be the same as expression matrix
+cell_annotDF <- cell_annotDF[match(colnames(reseg_outputs[['updated_perCellExprs']]), cell_annotDF[['cell_ID']]),]
+
 ## (5.3) create giotto object
 
 updated_SMIobj <- Giotto::createGiottoObject(expression= expr_lists,
