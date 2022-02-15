@@ -1018,7 +1018,7 @@ fastReseg_internalRef <- function(counts,
   # but combine perCell data from all FOVs to return and save as single .RData object
   
   # function for processing each FOV for resegmentation
-  # return idx when complete, save results to disk and global data holder all_segRes
+  # return `each_segRes` when complete, save results to disk
   myFun_reseg_eachFOV <- function(idx){
     if (idx !=1){
       # load and prep each FOV data 
@@ -1139,38 +1139,40 @@ fastReseg_internalRef <- function(counts,
               file = fs::path(path_to_output, paste0(idx, "_updated_transDF.csv")), 
               row.names = FALSE)
     
-    # combine perCell data and intermediates files into single objects
+    # return only idx, perCell data and reseg_actions as a list
+    res_to_return <- list(idx = idx)
+    
     if(return_perCellData){
-      all_segRes[['updated_perCellDT']][[idx]] <<- each_segRes[['updated_perCellDT']]
-      all_segRes[['updated_perCellExprs']][[idx]] <<- each_segRes[['updated_perCellExprs']]
+      res_to_return[['updated_perCellDT']] <- each_segRes[['updated_perCellDT']]
+      res_to_return[['updated_perCellExprs']] <- each_segRes[['updated_perCellExprs']]
     }
     
     if(save_intermediates){
-      # `reseg_actions` would be combined for all FOVs before return
-      all_segRes[['reseg_actions']][['cells_to_discard']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_discard']]
-      all_segRes[['reseg_actions']][['cells_to_update']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_update']]
-      all_segRes[['reseg_actions']][['cells_to_keep']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_keep']]
-      all_segRes[['reseg_actions']][['reseg_full_converter']][[idx]] <<- each_segRes[['reseg_actions']][['reseg_full_converter']]
-      
+      res_to_return[['reseg_actions']] <- each_segRes[['reseg_actions']]
+
       # save intermediate files and all other outputs for current FOVs as single .RData
       save(each_segRes, 
            file = fs::path(path_to_output, paste0(idx, "_each_segRes.RData")))
       
     }
+    
     rm(each_segRes)
     
-    # return idx when complete
-    return(idx)
+    return(res_to_return)
   }
   
-  process_log <- sapply(seq_len(nrow(transDF_fileInfo)), myFun_reseg_eachFOV)
+  # lapply() to get a list with each element for a list of results from each FOV
+  process_outputs <- lapply(seq_len(nrow(transDF_fileInfo)), myFun_reseg_eachFOV)
   
   # combine data for each FOV
   if(return_perCellData){
-    updated_perCellDT <- do.call(rbind, all_segRes[['updated_perCellDT']] )
+    # extract perCell data from nested list of process_outputs
+    updated_perCellDT <- lapply(process_outputs, '[[', 'updated_perCellDT')
+    updated_perCellDT <- do.call(rbind, updated_perCellDT)
     
     # per cell gene expression in gene x cell sparse matrix format, do cbind
-    updated_perCellExprs <- do.call(cbind, all_segRes[['updated_perCellExprs']] )
+    updated_perCellExprs <- lapply(process_outputs, '[[', 'updated_perCellExprs')
+    updated_perCellExprs <- do.call(cbind, updated_perCellExprs)
     
     # save combined perCell data into .RData
     save(updated_perCellDT, 
@@ -1185,13 +1187,21 @@ fastReseg_internalRef <- function(counts,
   
   if(save_intermediates){
     # `reseg_actions` would be combined for all FOVs before return
-    combined_reseg_actions <- list(cells_to_discard = unlist(all_segRes[['reseg_actions']][['cells_to_discard']]),
-                                   cells_to_update = unlist(all_segRes[['reseg_actions']][['cells_to_update']]),
-                                   cells_to_keep = unlist(all_segRes[['reseg_actions']][['cells_to_keep']]),
-                                   reseg_full_converter = unlist(all_segRes[['reseg_actions']][['reseg_full_converter']]))
-    all_segRes[['reseg_actions']]<- combined_reseg_actions
-    rm(combined_reseg_actions)
+    cells_to_discard <- unlist(lapply(lapply(process_outputs, '[[', 'reseg_actions'), '[[', 'cells_to_discard'))
+    cells_to_update <- unlist(lapply(lapply(process_outputs, '[[', 'reseg_actions'), '[[', 'cells_to_update'))
+    cells_to_keep <- unlist(lapply(lapply(process_outputs, '[[', 'reseg_actions'), '[[', 'cells_to_keep'))
+    reseg_full_converter <- unlist(lapply(lapply(process_outputs, '[[', 'reseg_actions'), '[[', 'reseg_full_converter'))
+    
+    
+    all_segRes[['reseg_actions']] <- list(cells_to_discard = cells_to_discard,
+                                   cells_to_update = cells_to_update,
+                                   cells_to_keep = cells_to_keep,
+                                   reseg_full_converter = reseg_full_converter)
+
+    rm(cells_to_discard, cells_to_update, cells_to_keep, reseg_full_converter)
   }
+  
+  rm(process_outputs)
   
   return(all_segRes)
   
