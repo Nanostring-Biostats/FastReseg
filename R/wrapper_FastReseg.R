@@ -907,127 +907,6 @@ fastReseg_internalRef <- function(counts,
   higherCutoff_transNum <- myFun_updateCutoff('higherCutoff_transNum', imputeFlag_missingCTs)
   
   
-  
-  ## function to prepare single FOV data ----
-  # function to load each FOV's transcript data.frame
-  myFun_fov_load <- function(path_to_fov){
-    if(grepl(".RData$", path_to_fov, ignore.case = TRUE)){
-      each_transDF <- get(load(path_to_fov))
-    } else if (grepl(".csv$", path_to_fov)){
-      each_transDF <- read.csv(path_to_fov, sep = ',', header = TRUE)
-      
-    } else if (grepl(".txt$", path_to_fov)){
-      each_transDF <- read.csv(path_to_fov, sep = '\t', header = TRUE)
-      
-    } else {
-      stop(sprintf('The per FOV transcript data.frame must be RData, csv, or txt file. Current `path_to_fov` = %s', 
-                   path_to_fov))
-    }
-    
-    return(each_transDF)
-  }
-  
-  # function to get unique IDs for cells and transcripts, and convert pixel coordinates to um
-  # return a list contains transcript_df for downstream process and extracellular transcript data.frame
-  myFun_fov_prep <- function(each_transDF, fov_centerLocs, prefix_vals = NULL){
-    
-    # check format of transcript_df
-    if(any(!c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln) %in% colnames(each_transDF))){
-      stop(sprintf("Not all necessary columns can be found in provided `transcript_df`, missing columns include `%s`.",
-                   paste0(setdiff(c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln), 
-                                  colnames(each_transDF)), collapse = "`, `")))
-    }
-    each_transDF <- as.data.frame(each_transDF)[, c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln)]
-    
-    # add values for prefix_colns, prefix_vals is a named vector
-    if(!is.null(prefix_vals)){
-      tmp_df <- matrix(rep(prefix_vals, nrow(each_transDF)), byrow = TRUE, ncol = length(prefix_vals))
-      colnames(tmp_df) <- prefix_colns
-      each_transDF <- cbind(each_transDF, as.data.frame(tmp_df))
-      rm(tmp_df)
-    }
-    
-    
-    # use row idx as transcript id if transID_coln = NULL
-    if(is.null(transID_coln)){
-      tmp_transID_coln = "transcript_id"
-      each_transDF[[tmp_transID_coln]] <- seq_len(nrow(each_transDF))
-    }else {
-      tmp_transID_coln = transID_coln
-    }
-    
-    # generate unique IDs for whole data set based on prefix_colns
-    if(!is.null(prefix_colns)){
-      # get unique transcript_id
-      each_transDF[['UMI_transID']] <- apply(each_transDF[, c(prefix_colns, tmp_transID_coln)], 
-                                             MARGIN = 1, 
-                                             function(x) paste0(c('t', x), collapse = '_'))
-      # get unique cell_ID
-      each_transDF[['UMI_cellID']] <- apply(each_transDF[, c(prefix_colns, cellID_coln)], 
-                                            MARGIN = 1, 
-                                            function(x) paste0(c('c', x), collapse = '_'))
-      
-    } else {
-      # rename the existing transcript ID columns with UMI
-      colnames(each_transDF)[which(colnames(each_transDF) == tmp_transID_coln)] <- 'UMI_transID'
-      each_transDF[['UMI_transID']] <- as.character(each_transDF[['UMI_transID']])
-      
-      # keep the original copy of cellID_coln for extracelllar transcript filtering downstream
-      each_transDF[['UMI_cellID']] <- as.character(each_transDF[[cellID_coln]])
-    }
-    
-    # rename transGene_coln 
-    colnames(each_transDF)[which(colnames(each_transDF) == transGene_coln)] <- 'target'
-    
-    # convert coordinates to um, include the center location of each FOV values
-    raw_locs <- each_transDF[, spatLocs_colns]
-    if(d2_or_d3 ==2){
-      colnames(raw_locs) <-c('x','y')
-    } else {
-      colnames(raw_locs) <-c('x','y','z')
-    }
-    
-    # flip y coordinates to have images shown from top to bottom
-    raw_locs[['y']] <- 0-raw_locs[['y']]
-    # place target coordinates in reference to whole slide 
-    raw_locs[, 1:2] <- sweep(raw_locs[, 1:2] * pixel_size, 2, fov_centerLocs,"+")
-    if(d2_or_d3 ==3){
-      raw_locs[, 3] <- raw_locs[, 3]*zstep_size
-    }
-    
-    # remove extracellular transcript from each_transDF
-    if(!is.null(extracellular_cellID)){
-      if(length(extracellular_cellID)>0){
-        extraC_idx <- which(each_transDF[[cellID_coln]] %in% extracellular_cellID)
-        intraC_idx <- setdiff(seq_len(nrow(each_transDF)), extraC_idx)
-        
-      } else {
-        extraC_idx <- NULL
-      }
-    }else {
-      extraC_idx <- NULL
-    }
-    
-    each_transDF <- cbind(each_transDF[, c("UMI_cellID","UMI_transID", "target")], raw_locs)
-    
-    # remove extracellular transcript from each_transDF
-    if(!is.null(extraC_idx)){
-      if(length(extraC_idx)>0){
-        
-        res <- list(intraC = each_transDF[intraC_idx, ],  
-                    extraC = each_transDF[extraC_idx, ])
-        
-      }
-    } else {
-      res <- list(intraC = each_transDF, 
-                  extraC = NULL)
-    } 
-    
-    
-    return(res)
-    
-  }
-  
   ## get distance cutoff based on 1st provided FOV data ----
   # load and prepare first FOV transcript data
   path_to_transDF <- transDF_fileInfo[[filepath_coln]][1]
@@ -1039,7 +918,15 @@ fastReseg_internalRef <- function(counts,
   # return a list with two data.frame, `intraC` and `extraC` for intracelllular and extracellular transcripts, respectively
   transcript_df <- myFun_fov_prep(each_transDF = transcript_df, 
                                   fov_centerLocs = unlist(transDF_fileInfo[1, fovOffset_colns]),
-                                  prefix_vals = unlist(transDF_fileInfo[1, prefix_colns]))
+                                  prefix_vals = unlist(transDF_fileInfo[1, prefix_colns]), 
+                                  pixel_size = pixel_size, 
+                                  zstep_size = zstep_size,
+                                  transID_coln = transID_coln,
+                                  transGene_coln = transGene_coln,
+                                  cellID_coln = cellID_coln, 
+                                  spatLocs_colns = spatLocs_colns, 
+                                  extracellular_cellID = extracellular_cellID)
+
   
   # # get both distance cutoff with `choose_distance_cutoff` function
   # `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
@@ -1130,7 +1017,9 @@ fastReseg_internalRef <- function(counts,
   # save `updated_transDF` into csv file and intermeidates file into .RData for each FOV
   # but combine perCell data from all FOVs to return and save as single .RData object
   
-  for(idx in seq_len(nrow(transDF_fileInfo))){
+  # function for processing each FOV for resegmentation
+  # return idx when complete, save results to disk and global data holder all_segRes
+  myFun_reseg_eachFOV <- function(idx){
     if (idx !=1){
       # load and prep each FOV data 
       path_to_transDF <- transDF_fileInfo[[filepath_coln]][idx]
@@ -1141,7 +1030,14 @@ fastReseg_internalRef <- function(counts,
       # return a list with two data.frame, `intraC` and `extraC` for intracelllular and extracellular transcripts, respectively
       transcript_df <- myFun_fov_prep(each_transDF = transcript_df, 
                                       fov_centerLocs = unlist(transDF_fileInfo[idx, fovOffset_colns]),
-                                      prefix_vals = unlist(transDF_fileInfo[idx, prefix_colns]))
+                                      prefix_vals = unlist(transDF_fileInfo[idx, prefix_colns]), 
+                                      pixel_size = pixel_size, 
+                                      zstep_size = zstep_size,
+                                      transID_coln = transID_coln,
+                                      transGene_coln = transGene_coln,
+                                      cellID_coln = cellID_coln, 
+                                      spatLocs_colns = spatLocs_colns, 
+                                      extracellular_cellID = extracellular_cellID)
     }
     
     # resegment current FOV
@@ -1245,16 +1141,16 @@ fastReseg_internalRef <- function(counts,
     
     # combine perCell data and intermediates files into single objects
     if(return_perCellData){
-      all_segRes[['updated_perCellDT']][[idx]] <- each_segRes[['updated_perCellDT']]
-      all_segRes[['updated_perCellExprs']][[idx]] <- each_segRes[['updated_perCellExprs']]
+      all_segRes[['updated_perCellDT']][[idx]] <<- each_segRes[['updated_perCellDT']]
+      all_segRes[['updated_perCellExprs']][[idx]] <<- each_segRes[['updated_perCellExprs']]
     }
     
     if(save_intermediates){
       # `reseg_actions` would be combined for all FOVs before return
-      all_segRes[['reseg_actions']][['cells_to_discard']][[idx]] <- each_segRes[['reseg_actions']][['cells_to_discard']]
-      all_segRes[['reseg_actions']][['cells_to_update']][[idx]] <- each_segRes[['reseg_actions']][['cells_to_update']]
-      all_segRes[['reseg_actions']][['cells_to_keep']][[idx]] <- each_segRes[['reseg_actions']][['cells_to_keep']]
-      all_segRes[['reseg_actions']][['reseg_full_converter']][[idx]] <- each_segRes[['reseg_actions']][['reseg_full_converter']]
+      all_segRes[['reseg_actions']][['cells_to_discard']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_discard']]
+      all_segRes[['reseg_actions']][['cells_to_update']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_update']]
+      all_segRes[['reseg_actions']][['cells_to_keep']][[idx]] <<- each_segRes[['reseg_actions']][['cells_to_keep']]
+      all_segRes[['reseg_actions']][['reseg_full_converter']][[idx]] <<- each_segRes[['reseg_actions']][['reseg_full_converter']]
       
       # save intermediate files and all other outputs for current FOVs as single .RData
       save(each_segRes, 
@@ -1263,7 +1159,11 @@ fastReseg_internalRef <- function(counts,
     }
     rm(each_segRes)
     
+    # return idx when complete
+    return(idx)
   }
+  
+  process_log <- sapply(seq_len(nrow(transDF_fileInfo)), myFun_reseg_eachFOV)
   
   # combine data for each FOV
   if(return_perCellData){
@@ -1294,5 +1194,157 @@ fastReseg_internalRef <- function(counts,
   }
   
   return(all_segRes)
+  
+}
+
+
+## supporting functions to prepare single FOV data
+
+
+#' @title myFun_fov_load
+#' @description supporting function for \code{fastReseg_internalRef}, to load transcript data.frame of each FOV from file path
+#' @param path_to_fov
+# function to load each FOV's transcript data.frame
+myFun_fov_load <- function(path_to_fov){
+  if(grepl(".RData$", path_to_fov, ignore.case = TRUE)){
+    each_transDF <- get(load(path_to_fov))
+  } else if (grepl(".csv$", path_to_fov)){
+    each_transDF <- read.csv(path_to_fov, sep = ',', header = TRUE)
+    
+  } else if (grepl(".txt$", path_to_fov)){
+    each_transDF <- read.csv(path_to_fov, sep = '\t', header = TRUE)
+    
+  } else {
+    stop(sprintf('The per FOV transcript data.frame must be RData, csv, or txt file. Current `path_to_fov` = %s', 
+                 path_to_fov))
+  }
+  
+  return(each_transDF)
+}
+
+
+#' @title myFun_fov_prep
+#' @description supporting function for \code{fastReseg_internalRef}, to get unique IDs for cells and transcripts, and convert pixel coordinates to um. 
+#' @param each_transDF data.frame for raw transcript
+#' @param fov_centerLocs a named vector of fov 2D coordinates
+#' @param prefix_vals a named vector of values to be used as prefix in 'UMI_transID' and 'UMI_cellID'; when `prefix_vals` != NULL, unique transcript_id would be generated from `prefix_vals` and `transID_coln` in `each_transDF` 
+#' @param pixel_size the micrometer size of image pixel listed in 1st and 2nd dimension of `spatLocs_colns` of `each_transDF`
+#' @param zstep_size the micrometer size of z-step for the optional 3rd dimension of `spatLocs_colns` of `each_transDF`
+#' @param transID_coln the column name of transcript_ID in `transcript_df`, default = NULL to use row index of transcript in `each_transDF`; when `prefix_vals` != NULL, unique transcript_id would be generated from `prefix_vals` and `transID_coln` in `each_transDF`
+#' @param transGene_coln the column name of target or gene name in `each_transDF`
+#' @param cellID_coln the column name of cell_ID in `each_transDF`; when `prefix_colns` != NULL, unique cell_ID would be generated from `prefix_vals` and `cellID_coln` in each `transcript_df`
+#' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `each_transDF` 
+#' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
+#' @return a list contains transcript_df for downstream process and extracellular transcript data.frame
+#' ' \describe{
+#'    \item{intraC}{a data.frame for intracellular transcript, 'UMI_transID' and 'UMI_cellID' as column names for unique transcript_id and cell_id, 'target' as column name for target gene name}
+#'    \item{extraC}a data.frame for extracellular transcript, same structure as the `intraC` data.frame in returned list}
+#' }
+myFun_fov_prep <- function(each_transDF, 
+                           fov_centerLocs, 
+                           prefix_vals = NULL, 
+                           pixel_size = 0.18, 
+                           zstep_size = 0.8,
+                           transID_coln = NULL,
+                           transGene_coln = "target",
+                           cellID_coln = 'CellId', 
+                           spatLocs_colns = c('x','y','z'), 
+                           extracellular_cellID = NULL){
+  
+  # check format of transcript_df
+  if(any(!c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln) %in% colnames(each_transDF))){
+    stop(sprintf("Not all necessary columns can be found in provided `transcript_df`, missing columns include `%s`.",
+                 paste0(setdiff(c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln), 
+                                colnames(each_transDF)), collapse = "`, `")))
+  }
+  each_transDF <- as.data.frame(each_transDF)[, c(transID_coln, spatLocs_colns, transGene_coln, cellID_coln)]
+  d2_or_d3 <- length(spatLocs_colns)
+  
+  # add values for prefix_colns, prefix_vals is a named vector
+  if(!is.null(prefix_vals)){
+    tmp_df <- matrix(rep(prefix_vals, nrow(each_transDF)), byrow = TRUE, ncol = length(prefix_vals))
+    colnames(tmp_df) <- names(prefix_vals)
+    each_transDF <- cbind(each_transDF, as.data.frame(tmp_df))
+    rm(tmp_df)
+  }
+  
+  
+  # use row idx as transcript id if transID_coln = NULL
+  if(is.null(transID_coln)){
+    tmp_transID_coln = "transcript_id"
+    each_transDF[[tmp_transID_coln]] <- seq_len(nrow(each_transDF))
+  }else {
+    tmp_transID_coln = transID_coln
+  }
+  
+  # generate unique IDs for whole data set based on prefix_vals
+  if(!is.null(prefix_vals)){
+    # get unique transcript_id
+    each_transDF[['UMI_transID']] <- apply(each_transDF[, c(names(prefix_vals), tmp_transID_coln)], 
+                                           MARGIN = 1, 
+                                           function(x) paste0(c('t', x), collapse = '_'))
+    # get unique cell_ID
+    each_transDF[['UMI_cellID']] <- apply(each_transDF[, c(names(prefix_vals), cellID_coln)], 
+                                          MARGIN = 1, 
+                                          function(x) paste0(c('c', x), collapse = '_'))
+    
+  } else {
+    # rename the existing transcript ID columns with UMI
+    colnames(each_transDF)[which(colnames(each_transDF) == tmp_transID_coln)] <- 'UMI_transID'
+    each_transDF[['UMI_transID']] <- as.character(each_transDF[['UMI_transID']])
+    
+    # keep the original copy of cellID_coln for extracelllar transcript filtering downstream
+    each_transDF[['UMI_cellID']] <- as.character(each_transDF[[cellID_coln]])
+  }
+  
+  # rename transGene_coln 
+  colnames(each_transDF)[which(colnames(each_transDF) == transGene_coln)] <- 'target'
+  
+  # convert coordinates to um, include the center location of each FOV values
+  raw_locs <- each_transDF[, spatLocs_colns]
+  if(d2_or_d3 ==2){
+    colnames(raw_locs) <-c('x','y')
+  } else {
+    colnames(raw_locs) <-c('x','y','z')
+  }
+  
+  # flip y coordinates to have images shown from top to bottom
+  raw_locs[['y']] <- 0-raw_locs[['y']]
+  # place target coordinates in reference to whole slide 
+  raw_locs[, 1:2] <- sweep(raw_locs[, 1:2] * pixel_size, 2, fov_centerLocs,"+")
+  if(d2_or_d3 ==3){
+    raw_locs[, 3] <- raw_locs[, 3]*zstep_size
+  }
+  
+  # remove extracellular transcript from each_transDF
+  if(!is.null(extracellular_cellID)){
+    if(length(extracellular_cellID)>0){
+      extraC_idx <- which(each_transDF[[cellID_coln]] %in% extracellular_cellID)
+      intraC_idx <- setdiff(seq_len(nrow(each_transDF)), extraC_idx)
+      
+    } else {
+      extraC_idx <- NULL
+    }
+  }else {
+    extraC_idx <- NULL
+  }
+  
+  each_transDF <- cbind(each_transDF[, c("UMI_cellID","UMI_transID", "target")], raw_locs)
+  
+  # remove extracellular transcript from each_transDF
+  if(!is.null(extraC_idx)){
+    if(length(extraC_idx)>0){
+      
+      res <- list(intraC = each_transDF[intraC_idx, ],  
+                  extraC = each_transDF[extraC_idx, ])
+      
+    }
+  } else {
+    res <- list(intraC = each_transDF, 
+                extraC = NULL)
+  } 
+  
+  
+  return(res)
   
 }

@@ -640,42 +640,6 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   }
   
   # (5) assign group for multiple flagged transcript cases using delanuay network analysis
-  # function for 3 point case in a single cell only
-  myFun_3point_eachCell <- function(dfCoord_subset, each_cell, groupNum){
-    dist_df <- cbind(dfCoord_subset[1:3, .SD, .SDcols = transSpatLocs_coln], dfCoord_subset[c(2,3,1), .SD, .SDcols = transSpatLocs_coln])
-    colnames(dist_df) <- c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))
-    dist_df[['from']] <- dfCoord_subset[['tmp_transID']]
-    dist_df[['to']] <- dfCoord_subset[['tmp_transID']][c(2,3,1)]
-    dist_df[['cell_ID']] <- each_cell
-    dist_df <- data.table::setDT(dist_df)
-    
-    dist_df[, `:=`(distance, stats::dist(x = matrix(.SD, nrow = 2, byrow = T))), 
-            by = 1:nrow(dist_df), 
-            .SDcols = c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))]
-    dist_df[, `:=`(distance, as.numeric(distance))]
-    dist_df[, `:=`(weight, 1/distance)]
-    dist_df[, `:=` (separate, distance >orphan_cutoff[cell_ID])]
-    dist_df[['group']] <- groupNum
-    if(dist_df[['separate']][1]){
-      # separate 1 and 2
-      dist_df[['group']][2] <- groupNum+1
-    }
-    if(dist_df[['separate']][2]){
-      # separate 2 and 3
-      dist_df[['group']][3] <- dist_df[['group']][2]+1
-    }
-    
-    if(!dist_df[['separate']][3]){
-      # keep 1 and 3
-      dist_df[['group']][3] <- dist_df[['group']][1]
-    }
-    
-    dfCoord_subset[['transcript_group']] <- dist_df[['group']]
-    
-    return(dfCoord_subset)
-  }
-  
-  
   # function for each cell based on delaunay
   my_fun_delanuay <- function(df_subset){
     each_cell <- df_subset[[cellID_coln]][1]
@@ -684,9 +648,11 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
     # this would result error in delaunay network generation
     dfCoord_subset <- unique(df_subset[, .SD, .SDcols = transSpatLocs_coln])
     
-    # 2 points
-    if(nrow(dfCoord_subset) ==2){
-      # direct cutoff
+    # 1 point
+    if(nrow(dfCoord_subset) ==1){
+      dfCoord_subset[['transcript_group']] = 1
+    } else if(nrow(dfCoord_subset) ==2){
+      # 2 points, group by direct cutoff
       message(sprintf("%s has %d unique coordinates, grouped by direct cutoff %.4f. ", 
                       each_cell, nrow(dfCoord_subset), orphan_cutoff[each_cell]))
       
@@ -702,7 +668,10 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
       message(sprintf("%s has %d unique coordinates, grouped by direct cutoff %.4f. ", 
                       each_cell, nrow(dfCoord_subset), orphan_cutoff[each_cell]))
       
-      dfCoord_subset <- myFun_3point_eachCell(dfCoord_subset, each_cell, groupNum = 1)
+      dfCoord_subset <- myFun_3point_singleCell(dfCoord_subset, 
+                                                transSpatLocs_coln = transSpatLocs_coln, 
+                                                distance_cutoff = orphan_cutoff[each_cell], 
+                                                startGroup = 1)
       
     } else {
       # delaunay network for 3+ points in 2D and 4+ points in 3D
@@ -751,7 +720,7 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
         
         # identify groups
         group_vector <- igraph::components(network_igraph, mode = "weak")[['membership']]
-        dfCoord_subset[['transcript_group']] <- rep(0, nrow(dfCoord_subset))
+        dfCoord_subset[['transcript_group']] <- 0
         dfCoord_subset[['transcript_group']] <- group_vector[dfCoord_subset[['tmp_transID']]]
         
         # some solo transcript would have membership/transcript_group = NA, assign new group based on distance
@@ -774,7 +743,10 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
             }
           } else if(nrow(solo_transcripts)== 3){
             # distance between 3 points, must be 3D
-            solo_transcripts <- myFun_3point_eachCell(solo_transcripts, each_cell, groupNum)
+            solo_transcripts <- myFun_3point_singleCell(solo_transcripts, 
+                                                        transSpatLocs_coln = transSpatLocs_coln, 
+                                                        distance_cutoff = orphan_cutoff[each_cell], 
+                                                        startGroup = groupNum)
             
           } else {
             # too many solo transcripts, all listed as individual transcript group
@@ -794,12 +766,17 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
                         each_cell, nrow(dfCoord_subset)))
         
       }
-      
-      dfCoord_subset <- as.data.frame(dfCoord_subset)[, c(transSpatLocs_coln, 'transcript_group')]
+      # data. table
+      dfCoord_subset <- dfCoord_subset[, .SD, .SDcols = c(transSpatLocs_coln, 'transcript_group')]
+    }
+    # assign directly if all unique
+    if(nrow(df_subset) == nrow(dfCoord_subset)){
+      df_subset[['transcript_group']] <- dfCoord_subset[['transcript_group']]
+    } else {
+      # merge by coordinate if duplicate coordinates exist
+      df_subset <- merge(df_subset, dfCoord_subset, by = transSpatLocs_coln)
     }
     
-    df_subset <- merge(df_subset, dfCoord_subset, by = transSpatLocs_coln)
-
     return(df_subset)
   }
   
@@ -814,4 +791,51 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   }
   
   return(transcript_df)
+}
+
+
+#' @title myFun_3point_singleCell
+#' @description supporting function for \code{groupTranscripts_Delanuay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
+#' @param dfCoord_subset transcript data.table for single cell with only 3 transcripts in rows
+#' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param distance_cutoff maximum distance within connected transcript group 
+#' @return a data.table with `transcript_group` column added to original input data.table
+#' @importFrom data.table as.data.table setDT
+# function for 3 point case in a single cell only
+myFun_3point_singleCell <- function(dfCoord_subset, 
+                                  transSpatLocs_coln = c('x','y','z'),
+                                  distance_cutoff = 2.7, 
+                                  startGroup = 1){
+  
+  dfCoord_subset <- data.table::as.data.table(dfCoord_subset)
+  dist_df <- cbind(dfCoord_subset[1:3, .SD, .SDcols = transSpatLocs_coln], dfCoord_subset[c(2,3,1), .SD, .SDcols = transSpatLocs_coln])
+  colnames(dist_df) <- c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))
+  dist_df[['from']] <- as.character(seq_len(nrow(dfCoord_subset)))
+  dist_df[['to']] <- as.character(seq_len(nrow(dfCoord_subset)))[c(2,3,1)]
+  dist_df <- data.table::setDT(dist_df)
+  
+  dist_df[, `:=`(distance, stats::dist(x = matrix(.SD, nrow = 2, byrow = T))), 
+          by = 1:nrow(dist_df), 
+          .SDcols = c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))]
+  dist_df[, `:=`(distance, as.numeric(distance))]
+  dist_df[, `:=`(weight, 1/distance)]
+  dist_df[, `:=` (separate, distance >distance_cutoff)]
+  dist_df[['group']] <- startGroup
+  if(dist_df[['separate']][1]){
+    # separate 1 and 2
+    dist_df[['group']][2] <- startGroup+1
+  }
+  if(dist_df[['separate']][2]){
+    # separate 2 and 3
+    dist_df[['group']][3] <- dist_df[['group']][2]+1
+  }
+  
+  if(!dist_df[['separate']][3]){
+    # keep 1 and 3
+    dist_df[['group']][3] <- dist_df[['group']][1]
+  }
+  
+  dfCoord_subset[['transcript_group']] <- dist_df[['group']]
+  
+  return(dfCoord_subset)
 }
