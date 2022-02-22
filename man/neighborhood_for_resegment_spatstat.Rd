@@ -28,7 +28,7 @@ neighborhood_for_resegment_spatstat(
 \item{neighbor_distance_xy}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.}
 
 \item{distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron).
-If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{neighbor_distance_xy}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 10 times of 90\% quantile of minimal molecular distance as \code{distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
+If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{neighbor_distance_xy}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90\% quantile of minimal molecular distance as \code{distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
 \item{transcript_df}{the data.frame with transcript_id, target/geneName, x, y and cell_id}
 

@@ -1,4 +1,4 @@
-#' @title spatialModelScoreCell_hyperplane
+#' @title score_cell_segmentation_error
 #' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -17,12 +17,12 @@
 #' }
 #' @details For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D and a null model: mod_null = lm(tLLRv2 ~ 1); then run lmtest::lrtest(mod_alternative, mod_null). Return statistics for mod_alternative$fitted.values (standard deviation and minimal value), summary(mod_alternative)$r.squared and as well as lrtest chi-squared value.  
 #' @export
-spatialModelScoreCell_hyperplane <- function(chosen_cells, transcript_df, 
-                                             cellID_coln = "CellId", 
-                                             transID_coln = "transcript_id",
-                                             score_coln = "score", 
-                                             spatLocs_colns = c("x","y","z"),
-                                             model_cutoff = 50){
+score_cell_segmentation_error <- function(chosen_cells, transcript_df, 
+                                          cellID_coln = "CellId", 
+                                          transID_coln = "transcript_id",
+                                          score_coln = "score", 
+                                          spatLocs_colns = c("x","y","z"),
+                                          model_cutoff = 50){
   
   # check if model_cutoff making sense
   if(model_cutoff < 2){
@@ -111,8 +111,7 @@ spatialModelScoreCell_hyperplane <- function(chosen_cells, transcript_df,
 
 
 #' @title flagTranscripts_LDA_hyperplane
-#' @description find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model
-#' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
+#' @description find out the spatially connected transcripts among chosen_transcripts based on LDA hyperplane spatial model which scores each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -295,9 +294,8 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
 }
 
 
-#' @title flagTranscripts_SVM_hyperplane
-#' @description find out the spatially connected transcripts among chosen_transcripts based on SVM hyperplane spatial model
-#' @description Score each cell for how much their transcripts change their goodness-of-fit over space. 
+#' @title flagTranscripts_SVM
+#' @description find out the spatially connected transcripts among chosen_transcripts based on SVM spatial model which scores each cell for how much their transcripts change their goodness-of-fit over space. 
 #' @param chosen_cells the cell_ID of chosen cells
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
 #' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
@@ -322,19 +320,19 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
 #' }
 #' @details For score of transcripts within each cell, assign 0 or 1 label to each transcript based on whether the score is above score_cutoff; then run support vector machine on svm(above_cutoff ~ x + y) for 2D, svm(above_cutoff ~ x + y + z) for 3D, default to do radial kernal with scale = TRUE and gamma = 0.1.  
 #' @export
-flagTranscripts_SVM_hyperplane <- function(chosen_cells, 
-                                           score_GeneMatrix, 
-                                           transcript_df, 
-                                           cellID_coln = "CellId", 
-                                           transID_coln = "transcript_id",
-                                           transGene_coln = "target",
-                                           score_coln = "score", 
-                                           spatLocs_colns = c("x","y","z"),
-                                           model_cutoff = 50, 
-                                           score_cutoff = -2, 
-                                           svm_args = list(kernel = "radial", 
-                                                           scale = TRUE, 
-                                                           gamma = 0.1)){
+flagTranscripts_SVM <- function(chosen_cells, 
+                                score_GeneMatrix, 
+                                transcript_df, 
+                                cellID_coln = "CellId", 
+                                transID_coln = "transcript_id",
+                                transGene_coln = "target",
+                                score_coln = "score", 
+                                spatLocs_colns = c("x","y","z"),
+                                model_cutoff = 50, 
+                                score_cutoff = -2, 
+                                svm_args = list(kernel = "radial", 
+                                                scale = TRUE, 
+                                                gamma = 0.1)){
   
   # check if model_cutoff making sense
   if(model_cutoff < 2){
@@ -450,7 +448,7 @@ flagTranscripts_SVM_hyperplane <- function(chosen_cells,
   # get score for each transcripts
   transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
   rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
-
+  
   tmp_score <- as.data.frame(transcriptGeneScore)
   tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
   tmp_score[['SVM_class']] <- transcript_df[['SVM_class']]
@@ -642,125 +640,141 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   }
   
   # (5) assign group for multiple flagged transcript cases using delanuay network analysis
+  # function for each cell based on delaunay
   my_fun_delanuay <- function(df_subset){
     each_cell <- df_subset[[cellID_coln]][1]
     
     # some cells may have multiple transcripts in exactly same location
+    # this would result error in delaunay network generation
+    dfCoord_subset <- unique(df_subset[, .SD, .SDcols = transSpatLocs_coln])
     
-    if(d2_or_d3 ==2){
-      # run 2D
-      delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
-                                                              spatLocs_df = df_subset, 
-                                                              ID_column = transID_coln,
-                                                              spatLocs_column = transSpatLocs_coln)
-    } else {
-      # 3D specify, check if all selected transcript in same z plane
-      z_num <- unique(df_subset[[transSpatLocs_coln[3]]])
-      if(length(z_num) <2){
-        # single z-plane, run as 2D
-        message(sprintf("%s with all %d flagged transcripts in same z plane, run 2D network analysis.", 
-                        each_cell, nrow(df_subset)))
-        delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
-                                                                spatLocs_df = df_subset, 
-                                                                ID_column = transID_coln,
-                                                                spatLocs_column = transSpatLocs_coln[1:2])
+    # 1 point
+    if(nrow(dfCoord_subset) ==1){
+      dfCoord_subset[['transcript_group']] = 1
+    } else if(nrow(dfCoord_subset) ==2){
+      # 2 points, group by direct cutoff
+      message(sprintf("%s has %d unique coordinates, grouped by direct cutoff %.4f. ", 
+                      each_cell, nrow(dfCoord_subset), orphan_cutoff[each_cell]))
+      
+      if(stats::dist(dfCoord_subset) > orphan_cutoff[each_cell]){
+        dfCoord_subset[['transcript_group']] <- seq_len(nrow(dfCoord_subset))
       } else {
-        # multiple z-plane, run as 3D
-        delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
-                                                                spatLocs_df = df_subset, 
-                                                                ID_column = transID_coln,
-                                                                spatLocs_column = transSpatLocs_coln)
+        dfCoord_subset[['transcript_group']] = 1
       }
-    }
-    
-    # if failed to give delaunay network, assign separate group to exact same coordinates
-    if(!is.null(delaunayNW_Obj)){
-      # make decision based on network
-      transNetWorkDT <- delaunayNW_Obj$networkDT
       
-      ## convert to igraph object
-      all_index = unique(x = c(transNetWorkDT$from, transNetWorkDT$to))
-      network_igraph = igraph::graph_from_data_frame(transNetWorkDT[,.(from, to, weight, distance)], directed = TRUE, vertices = all_index)
       
-      # remove edges that are longer than cutoff, check the number of unconnected group
-      if(distance_cutoff !='auto'){
-        # better to use auto, if not, use distance_cutoff >10 pixel = 1.8um, cutoff = 15 pixel = 2.7um works best 
-        network_igraph <- igraph::delete.edges(network_igraph, igraph::E(network_igraph)[distance > distance_cutoff])
-      } 
+    } else if (nrow(dfCoord_subset) ==3 & d2_or_d3 ==3){
+      # 3 points in 3D
+      message(sprintf("%s has %d unique coordinates, grouped by direct cutoff %.4f. ", 
+                      each_cell, nrow(dfCoord_subset), orphan_cutoff[each_cell]))
       
-      # identify groups
-      group_vector <- igraph::components(network_igraph, mode = "weak")[['membership']]
-      df_subset[['transcript_group']] <- rep(0, nrow(df_subset))
-      df_subset[['transcript_group']] <- group_vector[df_subset[[transID_coln]]]
+      dfCoord_subset <- myFun_3point_singleCell(dfCoord_subset, 
+                                                transSpatLocs_coln = transSpatLocs_coln, 
+                                                distance_cutoff = orphan_cutoff[each_cell], 
+                                                startGroup = 1)
       
-      # some solo transcript would have membership/transcript_group = NA, assign new group based on distance
-      solo_transcripts <- df_subset[is.na(df_subset[['transcript_group']]), ]
-      if(nrow(solo_transcripts) >0){
-        
-        groupNum <- length(unique(df_subset[['transcript_group']])) # include na
-        message(sprintf("%s has %d solo transcripts, flag based on distance cutoff = %.4f.", 
-                        each_cell, nrow(solo_transcripts), orphan_cutoff[each_cell]))
-        
-        if(nrow(solo_transcripts) ==1){
-          # 1 transcript
-          solo_transcripts[['transcript_group']]<- groupNum
-        } else if(nrow(solo_transcripts) ==2){
-          # 2 transcripts
-          if(stats::dist(solo_transcripts[, .SD, .SDcols = transSpatLocs_coln]) > orphan_cutoff[each_cell]){
-            solo_transcripts[['transcript_group']] <- c(groupNum,groupNum+1)
-          }else {
-            solo_transcripts[['transcript_group']] <- rep(groupNum, nrow(solo_transcripts))
-          }
-        } else if(nrow(solo_transcripts)== 3){
-          # distance between 3 points, must be 3D
-          dist_df <- cbind(solo_transcripts[1:3, .SD, .SDcols = transSpatLocs_coln], solo_transcripts[c(2,3,1), .SD, .SDcols = transSpatLocs_coln])
-          colnames(dist_df) <- c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))
-          dist_df[['from']] <- solo_transcripts[[transID_coln]]
-          dist_df[['to']] <- solo_transcripts[[transID_coln]][c(2,3,1)]
-          dist_df[['cell_ID']] <- solo_transcripts[[cellID_coln]]
-          dist_df <- data.table::setDT(dist_df)
-          
-          dist_df[, `:=`(distance, stats::dist(x = matrix(.SD, nrow = 2, byrow = T))), 
-                  by = 1:nrow(dist_df), 
-                  .SDcols = c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))]
-          dist_df[, `:=`(distance, as.numeric(distance))]
-          dist_df[, `:=`(weight, 1/distance)]
-          dist_df[, `:=` (separate, distance >orphan_cutoff[cell_ID])]
-          dist_df[['group']] <- rep(groupNum, nrow(dist_df))
-          if(dist_df[['separate']][1]){
-            # separate 1 and 2
-            dist_df[['group']][2] <- groupNum+1
-          }
-          if(dist_df[['separate']][2]){
-            # separate 2 and 3
-            dist_df[['group']][3] <- dist_df[['group']][2]+1
-          }
-          
-          if(!dist_df[['separate']][3]){
-            # keep 1 and 3
-            dist_df[['group']][3] <- dist_df[['group']][1]
-          }
-          
-          solo_transcripts[['transcript_group']] <- dist_df[['group']]
-          
+    } else {
+      # delaunay network for 3+ points in 2D and 4+ points in 3D
+      dfCoord_subset[['tmp_transID']] <- seq_len(nrow(dfCoord_subset))
+      
+      if(d2_or_d3 ==2){
+        # run 2D
+        delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
+                                                                spatLocs_df = dfCoord_subset, 
+                                                                ID_column = 'tmp_transID',
+                                                                spatLocs_column = transSpatLocs_coln)
+      } else {
+        # 3D specify, check if all selected transcript in same z plane
+        z_num <- unique(dfCoord_subset[[transSpatLocs_coln[3]]])
+        if(length(z_num) <2){
+          # single z-plane, run as 2D
+          message(sprintf("%s with all %d flagged transcripts of unique transcripts in same z plane, run 2D network analysis.", 
+                          each_cell, nrow(dfCoord_subset)))
+          delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
+                                                                  spatLocs_df = dfCoord_subset, 
+                                                                  ID_column = 'tmp_transID',
+                                                                  spatLocs_column = transSpatLocs_coln[1:2])
         } else {
-          # too many solo transcripts, all listed as individual transcript group
-          solo_transcripts[['transcript_group']]<- seq(groupNum, groupNum + nrow(solo_transcripts) -1)
+          # multiple z-plane, run as 3D
+          delaunayNW_Obj <- createSpatialDelaunayNW_from_spatLocs(config_spatNW = config_spatNW_transcript, 
+                                                                  spatLocs_df = dfCoord_subset, 
+                                                                  ID_column = 'tmp_transID',
+                                                                  spatLocs_column = transSpatLocs_coln)
+        }
+      }
+      
+      # if failed to give delaunay network, assign separate group to exact same coordinates
+      if(!is.null(delaunayNW_Obj)){
+        # make decision based on network
+        transNetWorkDT <- delaunayNW_Obj$networkDT
+        
+        ## convert to igraph object
+        all_index = unique(x = c(transNetWorkDT$from, transNetWorkDT$to))
+        network_igraph = igraph::graph_from_data_frame(transNetWorkDT[,.(from, to, weight, distance)], directed = TRUE, vertices = all_index)
+        
+        # remove edges that are longer than cutoff, check the number of unconnected group
+        if(distance_cutoff !='auto'){
+          # better to use auto, if not, use distance_cutoff >10 pixel = 1.8um, cutoff = 15 pixel = 2.7um works best 
+          network_igraph <- igraph::delete.edges(network_igraph, igraph::E(network_igraph)[distance > distance_cutoff])
+        } 
+        
+        # identify groups
+        group_vector <- igraph::components(network_igraph, mode = "weak")[['membership']]
+        dfCoord_subset[['transcript_group']] <- 0
+        dfCoord_subset[['transcript_group']] <- group_vector[dfCoord_subset[['tmp_transID']]]
+        
+        # some solo transcript would have membership/transcript_group = NA, assign new group based on distance
+        solo_transcripts <- dfCoord_subset[is.na(dfCoord_subset[['transcript_group']]), ]
+        if(nrow(solo_transcripts) >0){
+          
+          groupNum <- length(unique(dfCoord_subset[['transcript_group']])) # include na
+          message(sprintf("%s has %d solo transcripts, flag based on distance cutoff = %.4f.", 
+                          each_cell, nrow(solo_transcripts), orphan_cutoff[each_cell]))
+          
+          if(nrow(solo_transcripts) ==1){
+            # 1 transcript
+            solo_transcripts[['transcript_group']]<- groupNum
+          } else if(nrow(solo_transcripts) ==2){
+            # 2 transcripts
+            if(stats::dist(solo_transcripts[, .SD, .SDcols = transSpatLocs_coln]) > orphan_cutoff[each_cell]){
+              solo_transcripts[['transcript_group']] <- c(groupNum,groupNum+1)
+            }else {
+              solo_transcripts[['transcript_group']] <- groupNum
+            }
+          } else if(nrow(solo_transcripts)== 3){
+            # distance between 3 points, must be 3D
+            solo_transcripts <- myFun_3point_singleCell(solo_transcripts, 
+                                                        transSpatLocs_coln = transSpatLocs_coln, 
+                                                        distance_cutoff = orphan_cutoff[each_cell], 
+                                                        startGroup = groupNum)
+            
+          } else {
+            # too many solo transcripts, all listed as individual transcript group
+            solo_transcripts[['transcript_group']]<- seq(groupNum, groupNum + nrow(solo_transcripts) -1)
+          }
+          
+          # update dfCoord_subset with solo_transcripts
+          solo_converter <- solo_transcripts[['transcript_group']]
+          names(solo_converter) <- solo_transcripts[['tmp_transID']]
+          dfCoord_subset[['transcript_group']][is.na(dfCoord_subset[['transcript_group']])] <- solo_converter[dfCoord_subset[['tmp_transID']][is.na(dfCoord_subset[['transcript_group']])]]
         }
         
-        # update df_subset with solo_transcripts
-        solo_converter <- solo_transcripts[['transcript_group']]
-        names(solo_converter) <- solo_transcripts[[transID_coln]]
-        df_subset[['transcript_group']][is.na(df_subset[['transcript_group']])] <- solo_converter[df_subset[[transID_coln]][is.na(df_subset[['transcript_group']])]]
+      }else{
+        # if still NULL network, get assign separate groupID
+        dfCoord_subset[['transcript_group']] <- seq_len(nrow(dfCoord_subset))
+        message(sprintf("%s return NULL delaunay network, has %d unique coordinates as separate group. ", 
+                        each_cell, nrow(dfCoord_subset)))
+        
       }
-      
-    }else{
-      # if NULL network, get unique coordinates, assign separate groupID
-      dfCoord_subset <- unique(df_subset[, .SD, .SDcols = transSpatLocs_coln])
-      dfCoord_subset[['transcript_group']] <- seq_len(nrow(dfCoord_subset))
+      # data. table
+      dfCoord_subset <- dfCoord_subset[, .SD, .SDcols = c(transSpatLocs_coln, 'transcript_group')]
+    }
+    # assign directly if all unique
+    if(nrow(df_subset) == nrow(dfCoord_subset)){
+      df_subset[['transcript_group']] <- dfCoord_subset[['transcript_group']]
+    } else {
+      # merge by coordinate if duplicate coordinates exist
       df_subset <- merge(df_subset, dfCoord_subset, by = transSpatLocs_coln)
-      message(sprintf("%s return NULL delaunay network, has %d unique coordinates as separate group. ", 
-                      each_cell, nrow(dfCoord_subset)))
     }
     
     return(df_subset)
@@ -777,4 +791,51 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   }
   
   return(transcript_df)
+}
+
+
+#' @title myFun_3point_singleCell
+#' @description supporting function for \code{groupTranscripts_Delanuay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
+#' @param dfCoord_subset transcript data.table for single cell with only 3 transcripts in rows
+#' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param distance_cutoff maximum distance within connected transcript group 
+#' @return a data.table with `transcript_group` column added to original input data.table
+#' @importFrom data.table as.data.table setDT
+# function for 3 point case in a single cell only
+myFun_3point_singleCell <- function(dfCoord_subset, 
+                                  transSpatLocs_coln = c('x','y','z'),
+                                  distance_cutoff = 2.7, 
+                                  startGroup = 1){
+  
+  dfCoord_subset <- data.table::as.data.table(dfCoord_subset)
+  dist_df <- cbind(dfCoord_subset[1:3, .SD, .SDcols = transSpatLocs_coln], dfCoord_subset[c(2,3,1), .SD, .SDcols = transSpatLocs_coln])
+  colnames(dist_df) <- c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))
+  dist_df[['from']] <- as.character(seq_len(nrow(dfCoord_subset)))
+  dist_df[['to']] <- as.character(seq_len(nrow(dfCoord_subset)))[c(2,3,1)]
+  dist_df <- data.table::setDT(dist_df)
+  
+  dist_df[, `:=`(distance, stats::dist(x = matrix(.SD, nrow = 2, byrow = T))), 
+          by = 1:nrow(dist_df), 
+          .SDcols = c(paste0(transSpatLocs_coln,'_begin'), paste0(transSpatLocs_coln,'_end'))]
+  dist_df[, `:=`(distance, as.numeric(distance))]
+  dist_df[, `:=`(weight, 1/distance)]
+  dist_df[, `:=` (separate, distance >distance_cutoff)]
+  dist_df[['group']] <- startGroup
+  if(dist_df[['separate']][1]){
+    # separate 1 and 2
+    dist_df[['group']][2] <- startGroup+1
+  }
+  if(dist_df[['separate']][2]){
+    # separate 2 and 3
+    dist_df[['group']][3] <- dist_df[['group']][2]+1
+  }
+  
+  if(!dist_df[['separate']][3]){
+    # keep 1 and 3
+    dist_df[['group']][3] <- dist_df[['group']][1]
+  }
+  
+  dfCoord_subset[['transcript_group']] <- dist_df[['group']]
+  
+  return(dfCoord_subset)
 }

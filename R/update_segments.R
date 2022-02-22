@@ -1,18 +1,18 @@
 #' @title update_transDF_ResegActions
 #' @description Update transcript data.frame based on resegmentation action, calculate the new cell type and mean per cell spatial coordinates
 #' @param transcript_df the data.frame of transcript to be updated 
-#' @param reseg_full_converter a named converter to update the cell ID in transcript_df, cell_ID in name would be converted to cell_ID in value; discard cell_ID with value = NA
-#' @param score_GeneMatrix the column name of cell_ID of query cell in neighborhood_df 
-#' @param transGene_coln the column name of target or gene name in transcript_df
-#' @param cellID_coln the column name of cell_ID in transcript_df
-#' @param celltype_coln the column name of cell type in transcript_df
+#' @param reseg_full_converter a named converter to update the cell ID in `transcript_df`, cell_ID in name would be converted to cell_ID in value; discard cell_ID with value = NA
+#' @param score_GeneMatrix a gene x cell-type score matrix
+#' @param transGene_coln the column name of target or gene name in `transcript_df`
+#' @param cellID_coln the column name of cell_ID in `transcript_df`
+#' @param celltype_coln the column name of cell type in `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in transcript_df 
 #' @param return_perCellDF flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @return a list 
-#' \enumerate{
-#'    \item{updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{perCell_DT, a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE}
-#'    \item{perCell_expression, a gene x cell count table for updated transcript data.frame when return_perCellDF = TRUE}
+#' \describe{
+#'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
+#'    \item{perCell_DT}{a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE}
+#'    \item{perCell_expression}{a gene x cell count sparse matrix for updated transcript data.frame when return_perCellDF = TRUE}
 #' }
 #' @details Update transcript data.frame based on resegmentation action and get new cell type; when return_perCellDF = TRUE, return gene x cell count matrix and per cell data.frame with mean per cell spatial coordinates and new cell type.
 #' @export

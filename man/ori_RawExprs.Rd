@@ -13,4 +13,7 @@ data(ori_RawExprs)
 \description{
 The example dataset is based on one run of SMI RNA readout for FFPE melanoma tissue samples. It contains the single cell gene expression profile for 1375 cells across 960 genes.
 }
+\seealso{
+\link{mini_transcriptDF} for corresponding transcript level dataset, \link{ori_CellStatsDF} for corresponding cell level dataset
+}
 \keyword{datasets}

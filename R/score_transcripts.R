@@ -92,10 +92,10 @@ getCellType_maxScore <- function(score_GeneMatrix,
   # get common genes
   common_genes <- intersect(rownames(score_GeneMatrix), 
                             unique(transcript_df[[transGene_coln]]))
-  message(sprintf("Found %d common genes among transcript_df, and score_GeneMatrix. ", 
+  message(sprintf("Found %d common genes among transcript_df and score_GeneMatrix. ", 
                   length(common_genes)))
   
-  if(any(length(common_genes)<1)){
+  if(length(common_genes)<1){
     stop("Too few common genes to proceed. Check if score_GeneMatrix is a gene x cell-type matrix.")
   }
   

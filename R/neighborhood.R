@@ -326,21 +326,27 @@ neighborhood_for_resegment <- function(chosen_cells = NULL,
         
       }
       
-      transNetWorkDT <- delaunayNW_Obj$networkDT
-      # remove edges that are longer than cutoff
-      if(distance_cutoff !='auto'){
-        # better to use auto, if not, use distance_cutoff >10 pixel = 1.8um, cutoff = 15 pixel = 2.7um works best 
-        transNetWorkDT <- transNetWorkDT[distance <= distance_cutoff]
+      # if failed to give delaunay network, treat as no valid direct neighbor
+      if(is.null(delaunayNW_Obj)){
+        connected_neighbor <- NULL
+      } else {
+        
+        transNetWorkDT <- delaunayNW_Obj$networkDT
+        # remove edges that are longer than cutoff
+        if(distance_cutoff !='auto'){
+          # better to use auto, if not, use distance_cutoff >10 pixel = 1.8um, cutoff = 15 pixel = 2.7um works best 
+          transNetWorkDT <- transNetWorkDT[distance <= distance_cutoff]
+        }
+        
+        # does any neighbor belong to chosen_transcripts
+        connect_flag <- tapply(transNetWorkDT$from, transNetWorkDT$to, function(x) any(x %in% query_transID))
+        connected_all <- names(connect_flag)[connect_flag]
+        connect_flag <- tapply(transNetWorkDT$to, transNetWorkDT$from, function(x) any(x %in% query_transID))
+        connected_all <- unique(c(names(connect_flag)[connect_flag], connected_all))
+        
+        # transcripts in neighbor cells but connected to chosen_transcripts
+        connected_neighbor <- setdiff(connected_all, query_transID)
       }
-      
-      # does any neighbor belong to chosen_transcripts
-      connect_flag <- tapply(transNetWorkDT$from, transNetWorkDT$to, function(x) any(x %in% query_transID))
-      connected_all <- names(connect_flag)[connect_flag]
-      connect_flag <- tapply(transNetWorkDT$to, transNetWorkDT$from, function(x) any(x %in% query_transID))
-      connected_all <- unique(c(names(connect_flag)[connect_flag], connected_all))
-      
-      # transcripts in neighbor cells but connected to chosen_transcripts
-      connected_neighbor <- setdiff(connected_all, query_transID)
       
     }
     
