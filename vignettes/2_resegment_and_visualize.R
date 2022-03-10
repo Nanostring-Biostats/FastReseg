@@ -290,20 +290,14 @@ if(TRUE){
 
 
 
-## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
-## try to do denaulay on flagged transcript only and identity groups in network
-# https://bookdown.org/markhoff/social_network_analysis/finding-groups-in-networks.html
-# take ~1.5min to run 65651 transcripts in 5640 cells (451 cells = 8.00% with same class based on SVM)
+## (3) do spaital analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
+system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_dbscan(chosen_transcripts = flaggedSVM_transID3d, 
+                                                                 distance_cutoff = config_dimension[['TransDistance_cutoff']],
+                                                                 transcript_df = flagged_transDF3d_cleaned, 
+                                                                 cellID_coln = "cell_ID", 
+                                                                 transID_coln = "transcript_id",
+                                                                 transSpatLocs_coln = c('x','y','z')))
 
-system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
-                                                                   config_spatNW_transcript = config_spatNW2, 
-                                                                   distance_cutoff = config_dimension[['TransDistance_cutoff']],
-                                                                   transcript_df = flagged_transDF3d_cleaned, 
-                                                                   cellID_coln = "cell_ID", 
-                                                                   transID_coln = "transcript_id",
-                                                                   transSpatLocs_coln = c('x','y','z')))
-# user  system elapsed 
-# 135.371   6.814  99.740
 
 reseg_logInfo[['flagging_cleaned_SVM']][['cellsWflagged_transGroup']] <- unique(flaggedSVM_transGroupDF3d[['cell_ID']][which(flaggedSVM_transGroupDF3d[['transcript_group']] >0)])
 
@@ -390,7 +384,7 @@ if(FALSE){
                    flagged_cells_cleaned, # cells flagged for resegmenation
                    flagged_transDF_SVM3, # 3D SVM spatial model to flag transcripts in flagged cells
                    flaggedSVM_transID3d, # flagged transcript ID
-                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on delanuay spatial network
+                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on spatila dbscan clustering
                    # neighborReSeg_df_cleanSVM, # neighborhood info for flagged transcript groups
                    # post_reseg_results_cleanSVM_leiden, # post resegmentation results
                    # # for visualization of resegmentation impact (no LDA)
@@ -479,7 +473,7 @@ if(FALSE){
                    flagged_cells_cleaned, # cells flagged for resegmenation
                    flagged_transDF_SVM3, # 3D SVM spatial model to flag transcripts in flagged cells
                    flaggedSVM_transID3d, # flagged transcript ID
-                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on delanuay spatial network
+                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on dbscan spatial clustering
                    neighborReSeg_df_cleanSVM, # neighborhood info for flagged transcript groups
                    # post_reseg_results_cleanSVM_leiden, # post resegmentation results
                    # # for visualization of resegmentation impact (no LDA)
@@ -1016,7 +1010,7 @@ system.time(save(currentBlock, # slide, slide name, slide position of current bl
                  flagged_cells_cleaned, # cells flagged for resegmenation
                  flagged_transDF_SVM3, # 3D SVM spatial model to flag transcripts in flagged cells
                  flaggedSVM_transID3d, # flagged transcript ID
-                 flaggedSVM_transGroupDF3d, # group the flagged transcripts based on delanuay spatial network
+                 flaggedSVM_transGroupDF3d, # group the flagged transcripts based on dbscan spatila clustering
                  neighborReSeg_df_cleanSVM, # neighborhood info for flagged transcript groups
                  post_reseg_results_cleanSVM_leiden, # post resegmentation results
                  # for visualization of resegmentation impact (no LDA)

@@ -26,7 +26,7 @@
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -323,59 +323,18 @@ fastReseg_core_externalRef <- function(refProfiles,
   
   
   ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
-  ## (3.1) perform delaunay on SVM-flagged transcripts within flagged cells ----
-  # # config for spatial network for transcripts
-  # this config would be used by two functions, `groupTranscripts_Delanuay` and `decide_ReSegment_Operations_leidenCut`, 
-  # below to separate transcripts that would likely be from two different source cells based on their spatial clustering.
+  ## (3.1) perform dbscan on SVM-flagged transcripts within flagged cells ----
+  #  separate transcripts that would likely be from two different source cells based on their spatial clustering.
   
-  config_spatNW <- list(
-    # name for spatial network (default = 'Delaunay_network' or 'kNN_network' for method = 'Delaunay' or 'kNN', respectively if NULL)
-    name = 'transcript_delaunay_network',
-    # which spatial dimensions to use (default = all)
-    dimensions = "all",
-    # which method to use to create a spatial network, choose from c("Delaunay", "kNN"). (default = Delaunay)
-    method = 'Delaunay',
-    # minimum number of nearest neighbors if maximum_distance != NULL; used by both Delaunay and kNN methods
-    minimum_k = 0,
-    
-    #### Approach 1: create Delanuay network for HMRF module
-    # Delaunay method to use, choose from c("deldir", "delaunayn_geometry", "RTriangle")
-    delaunay_method = "delaunayn_geometry",
-    # distance cuttoff for nearest neighbors to consider for Delaunay network. 
-    maximum_distance_delaunay = "auto",
-    
-    ## only for delaunay_method = "delaunayn_geometry"
-    # (geometry) String containing extra control options for the underlying Qhull command; see the Qhull documentation (http://www.qhull.org/html/qdelaun.htm) for the available options. (default = 'Pp', do not report precision problems)
-    options = "Pp",
-    
-    ## only for delaunay_method = "RTriangle"
-    # (RTriangle) If TRUE prohibits the insertion of Steiner points on the mesh boundary.
-    Y = TRUE,
-    # (RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.
-    j = TRUE,
-    # (RTriangle) Specifies the maximum number of added Steiner points.
-    S = 0,
-    
-    #### Approach 2: create kNN network for leiden clustering
-    
-    # method to create kNN network
-    knn_method = "dbscan",
-    # number of nearest neighbors based on physical distance
-    k = 6,
-    # distance cuttoff for nearest neighbors to consider for kNN network
-    maximum_distance_knn = NULL
-  )
-  
-  # `groupTranscripts_Delanuay` function returns a data.frame of connected transcripts among chosen_transcripts, 
+  # `groupTranscripts_dbscan` function returns a data.frame of connected transcripts among chosen_transcripts, 
   # with each transcript in row, the group ID for the connected transcript groups and the original cell ID, spatial coordinates in column.
-  flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
-                                                         config_spatNW_transcript = config_spatNW, 
-                                                         distance_cutoff = molecular_distance_cutoff,
-                                                         transcript_df = flagged_transDF3d, 
-                                                         cellID_coln = cellID_coln, 
-                                                         transID_coln = transID_coln,
-                                                         transSpatLocs_coln = spatLocs_colns)
-  
+  flaggedSVM_transGroupDF3d <- groupTranscripts_dbscan(chosen_transcripts = flaggedSVM_transID3d, 
+                                                       distance_cutoff = molecular_distance_cutoff,
+                                                       transcript_df = flagged_transDF3d, 
+                                                       cellID_coln = cellID_coln, 
+                                                       transID_coln = transID_coln,
+                                                       transSpatLocs_coln = spatLocs_colns)
+
   message(sprintf("SVM spatial model further identified %d cells with transcript score all in same class, exclude from transcript group analysis.", 
                   length(unique(flagged_transDF_SVM3[[cellID_coln]])) - length(unique(flaggedSVM_transGroupDF3d[[cellID_coln]]))))
   
@@ -452,6 +411,46 @@ fastReseg_core_externalRef <- function(refProfiles,
                                                           transSpatLocs_coln = spatLocs_colns)
   
   #### (4.4) decide resegmentation operation: merge, new cell, or discard ----
+  # # config for spatial network for transcripts to be used by function `decide_ReSegment_Operations_leidenCut`
+  config_spatNW <- list(
+    # name for spatial network (default = 'Delaunay_network' or 'kNN_network' for method = 'Delaunay' or 'kNN', respectively if NULL)
+    name = 'transcript_delaunay_network',
+    # which spatial dimensions to use (default = all)
+    dimensions = "all",
+    # which method to use to create a spatial network, choose from c("Delaunay", "kNN"). (default = Delaunay)
+    method = 'Delaunay',
+    # minimum number of nearest neighbors if maximum_distance != NULL; used by both Delaunay and kNN methods
+    minimum_k = 0,
+    
+    #### Approach 1: create Delanuay network for HMRF module
+    # Delaunay method to use, choose from c("deldir", "delaunayn_geometry", "RTriangle")
+    delaunay_method = "delaunayn_geometry",
+    # distance cuttoff for nearest neighbors to consider for Delaunay network. 
+    maximum_distance_delaunay = "auto",
+    
+    ## only for delaunay_method = "delaunayn_geometry"
+    # (geometry) String containing extra control options for the underlying Qhull command; see the Qhull documentation (http://www.qhull.org/html/qdelaun.htm) for the available options. (default = 'Pp', do not report precision problems)
+    options = "Pp",
+    
+    ## only for delaunay_method = "RTriangle"
+    # (RTriangle) If TRUE prohibits the insertion of Steiner points on the mesh boundary.
+    Y = TRUE,
+    # (RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.
+    j = TRUE,
+    # (RTriangle) Specifies the maximum number of added Steiner points.
+    S = 0,
+    
+    #### Approach 2: create kNN network for leiden clustering
+    
+    # method to create kNN network
+    knn_method = "dbscan",
+    # number of nearest neighbors based on physical distance
+    k = 6,
+    # distance cuttoff for nearest neighbors to consider for kNN network
+    maximum_distance_knn = NULL
+  )
+  
+  
   # # `decide_ReSegment_Operations_leidenCut` function returns a list containing the following 4 elements:
   # `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation
   # `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with cell_ID in value.
@@ -617,7 +616,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when save_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, save when save_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_dbscan` functions, save when save_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when save_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -1053,7 +1052,7 @@ fastReseg_internalRef <- function(counts,
     # # `fastReseg_core_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
     # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE
-    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE
+    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE
     # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE
     # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE
     # updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter
