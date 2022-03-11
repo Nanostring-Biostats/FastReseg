@@ -347,7 +347,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   group_converter <- flaggedSVM_transGroupDF3d[['transcript_group']] 
   names(group_converter) <- flaggedSVM_transGroupDF3d[[transID_coln]]
   
-  tmp_idx <- which(flagged_transDF_SVM3[['transcript_id']] %in% flaggedSVM_transGroupDF3d[[transID_coln]])
+  tmp_idx <- which(flagged_transDF_SVM3[[transID_coln]] %in% flaggedSVM_transGroupDF3d[[transID_coln]])
   flagged_transDF_SVM3[['connect_group']][tmp_idx] <- group_converter[flagged_transDF_SVM3[[transID_coln]][tmp_idx]]
   
   rm(tmp_idx, group_converter)
@@ -1233,7 +1233,7 @@ myFun_fov_load <- function(path_to_fov){
 
 
 #' @title myFun_fov_prep
-#' @description supporting function for \code{fastReseg_internalRef}, to get unique IDs for cells and transcripts, and convert pixel coordinates to um. 
+#' @description supporting function for \code{fastReseg_internalRef} to get unique IDs for cells and transcripts, and convert pixel coordinates to um. 
 #' @param each_transDF data.frame for raw transcript
 #' @param fov_centerLocs a named vector of fov 2D coordinates
 #' @param prefix_vals a named vector of values to be used as prefix in 'UMI_transID' and 'UMI_cellID'; when `prefix_vals` != NULL, unique transcript_id would be generated from `prefix_vals` and `transID_coln` in `each_transDF` 
@@ -1247,7 +1247,7 @@ myFun_fov_load <- function(path_to_fov){
 #' @return a list contains transcript_df for downstream process and extracellular transcript data.frame
 #' ' \describe{
 #'    \item{intraC}{a data.frame for intracellular transcript, 'UMI_transID' and 'UMI_cellID' as column names for unique transcript_id and cell_id, 'target' as column name for target gene name}
-#'    \item{extraC}a data.frame for extracellular transcript, same structure as the `intraC` data.frame in returned list}
+#'    \item{extraC}{a data.frame for extracellular transcript, same structure as the `intraC` data.frame in returned list}
 #' }
 myFun_fov_prep <- function(each_transDF, 
                            fov_centerLocs, 

@@ -500,7 +500,6 @@ decide_ReSegment_Operations_geometry <- function(neighborhood_df,
                                                  score_baseline = NULL, 
                                                  lowerCutoff_transNum = NULL, 
                                                  higherCutoff_transNum= NULL, 
-                                                 config_spatNW_transcript,
                                                  transcript_df, 
                                                  cellID_coln = "CellId",
                                                  transID_coln = "transcript_id",
@@ -566,7 +565,7 @@ decide_ReSegment_Operations_geometry <- function(neighborhood_df,
   if(cutoff_diffWB <=0 | cutoff_diffWB >1){
     stop(sprintf("The providied cutoff_diffWB = %.3f, must be within (0, 1].", cutoff_diffWB))
   } else {
-    message(sprintf("A valid merging event must have no more than %.3f area change in white space upon merging to neighbor cell of consistent cell type. ", cutoff_diffWB))
+    message(sprintf("A valid merging event to neighbor cell of consistent cell type must have no more than %.3f area change in white space upon merging with respect to the concave area of either source cells. ", cutoff_diffWB))
   }
   
   
@@ -602,8 +601,8 @@ decide_ReSegment_Operations_geometry <- function(neighborhood_df,
       queryDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == query_cellID), ])
       neighDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == neighbor_cellID), ])
       
-      # if either cell has only 2 transcript, merge as it is
-      if(any(nrow(queryDF) ==2, nrow(neighDF) ==2)){
+      # if either cell has only 1~2 transcript, merge as it is
+      if(any(nrow(queryDF) <3, nrow(neighDF) <3)){
         outputs[['merge']] <- TRUE
       } else {
         # geometry analysis on 2D

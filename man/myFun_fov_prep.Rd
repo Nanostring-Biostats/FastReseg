@@ -42,9 +42,9 @@ myFun_fov_prep(
 a list contains transcript_df for downstream process and extracellular transcript data.frame
 ' \describe{
 \item{intraC}{a data.frame for intracellular transcript, 'UMI_transID' and 'UMI_cellID' as column names for unique transcript_id and cell_id, 'target' as column name for target gene name}
-\item{extraC}a data.frame for extracellular transcript, same structure as the \code{intraC} data.frame in returned list}
+\item{extraC}{a data.frame for extracellular transcript, same structure as the \code{intraC} data.frame in returned list}
 }
 }
 \description{
-supporting function for \code{fastReseg_internalRef}, to get unique IDs for cells and transcripts, and convert pixel coordinates to um.
+supporting function for \code{fastReseg_internalRef} to get unique IDs for cells and transcripts, and convert pixel coordinates to um.
 }
