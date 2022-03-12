@@ -601,8 +601,14 @@ decide_ReSegment_Operations_geometry <- function(neighborhood_df,
       queryDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == query_cellID), ])
       neighDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == neighbor_cellID), ])
       
-      # if either cell has only 1~2 transcript, merge as it is
-      if(any(nrow(queryDF) <3, nrow(neighDF) <3)){
+      # if either cell has only 1~2 transcripts of unique coordinates, merge as it is
+      flag_geometry <- sapply(list(query = queryDF, 
+                                   neighbor = neighDF), 
+                              function(eachDF){
+                                nrow(unique(eachDF[, transSpatLocs_coln[1:2]])) <3
+                              })
+      
+      if(any(flag_geometry)){
         outputs[['merge']] <- TRUE
       } else {
         # geometry analysis on 2D

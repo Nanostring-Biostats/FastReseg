@@ -38,7 +38,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                                 transID_coln = "transcript_id",
                                                 transGene_coln = "target", 
                                                 transSpatLocs_coln = c('x','y','z')){
-                                       
+  
   if(is.null(chosen_cells)){
     stop("Must define chosen_cells to start resegmentation evaluation in neighborhood of each chosen cell.")
   }
@@ -95,7 +95,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   transcript_df <- data.table::as.data.table(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, celltype_coln,transID_coln, transGene_coln, transSpatLocs_coln)]
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
-    
+  
   # get common cells
   common_cells <- unique(transcript_df[[cellID_coln]])
   
@@ -232,9 +232,9 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     message(sprintf("Use 5 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutofff` = %.4f for defining direct neighbor cells.", 
                     length(spatLocs_to_use), molecular_distance_cutoff))
     rm(queryTrans_pp, cutoff_transDF)
-    }
+  }
   
-                                   
+  
   
   # functions for each cell
   my_fun_eachCell <- function(query_df){
@@ -266,8 +266,19 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.ppp(local_pp, marks != each_cell)
       
-      # found at least 1 neighbor cell
-      if(nrow(neighborhood_pp$data) >0){
+      # found only 1 neighbor transcript
+      if(nrow(neighborhood_pp$data)==1){
+        neighbor_dist <- spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1)
+        if(neighbor_dist >  distance_cutoff){
+          # no neighbor cells
+          directCell_neighbors <- NULL
+        } else {
+          directCell_neighbors <- neighborhood_pp$marks
+        }
+        
+      } else if(nrow(neighborhood_pp$data) >1){
+        # found at least 1 neighbor cell
+        
         # 2D ppp outcomes
         # get minimal distance of each neighborhood cell to any transcript inside query cell
         neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
@@ -283,7 +294,6 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
         # no neighbor cells
         directCell_neighbors <- NULL
       }
-      
       
       
     } else {
@@ -303,8 +313,19 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.pp3(local_pp, marks != each_cell)
       
-      # found at least 1 neighbor cell
-      if(nrow(neighborhood_pp$data) >0){
+      # found only 1 neighbor transcript
+      if(nrow(neighborhood_pp$data)==1){
+        neighbor_dist <- spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1)
+        if(neighbor_dist >  distance_cutoff){
+          # no neighbor cells
+          directCell_neighbors <- NULL
+        } else {
+          directCell_neighbors <- neighborhood_pp$data$marks
+        }
+        
+      } else if(nrow(neighborhood_pp$data) >1){
+        # found at least 1 neighbor cell
+        
         # 3D pp3 outcome
         # get minimal distance of each neighborhood cell to any transcript inside query cell
         neighbor_distDF <- aggregate(spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1), 
@@ -418,12 +439,12 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 #' @details Locate neighbor cells of each query cell in 1st and 2nd dimension via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
 #' @export
 getNeighbors_transDF_spatstat <- function(chosen_cells = NULL, 
-                                           neighbor_distance_xy = NULL,
-                                           transcript_df, 
-                                           cellID_coln = "CellId", 
-                                           transID_coln = "transcript_id",
-                                           transSpatLocs_coln = c('x','y','z')){
-                                 
+                                          neighbor_distance_xy = NULL,
+                                          transcript_df, 
+                                          cellID_coln = "CellId", 
+                                          transID_coln = "transcript_id",
+                                          transSpatLocs_coln = c('x','y','z')){
+  
   if(is.null(chosen_cells)){
     stop("Must define chosen_cells to start resegmentation evaluation in neighborhood of each chosen cell.")
   }
@@ -452,7 +473,7 @@ getNeighbors_transDF_spatstat <- function(chosen_cells = NULL,
   transcript_df <- data.table::as.data.table(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transID_coln, transSpatLocs_coln)]
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
-
+  
   common_cells <- unique(transcript_df[[cellID_coln]])
   message(sprintf("Found %d common cells among transcript_df, cell_networkDT. ", 
                   length(common_cells)))
