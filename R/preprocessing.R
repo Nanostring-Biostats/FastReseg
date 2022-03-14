@@ -219,7 +219,7 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
                               pattern = "SUMMARY_Run[0-9]+_(.*)min[0-9]+_FOV[0-9]+_.xlsx")
     }
     
-    if ( length(exprs_files_list[[idx]])==0 ){
+    if ( length(exprs_files_list)==0 ){
       stop("No target call files are found.")
     }
     
