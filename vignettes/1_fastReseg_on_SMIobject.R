@@ -65,6 +65,10 @@ smi_inputs <- prepSMI_for_fastReseg(path_to_SMIobject = path_to_SMIobject,
 write.csv(smi_inputs[['transDF_fov_fileInfo']], 
           file = fs::path(sub_out_dir, 'transDF_fov_fileInfo.csv'))
 
+# save smi_inputs to disk
+save(smi_inputs, file = fs::path(sub_out_dir, "smi_inputs.RData"))
+
+
 #### (3) other parameters used in resegmentation workflow ----
 # ## use default values for those parameters, change them as needed below and then pass to `fastReseg_internalRef` function
 # # cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
