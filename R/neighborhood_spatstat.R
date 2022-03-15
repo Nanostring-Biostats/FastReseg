@@ -147,11 +147,18 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   query_pp <- spatstat.geom::subset.ppp(perCell_pp, marks %in% chosen_cells)
   
   # get closest 9 neighbors (exclude itself) data.frame, return what = which as index in original ppp  
-  neighbor_matrix <- as.matrix(spatstat.geom::nncross(query_pp, perCell_pp, what = "which", k = 2:10))
-  rownames(neighbor_matrix) <- perCell_pp$marks[perCell_pp$marks %in% chosen_cells]
+  # include first self elements when doing nncross to avoid error in case on too few cells in neighborhood
+  neighbor_matrix <- as.matrix(spatstat.geom::nncross(query_pp, perCell_pp, what = "which", k = 1:10))
+  
   # filter based on distance
-  distFlag <- which(spatstat.geom::nncross(query_pp, perCell_pp, what = "dist", k = 2:10) > neighbor_distance_xy)
+  distFlag <- which(spatstat.geom::nncross(query_pp, perCell_pp, what = "dist", k = 1:10) > neighbor_distance_xy)
   neighbor_matrix[distFlag] <- NA
+  
+  # remove first column for self element, add in row name 
+  neighbor_matrix <- matrix(neighbor_matrix[, 2:ncol(neighbor_matrix)], 
+                            ncol = ncol(neighbor_matrix)-1, 
+                            dimnames = list(perCell_pp$marks[perCell_pp$marks %in% chosen_cells], 
+                                            colnames(neighbor_matrix)[2:ncol(neighbor_matrix)]))
   
   # data for chosen cells only
   chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
@@ -499,12 +506,19 @@ getNeighbors_transDF_spatstat <- function(chosen_cells = NULL,
   # subset to get ppp for all query cells
   query_pp <- spatstat.geom::subset.ppp(perCell_pp, marks %in% chosen_cells)
   
-  # get closest 9 neighbors (exclude itself) data.frame, return what = which as index in orignal ppp  
-  neighbor_matrix <- as.matrix(spatstat.geom::nncross(query_pp, perCell_pp, what = "which", k = 2:10))
-  rownames(neighbor_matrix) <- perCell_pp$marks[perCell_pp$marks %in% chosen_cells]
+  # get closest 9 neighbors (exclude itself) data.frame, return what = which as index in original ppp  
+  # include first self elements when doing nncross to avoid error in case on too few cells in neighborhood
+  neighbor_matrix <- as.matrix(spatstat.geom::nncross(query_pp, perCell_pp, what = "which", k = 1:10))
+  
   # filter based on distance
-  distFlag <- which(spatstat.geom::nncross(query_pp, perCell_pp, what = "dist", k = 2:10) > neighbor_distance_xy)
+  distFlag <- which(spatstat.geom::nncross(query_pp, perCell_pp, what = "dist", k = 1:10) > neighbor_distance_xy)
   neighbor_matrix[distFlag] <- NA
+  
+  # remove first column for self element, add in row name 
+  neighbor_matrix <- matrix(neighbor_matrix[, 2:ncol(neighbor_matrix)], 
+                            ncol = ncol(neighbor_matrix)-1, 
+                            dimnames = list(perCell_pp$marks[perCell_pp$marks %in% chosen_cells], 
+                                            colnames(neighbor_matrix)[2:ncol(neighbor_matrix)]))
   
   # functions for each cell
   my_fun_eachCell <- function(query_df){
