@@ -391,7 +391,7 @@ if(FALSE){
                    flagged_cells_cleaned, # cells flagged for resegmenation
                    flagged_transDF_SVM3, # 3D SVM spatial model to flag transcripts in flagged cells
                    flaggedSVM_transID3d, # flagged transcript ID
-                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on spatila dbscan clustering
+                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on delanuay spatial network
                    # neighborReSeg_df_cleanSVM, # neighborhood info for flagged transcript groups
                    # post_reseg_results_cleanSVM_leiden, # post resegmentation results
                    # # for visualization of resegmentation impact (no LDA)
@@ -480,7 +480,7 @@ if(FALSE){
                    flagged_cells_cleaned, # cells flagged for resegmenation
                    flagged_transDF_SVM3, # 3D SVM spatial model to flag transcripts in flagged cells
                    flaggedSVM_transID3d, # flagged transcript ID
-                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on dbscan spatial clustering
+                   flaggedSVM_transGroupDF3d, # group the flagged transcripts based on delanuay spatial network
                    neighborReSeg_df_cleanSVM, # neighborhood info for flagged transcript groups
                    # post_reseg_results_cleanSVM_leiden, # post resegmentation results
                    # # for visualization of resegmentation impact (no LDA)
