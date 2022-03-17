@@ -291,12 +291,19 @@ if(TRUE){
 
 
 ## (3) do spaital analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
-system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_dbscan(chosen_transcripts = flaggedSVM_transID3d, 
-                                                                 distance_cutoff = config_dimension[['TransDistance_cutoff']],
-                                                                 transcript_df = flagged_transDF3d_cleaned, 
-                                                                 cellID_coln = "cell_ID", 
-                                                                 transID_coln = "transcript_id",
-                                                                 transSpatLocs_coln = c('x','y','z')))
+## try to do denaulay on flagged transcript only and identity groups in network
+# https://bookdown.org/markhoff/social_network_analysis/finding-groups-in-networks.html
+# take ~1.5min to run 65651 transcripts in 5640 cells (451 cells = 8.00% with same class based on SVM)
+
+system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
+                                                                   config_spatNW_transcript = config_spatNW2, 
+                                                                   distance_cutoff = config_dimension[['TransDistance_cutoff']],
+                                                                   transcript_df = flagged_transDF3d_cleaned, 
+                                                                   cellID_coln = "cell_ID", 
+                                                                   transID_coln = "transcript_id",
+                                                                   transSpatLocs_coln = c('x','y','z')))
+# user  system elapsed 
+# 135.371   6.814  99.740
 
 
 reseg_logInfo[['flagging_cleaned_SVM']][['cellsWflagged_transGroup']] <- unique(flaggedSVM_transGroupDF3d[['cell_ID']][which(flaggedSVM_transGroupDF3d[['transcript_group']] >0)])
