@@ -10,9 +10,9 @@
 #' @param pixel_size the micrometer size of image pixel listed in `Width` and `Height` dimension of each cell stored in `cell_metadata` of the existing SMI object (default = 0.18)
 #' @return a list 
 #' \describe{
-#'    \item{counts}{a cells * genes count matrix for entire dataset, stored in SMI object.}
+#'    \item{counts}{a cells X genes count matrix for entire dataset, stored in SMI object.}
 #'    \item{clust}{vector of cluster assignments for each cell in `counts`, stored in SMI object.}
-#'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
+#'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
 #'    \item{score_baseline}{a named vector of score baseline under each cell type listed in `refProfiles` such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence.}
 #'    \item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is.}
 #'    \item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}
@@ -169,14 +169,14 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   }
   
   ## get same cell order for cell x gene counts matrix and cluster assignment
-  # Counts matrix for entire dataset, cells * genes.
+  # Counts matrix for entire dataset, cells X genes.
   counts <- Matrix::t(exprs_tgrt[, cells_to_keep])
   # Vector of cluster assignments for each cell in `counts`
   clust <- celltype_metadata[celltype_metadata[['cell_ID']] %in% cells_to_keep, c('cell_ID','cell_type')]
   clust <- clust [match(cells_to_keep, clust[['cell_ID']]),]
   clust <- clust[['cell_type']]
   
-  # A matrix of cluster profiles, genes * clusters
+  # A matrix of cluster profiles, genes X clusters
   # ignore background, use total count per cell as scaling factor
   refProfiles <- estimate_MeanProfile( counts = as.matrix(counts), 
                                        clust = as.character(clust), 
@@ -266,9 +266,9 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   
   
   # # return results ----
-  # counts: a cells * genes count matrix for entire dataset, stored in SMI object.
+  # counts: a cells X genes count matrix for entire dataset, stored in SMI object.
   # clust: vector of cluster assignments for each cell in `counts`, stored in SMI object.
-  # refProfiles: a genes * clusters matrix of cluster-specific reference profiles estimated from entire dataset.
+  # refProfiles: a genes X clusters matrix of cluster-specific reference profiles estimated from entire dataset.
   # score_baseline: a named vector of score baseline under each cell type listed in `refProfiles` such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence.
   # lowerCutoff_transNum: a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is.
   # higherCutoff_transNum: a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.

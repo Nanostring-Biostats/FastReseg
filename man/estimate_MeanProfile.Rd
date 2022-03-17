@@ -7,7 +7,7 @@
 estimate_MeanProfile(counts, clust, s, bg)
 }
 \arguments{
-\item{counts}{Counts matrix, cells * genes.}
+\item{counts}{Counts matrix, cells X genes.}
 
 \item{clust}{Vector of cluster assignments, or a matrix of probabilities of cells (rows) belonging to clusters (columns).}
 
@@ -16,7 +16,7 @@ estimate_MeanProfile(counts, clust, s, bg)
 \item{bg}{Expected background}
 }
 \value{
-A matrix of cluster profiles, genes * clusters
+A matrix of cluster profiles, genes X clusters
 }
 \description{
 Given cell assignments (or posterior probabilities), estimate the mean profile of each cluster.

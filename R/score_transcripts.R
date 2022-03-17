@@ -1,12 +1,12 @@
 #' E step: estimate each cluster's mean profile (Ptolemy Estep function)
 #' @title estimate_MeanProfile
 #' @description  Given cell assignments (or posterior probabilities), estimate the mean profile of each cluster.
-#' @param counts Counts matrix, cells * genes.
+#' @param counts Counts matrix, cells X genes.
 #' @param clust Vector of cluster assignments, or a matrix of probabilities of cells (rows) belonging to clusters (columns).
 #' @param s Vector of scaling factors for each cell, e.g. as defined by cell area. 
 #' @param bg Expected background
 #' @importFrom Matrix colMeans
-#' @return A matrix of cluster profiles, genes * clusters
+#' @return A matrix of cluster profiles, genes X clusters
 #' @details estimate each cluster's mean profile (Ptolemy Estep function)
 #' @export
 estimate_MeanProfile <- function(counts, clust, s, bg) {
@@ -36,8 +36,8 @@ estimate_MeanProfile <- function(counts, clust, s, bg) {
 #' @title scoreGenesInRef
 #' @description calculate log-likilhood score of each gene based on reference expression profiles
 #' @param genes a vector of gene name to score
-#' @param ref_profiles a gene x cell_type expression matrix for reference profiles
-#' @return loglik, a gene x cell_type matrix of loglik score for each gene
+#' @param ref_profiles a gene X cell_type expression matrix for reference profiles
+#' @return loglik, a gene X cell_type matrix of loglik score for each gene
 #' @export
 scoreGenesInRef <- function(genes, ref_profiles){
   common_feats <- intersect(unique(genes), rownames(ref_profiles))

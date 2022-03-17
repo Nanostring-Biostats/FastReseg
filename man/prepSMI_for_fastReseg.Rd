@@ -32,9 +32,9 @@ prepSMI_for_fastReseg(
 \value{
 a list
 \describe{
-\item{counts}{a cells * genes count matrix for entire dataset, stored in SMI object.}
+\item{counts}{a cells X genes count matrix for entire dataset, stored in SMI object.}
 \item{clust}{vector of cluster assignments for each cell in \code{counts}, stored in SMI object.}
-\item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
+\item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
 \item{score_baseline}{a named vector of score baseline under each cell type listed in \code{refProfiles} such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence.}
 \item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is.}
 \item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}

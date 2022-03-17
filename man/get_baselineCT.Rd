@@ -7,9 +7,9 @@
 get_baselineCT(refProfiles, counts, clust = NULL)
 }
 \arguments{
-\item{refProfiles}{A matrix of cluster profiles, genes * clusters}
+\item{refProfiles}{A matrix of cluster profiles, genes X clusters}
 
-\item{counts}{Counts matrix, cells * genes.}
+\item{counts}{Counts matrix, cells X genes.}
 
 \item{clust}{Vector of cluster assignments for each cell in \code{counts}, default = NULL to automatically assign the cell cluster for each cell based on maximum transcript score}
 }

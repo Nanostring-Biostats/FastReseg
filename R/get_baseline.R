@@ -168,8 +168,8 @@ choose_distance_cutoff <- function(transcript_df,
 
 #' @title get_baselineCT
 #' @description get cluster-specific quantile distribution of transcript number and per cell per molecule transcript score in the provided cell x gene expression matrix based on the reference profiles and cell cluster assignment
-#' @param refProfiles A matrix of cluster profiles, genes * clusters
-#' @param counts Counts matrix, cells * genes.
+#' @param refProfiles A matrix of cluster profiles, genes X clusters
+#' @param counts Counts matrix, cells X genes.
 #' @param clust Vector of cluster assignments for each cell in `counts`, default = NULL to automatically assign the cell cluster for each cell based on maximum transcript score  
 #' @return a list
 #' \enumerate{
