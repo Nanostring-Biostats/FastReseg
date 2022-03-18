@@ -203,7 +203,7 @@ flagged_transDF3d_cleaned <- all_transDF[which(all_transDF[['cell_ID']] %in% fla
 reseg_logInfo[['flagging_cleaned_SVM']] <- list(svm_config = config_dimension[['svm_config']])
 
 system.time(tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells_cleaned,
-                                          score_GeneMatrix = transcript_loglik_cleaned,
+                                          score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
                                           transcript_df = flagged_transDF3d_cleaned, 
                                           cellID_coln = 'cell_ID', 
                                           transID_coln = 'transcript_id', 

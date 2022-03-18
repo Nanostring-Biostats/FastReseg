@@ -40,13 +40,15 @@ fastReseg_internalRef(
 )
 }
 \arguments{
-\item{counts}{Counts matrix for entire dataset, cells * genes.}
+\item{counts}{Counts matrix for entire dataset, cells X genes.}
 
-\item{clust}{Vector of cluster assignments for each cell in \code{counts}, when NULL to automatically assign the cell cluster for each cell based on maximum transcript score of given the profiled \code{refProfiles}}
+\item{clust}{Vector of cluster assignments for each cell in \code{counts}, when NULL to automatically assign the cell cluster for each cell based on maximum transcript score of given the provided \code{refProfiles}}
 
-\item{refProfiles}{A matrix of cluster profiles, genes * clusters, default = NULL to use external cluster assignments}
+\item{refProfiles}{A matrix of cluster profiles, genes X clusters, default = NULL to use external cluster assignments}
 
-\item{prefix_colns}{the column names of annotation in \code{transDF_fov_fileInfo}, to be added to the CellId as prefix when creating unique cell_ID for entire dataset; set to NULL if use the original \code{transID_coln} or \code{cellID_coln}}
+\item{transDF_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided \code{transcript_df} directly}
+
+\item{prefix_colns}{the column names of annotation in \code{transDF_fileInfo}, to be added to the CellId as prefix when creating unique cell_ID for entire dataset; set to NULL if use the original \code{transID_coln} or \code{cellID_coln}}
 
 \item{fovOffset_colns}{the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in \code{transDF_fileInfo}, unit in micron
 Notice that some assays like SMI has XY axes swapped between stage and each FOV such that \code{fovOffset_colns} should be c("stage_Y", "stage_X").}
@@ -55,7 +57,7 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{zstep_size}{the micrometer size of z-step for the optional 3rd dimension of \code{spatLocs_colns} of each \code{transcript_df}}
 
-\item{transcript_df}{the data.frame of transcript level information with unique CellId, default = NULL to read from the \code{transDF_fov_fileInfo}}
+\item{transcript_df}{the data.frame of transcript level information with unique CellId, default = NULL to read from the \code{transDF_fileInfo}}
 
 \item{transID_coln}{the column name of transcript_ID in \code{transcript_df}, default = NULL to use row index of transcript in each \code{transcript_df}; when \code{prefix_colns} != NULL, unique transcript_id would be generated from \code{prefix_colns} and \code{transID_coln} in each \code{transcript_df}}
 
@@ -92,7 +94,7 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{flagMerge_sharedLeiden_cutoff}{minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50\% cutoff}
 
-\item{path_to_output}{the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame \code{updated_transDF} is saved as individual csv files for each FOV, where cell data of all FOVs, \code{updated_perCellDT} and \code{updated_perCellExprs}, are combined to save as .RData object.}
+\item{path_to_output}{the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame \code{updated_transDF} is saved as individual csv files for each FOV, while cell data of all FOVs, \code{updated_perCellDT} and \code{updated_perCellExprs}, are combined to save as .RData object.}
 
 \item{save_intermediates}{flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,}
 
@@ -100,15 +102,13 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
-\item{transDF_fov_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided \code{transcript_df} directly}
-
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
 \value{
 a list
 \describe{
-\item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
-\item{baselineData}{a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; \code{span_score} is for the average per molecule transcript tLLR score of each cell, \code{span_transNum} is for the transcript number of each cell.}
+\item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
+\item{baselineData}{a list of two matrice in cluster X percentile format for the cluster-specific percentile distribution of per cell value; \code{span_score} is for the average per molecule transcript tLLR score of each cell, \code{span_transNum} is for the transcript number of each cell.}
 \item{cutoffs_list}{a list of cutoffs used in resegmentation pipeline, including, \code{score_baseline}, \code{lowerCutoff_transNum}, \code{higherCutoff_transNum}, \code{cellular_distance_cutoff}, \code{molecular_distance_cutoff}}
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}

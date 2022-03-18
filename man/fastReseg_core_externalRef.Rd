@@ -30,7 +30,7 @@ fastReseg_core_externalRef(
 )
 }
 \arguments{
-\item{refProfiles}{A matrix of cluster profiles, genes * clusters}
+\item{refProfiles}{A matrix of cluster profiles, genes X clusters}
 
 \item{transcript_df}{the data.frame for each transcript with columns for transcript_id, target or gene name, original cell_id, spatial coordinates.}
 
