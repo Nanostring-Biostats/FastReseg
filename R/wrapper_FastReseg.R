@@ -609,7 +609,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' }
 #' @details The pipeline would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set. 
 #' And then, the pipeline would use the estimated cluster-specific profile as reference profiles and calculate suitable cutoff for distance search, transcript number and score in first provided per FOV transcript data frame when those cutoffs are not provided. 
-#' When transcript data.frame is provided as a list of file path, the pipeline would further perform resegmentation on individual transcript data.frame using the baseline and cutoff defined globally. 
+#' When transcript data.frame is provided as multiple file paths in `transDF_fileInfo` data.frame, the pipeline would further perform resegmentation on individual transcript data.frame using the baseline and cutoff defined globally. 
 #' For each transcript data.frame, the pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, 
 #' identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile, 
 #' evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
@@ -1631,7 +1631,7 @@ findSegmentError_allFiles <- function(counts,
       transcript_df <- transcript_df[['intraC']]
     }
     
-    # save `updated_transDF` into csv file for each FOV 
+    # save `flagged_transDF` into csv file for each FOV 
     write.csv(transcript_df, 
               file = fs::path(path_to_output, paste0(idx, "_flagged_transDF.csv")), 
               row.names = FALSE)

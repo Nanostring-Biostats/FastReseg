@@ -3,6 +3,7 @@
 ## Firstly, calculate reference profiles based on the cell x gene expression matrix and cell typing results of entire data set ;
 ## Secondly, check the existence of fov offset position and transcript data.frame for each FOV in each slide; 
 ## Thirdly, loop through each FOV data.frame, reformat the data.frame to use unique transcript IDs and cell IDs and a global coordinate system, then score cells for segmentation errors and flag transcripts with low goodness-of-fit to current cell segment. 
+## Fourth, examples on how to change cutoff for flagging cells and transcript groups after initial processing
 
 library(ggplot2)
 library(FastReseg)
@@ -206,7 +207,121 @@ print(p)
 dev.off()
 
 
-### (5) visualization of segmenation outputs ----
+#### (5) adjust the cutoff for flagging cells as needed ----
+message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error in `reseg_output`. ", 
+                length(unlist(reseg_outputs$combined_flaggedCells)), 
+                length(unlist(reseg_outputs$combined_flaggedCells))/nrow(reseg_outputs$combined_modStats_ToFlagCells)))
+
+# get spatial modeling statistics of each cell for all cells in the data set
+combined_modStats_ToFlagCells <- reseg_outputs$combined_modStats_ToFlagCells
+
+
+# cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile (default =5)
+# lower values would flag more cells with potential segmentation error
+flagCell_lrtest_cutoff = 3
+
+# cells with potential segmentation errors, flagged by new cutoff
+combined_flaggedCells <- combined_modStats_ToFlagCells[combined_modStats_ToFlagCells['lrtest_-log10P'] > flagCell_lrtest_cutoff, 'UMI_cellID']
+message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error based on provided `flagCell_lrtest_cutoff` = %.2f. ", 
+                length(combined_flaggedCells), 
+                length(combined_flaggedCells)/nrow(reseg_outputs$combined_modStats_ToFlagCells), 
+                flagCell_lrtest_cutoff))
+
+
+#### (6) redo identification of low goodness-of-fit transcript groups as needed ----
+## (6.1) cutoff for flagging transcript groups of low goodness-of-fit
+# spatial dimension of provided data for evaluation
+d2_or_d3 = 3
+
+# cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
+flagModel_TransNum_cutoff = 50
+
+# cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
+svmClass_score_cutoff = -2
+
+# a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
+svm_args = list(kernel = "radial",
+                scale = FALSE,
+                gamma = 0.4)
+
+# transcript score matrix from reference profiles
+transcript_loglik <- scoreGenesInRef(genes = rownames(reseg_outputs$refProfiles), ref_profiles = pmax(reseg_outputs$refProfiles, 1e-5))
+tmp_max <- apply(transcript_loglik, 1, max)
+tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
+rm(tmp_max, transcript_loglik)
+
+
+## (6.2) get file path to transcript data.frame
+files_flagged_transDF <- dir(path = sub_out_dir, pattern = "^[0-9]+_flagged_transDF.csv", full.names = TRUE)
+
+## (6.3) flag transcript groups of low goodness-of-fit based on the provided cutoffs and flagged cells
+# output folder for new data
+path_to_output <- fs::path(sub_out_dir, "newCutoff")
+if(!dir.exists(path_to_output)){
+  dir.create(path_to_output, recursive = T)
+}
+
+
+## define function for each file of transcript data.frame
+myFun_flagTranscriptsSVM <- function(eachTransDF_path){
+  # get idx from file name
+  idx <- sapply(unlist(stringr::str_extract_all(basename(eachTransDF_path), "[:digit:]+_flagged_transDF")), function(x){
+    as.numeric(gsub("_flagged_transDF", "", x))})
+  
+  message(sprintf("\n##############\nProcessing file `%d`: %s\n\n\n",
+                  idx, eachTransDF_path))
+  
+  # load transcript data.frame
+  eachTransDF <- read.csv(eachTransDF_path, header = TRUE)
+  
+  # subset to focus on flagged cells
+  classDF_ToFlagTrans <- eachTransDF[eachTransDF[['UMI_cellID']] %in% combined_flaggedCells,]
+  # remove original SVM class
+  classDF_ToFlagTrans[['SVM_class']] <- NULL
+  
+  # perform SVM on flagged cells to identified transcript groups of low score
+  tmp_df <- flagTranscripts_SVM(chosen_cells = combined_flaggedCells,
+                                score_GeneMatrix = tLLRv2_geneMatrix,
+                                transcript_df = classDF_ToFlagTrans, 
+                                cellID_coln = 'UMI_cellID', 
+                                transID_coln = 'UMI_transID', 
+                                score_coln = 'score_tLLRv2_maxCellType',
+                                spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
+                                model_cutoff = flagModel_TransNum_cutoff, 
+                                score_cutoff = svmClass_score_cutoff, 
+                                svm_args = svm_args)
+  
+  # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
+  classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
+                               as.data.frame(tmp_df)[, c('UMI_transID','DecVal','SVM_class','SVM_cell_type')], 
+                               by = 'UMI_transID')
+  rm(tmp_df)
+  
+  # write into disk
+  write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
+  
+  
+  # flagged transcript ID, character vector
+  flaggedSVM_transID3d <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
+  # assign SVM_class =0 for transcripts with low goodness-of-fit
+  eachTransDF[['SVM_class']] <- 1- as.numeric(eachTransDF[['UMI_transID']] %in% flaggedSVM_transID3d)
+  
+  # save `updated_transDF` into csv file for each FOV 
+  write.csv(eachTransDF, 
+            file = fs::path(path_to_output, paste0(idx, "_flagged_transDF.csv")), 
+            row.names = FALSE)
+  
+  # return only idx, file path as a data.frame
+  res_to_return <- data.frame(file_idx = idx, 
+                              classDF_ToFlagTrans = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), 
+                              flagged_transDF = fs::path(path_to_output, paste0(idx, "_flagged_transDF.csv")))
+  
+  return(res_to_return)
+}
+
+# sapply() to process all FOVs
+process_outputs <- sapply(files_flagged_transDF, myFun_flagTranscriptsSVM)
+
 
 
 
