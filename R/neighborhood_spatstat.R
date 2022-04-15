@@ -259,7 +259,10 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                                 2, function(x) diff(range(x)))>0]
     
     ### use spatstat to find direct neighbor cells based on transcript-to-transcript distance in xyz
-    if(length(spatLocs_to_use) ==2){
+    # no neighbor, few transcripts
+    if (nrow(df_subset) ==1){
+      directCell_neighbors <- NULL
+    } else if(length(spatLocs_to_use) ==2){
       # 2D neighborhood find
       local_pp <- spatstat.geom::ppp(x = df_subset[[spatLocs_to_use[1]]], 
                                      y = df_subset[[spatLocs_to_use[2]]], 
@@ -273,8 +276,11 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.ppp(local_pp, marks != each_cell)
       
-      # found only 1 neighbor transcript
-      if(nrow(neighborhood_pp$data)==1){
+      # no neighbor cells
+      if(length(neighborhood_pp$data) ==0){
+        directCell_neighbors <- NULL
+      } else if(nrow(neighborhood_pp$data)==1){
+        # found only 1 neighbor transcript
         neighbor_dist <- spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1)
         if(neighbor_dist >  distance_cutoff){
           # no neighbor cells
@@ -320,8 +326,10 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       # neighbor cell only
       neighborhood_pp <- spatstat.geom::subset.pp3(local_pp, marks != each_cell)
       
-      # found only 1 neighbor transcript
-      if(nrow(neighborhood_pp$data)==1){
+      if(length(neighborhood_pp$data) ==0){
+        directCell_neighbors <- NULL
+      } else if(nrow(neighborhood_pp$data)==1){
+        # found only 1 neighbor transcript
         neighbor_dist <- spatstat.geom::nncross(neighborhood_pp, neiQuery_pp, what = "dist", k = 1)
         if(neighbor_dist >  distance_cutoff){
           # no neighbor cells

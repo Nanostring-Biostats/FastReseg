@@ -319,8 +319,9 @@ myFun_flagTranscriptsSVM <- function(eachTransDF_path){
   return(res_to_return)
 }
 
-# sapply() to process all FOVs
-process_outputs <- sapply(files_flagged_transDF, myFun_flagTranscriptsSVM)
+# lapply() to process all FOVs
+flagTrans_outputs <- lapply(files_flagged_transDF, myFun_flagTranscriptsSVM)
+flagTrans_outputs <- do.call(rbind, flagTrans_outputs)
 
 
 

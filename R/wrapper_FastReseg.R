@@ -1797,7 +1797,7 @@ myFun_fov_prep_dropOrig <- function(each_transDF,
   
   # whether to drop original coordinates and CellId
   if(drop_original){
-    each_transDF <- each_transDF[, "UMI_cellID","UMI_transID", "target", colnames(raw_locs)]
+    each_transDF <- each_transDF[, c("UMI_cellID","UMI_transID", "target", colnames(raw_locs))]
   }
   
   # initialize results with all transcripts as intracellular
