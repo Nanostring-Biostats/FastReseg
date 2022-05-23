@@ -12,6 +12,7 @@
 #' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
+#' @param groupTranscripts_method use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param molecular_distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
 #' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
@@ -26,7 +27,7 @@
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -65,6 +66,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        svm_args = list(kernel = "radial", 
                                                        scale = FALSE, 
                                                        gamma = 0.4),
+                                       groupTranscripts_method = c('delaunay', 'dbscan'),
                                        molecular_distance_cutoff = 2.7,
                                        cellular_distance_cutoff = NULL,
                                        score_baseline = NULL, 
@@ -78,6 +80,9 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        return_intermediates = TRUE,
                                        return_perCellData = TRUE, 
                                        includeAllRefGenes = FALSE){
+  
+  groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
+    
   # final results
   final_res <- list()
   #### check inputs ----
@@ -323,7 +328,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   
   
   ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
-  ## (3.1) perform delaunay on SVM-flagged transcripts within flagged cells ----
+  ## (3.1) perform delaunay or dbscan on SVM-flagged transcripts within flagged cells ----
   # # config for spatial network for transcripts
   # this config would be used by two functions, `groupTranscripts_Delanuay` and `decide_ReSegment_Operations_leidenCut`, 
   # below to separate transcripts that would likely be from two different source cells based on their spatial clustering.
@@ -366,15 +371,26 @@ fastReseg_core_externalRef <- function(refProfiles,
     maximum_distance_knn = NULL
   )
   
-  # `groupTranscripts_Delanuay` function returns a data.frame of connected transcripts among chosen_transcripts, 
+  # `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` function returns a data.frame of connected transcripts among chosen_transcripts, 
   # with each transcript in row, the group ID for the connected transcript groups and the original cell ID, spatial coordinates in column.
-  flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
-                                                         config_spatNW_transcript = config_spatNW, 
+  
+  if(groupTranscripts_method == 'delaunay'){
+    flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
+                                                           config_spatNW_transcript = config_spatNW, 
+                                                           distance_cutoff = molecular_distance_cutoff,
+                                                           transcript_df = flagged_transDF3d, 
+                                                           cellID_coln = cellID_coln, 
+                                                           transID_coln = transID_coln,
+                                                           transSpatLocs_coln = spatLocs_colns)
+  } else if (groupTranscripts_method == 'dbscan'){
+    flaggedSVM_transGroupDF3d <- groupTranscripts_dbscan(chosen_transcripts = flaggedSVM_transID3d, 
                                                          distance_cutoff = molecular_distance_cutoff,
                                                          transcript_df = flagged_transDF3d, 
                                                          cellID_coln = cellID_coln, 
                                                          transID_coln = transID_coln,
                                                          transSpatLocs_coln = spatLocs_colns)
+  }
+  
   
   message(sprintf("SVM spatial model further identified %d cells with transcript score all in same class, exclude from transcript group analysis.", 
                   length(unique(flagged_transDF_SVM3[[cellID_coln]])) - length(unique(flaggedSVM_transGroupDF3d[[cellID_coln]]))))
@@ -585,6 +601,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
+#' @param groupTranscripts_method use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param molecular_distance_cutoff maximum molecule-to-molecule distance within connected transcript group, unit in micron (default = 2.7 micron). 
 #' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
@@ -617,7 +634,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when save_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, save when save_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, save when save_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when save_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -747,6 +764,7 @@ fastReseg_internalRef <- function(counts,
                                   svm_args = list(kernel = "radial", 
                                                   scale = FALSE, 
                                                   gamma = 0.4),
+                                  groupTranscripts_method = c('delaunay', 'dbscan'),
                                   molecular_distance_cutoff = 2.7,
                                   cellular_distance_cutoff = NULL,
                                   score_baseline = NULL, 
@@ -762,6 +780,8 @@ fastReseg_internalRef <- function(counts,
                                   save_intermediates = TRUE,
                                   return_perCellData = TRUE, 
                                   combine_extra = FALSE){
+  
+  groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -1056,7 +1076,7 @@ fastReseg_internalRef <- function(counts,
     # # `fastReseg_core_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
     # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE
-    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` functions, return when return_intermediates = TRUE
+    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE
     # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE
     # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE
     # updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter
@@ -1081,6 +1101,7 @@ fastReseg_internalRef <- function(counts,
                                               flagCell_lrtest_cutoff = flagCell_lrtest_cutoff,
                                               svmClass_score_cutoff = svmClass_score_cutoff, 
                                               svm_args = svm_args,
+                                              groupTranscripts_method = groupTranscripts_method, 
                                               leiden_args = leiden_args, 
                                               flagMerge_sharedLeiden_cutoff = flagMerge_sharedLeiden_cutoff,
                                               return_intermediates = save_intermediates,

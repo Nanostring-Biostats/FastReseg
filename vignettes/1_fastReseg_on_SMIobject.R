@@ -128,6 +128,7 @@ reseg_outputs <- fastReseg_internalRef(counts = smi_inputs[['counts']],
                                        cellID_coln = "CellId",
                                        spatLocs_colns = c("x","y","z"),
                                        extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
+                                       groupTranscripts_method = 'delaunay', # use 'delaunay' network to group low-score transcripts in space, option to use 'dbscan' instead
                                        molecular_distance_cutoff = 2.7, # recommend to use footprint of fiducials as cutoff in SMI dataset; if NULL, automatic calculation based on 1st FOV
                                        cellular_distance_cutoff = smi_inputs[['cellular_distance_cutoff']], # if NULL, automatic calculation based on 1st FOV
                                        score_baseline = smi_inputs[['score_baseline']],
