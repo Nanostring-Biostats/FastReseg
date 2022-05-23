@@ -467,7 +467,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   return(transcript_df)
 }
 
-#' @title groupTranscripts_Delanuay
+#' @title groupTranscripts_Delaunay
 #' @description group the flagged transcript within each cell based on spatial connectivity of their transcript delaunay network
 #' @param chosen_transcripts the transcript_id of chosen transcript
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level
@@ -485,7 +485,7 @@ flagTranscripts_SVM <- function(chosen_cells,
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
 #' @export
-groupTranscripts_Delanuay <- function(chosen_transcripts = NULL, 
+groupTranscripts_Delaunay <- function(chosen_transcripts = NULL, 
                                       config_spatNW_transcript, 
                                       distance_cutoff = "auto",
                                       transcript_df, 
@@ -639,9 +639,9 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
     transcript_df[['transcript_group']][tmp_idx] <- group_converter[transcript_df[[transID_coln]][tmp_idx]]
   }
   
-  # (5) assign group for multiple flagged transcript cases using delanuay network analysis
+  # (5) assign group for multiple flagged transcript cases using delaunay network analysis
   # function for each cell based on delaunay
-  my_fun_delanuay <- function(df_subset){
+  my_fun_delaunay <- function(df_subset){
     each_cell <- df_subset[[cellID_coln]][1]
     
     # some cells may have multiple transcripts in exactly same location
@@ -782,7 +782,7 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   
   chosenTrans_df4 <-  chosenTrans_df[which(chosenTrans_df[[cellID_coln]] %in% count_df[N >3, get]), ]
   if(nrow(chosenTrans_df4) >0){
-    tmp_group <- by(chosenTrans_df4, chosenTrans_df4[[cellID_coln]], my_fun_delanuay)
+    tmp_group <- by(chosenTrans_df4, chosenTrans_df4[[cellID_coln]], my_fun_delaunay)
     tmp_group <- do.call(rbind, tmp_group)
     group_converter <- tmp_group[['transcript_group']] 
     names(group_converter) <- tmp_group[[transID_coln]]
@@ -795,7 +795,7 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
 
 
 #' @title myFun_3point_singleCell
-#' @description supporting function for \code{groupTranscripts_Delanuay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
+#' @description supporting function for \code{groupTranscripts_Delaunay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
 #' @param dfCoord_subset transcript data.table for single cell with only 3 transcripts in rows
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param distance_cutoff maximum distance within connected transcript group 

@@ -16,6 +16,7 @@ fastReseg_core_externalRef(
   flagCell_lrtest_cutoff = 5,
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
+  groupTranscripts_method = c("delaunay", "dbscan"),
   molecular_distance_cutoff = 2.7,
   cellular_distance_cutoff = NULL,
   score_baseline = NULL,
@@ -52,6 +53,8 @@ fastReseg_core_externalRef(
 
 \item{svm_args}{a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale}
 
+\item{groupTranscripts_method}{use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')}
+
 \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron).
 If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
@@ -77,7 +80,7 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 a list
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, return when return_intermediates = TRUE}
-\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, return when return_intermediates = TRUE}
+\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, return when return_intermediates = TRUE}
 \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, return when return_intermediates = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, return when return_intermediates = TRUE}
 \item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}

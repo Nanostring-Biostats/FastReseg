@@ -299,7 +299,7 @@ if(TRUE){
 # take ~1.5min to run 65651 transcripts in 5640 cells (451 cells = 8.00% with same class based on SVM)
 
 if(groupTranscripts_method == 'delaunay'){
-  system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
+  system.time(flaggedSVM_transGroupDF3d <- groupTranscripts_Delaunay(chosen_transcripts = flaggedSVM_transID3d, 
                                                                      config_spatNW_transcript = config_spatNW2, 
                                                                      distance_cutoff = config_dimension[['TransDistance_cutoff']],
                                                                      transcript_df = flagged_transDF3d_cleaned, 

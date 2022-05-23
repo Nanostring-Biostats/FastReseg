@@ -22,5 +22,5 @@ myFun_3point_singleCell(
 a data.table with \code{transcript_group} column added to original input data.table
 }
 \description{
-supporting function for \code{groupTranscripts_Delanuay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
+supporting function for \code{groupTranscripts_Delaunay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
 }

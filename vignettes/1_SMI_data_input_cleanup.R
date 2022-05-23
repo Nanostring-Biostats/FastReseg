@@ -134,7 +134,7 @@ config_spatNW2 <- list(
   # minimum number of nearest neighbors if maximum_distance != NULL; used by both Delaunay and kNN methods
   minimum_k = 0,
   
-  #### Approach 1: create Delanuay network for HMRF module
+  #### config for creating Delaunay network
   # Delaunay method to use, choose from c("deldir", "delaunayn_geometry", "RTriangle")
   delaunay_method = "delaunayn_geometry",
   # distance cuttoff for nearest neighbors to consider for Delaunay network. 
@@ -150,16 +150,8 @@ config_spatNW2 <- list(
   # (RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.
   j = TRUE,
   # (RTriangle) Specifies the maximum number of added Steiner points.
-  S = 0,
+  S = 0
   
-  #### Approach 2: create kNN network for leiden clustering
-  
-  # method to create kNN network
-  knn_method = "dbscan",
-  # number of nearest neighbors based on physical distance
-  k = 4,
-  # distance cuttoff for nearest neighbors to consider for kNN network
-  maximum_distance_knn = NULL
 )
 
 

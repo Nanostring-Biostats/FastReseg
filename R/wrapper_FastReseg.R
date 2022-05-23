@@ -27,7 +27,7 @@
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -330,7 +330,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----
   ## (3.1) perform delaunay or dbscan on SVM-flagged transcripts within flagged cells ----
   # # config for spatial network for transcripts
-  # this config would be used by two functions, `groupTranscripts_Delanuay` and `decide_ReSegment_Operations_leidenCut`, 
+  # this config would be used by two functions, `groupTranscripts_Delaunay` and `decide_ReSegment_Operations_leidenCut`, 
   # below to separate transcripts that would likely be from two different source cells based on their spatial clustering.
   
   config_spatNW <- list(
@@ -343,7 +343,7 @@ fastReseg_core_externalRef <- function(refProfiles,
     # minimum number of nearest neighbors if maximum_distance != NULL; used by both Delaunay and kNN methods
     minimum_k = 0,
     
-    #### Approach 1: create Delanuay network for HMRF module
+    #### config for creating Delaunay network
     # Delaunay method to use, choose from c("deldir", "delaunayn_geometry", "RTriangle")
     delaunay_method = "delaunayn_geometry",
     # distance cuttoff for nearest neighbors to consider for Delaunay network. 
@@ -359,23 +359,15 @@ fastReseg_core_externalRef <- function(refProfiles,
     # (RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.
     j = TRUE,
     # (RTriangle) Specifies the maximum number of added Steiner points.
-    S = 0,
+    S = 0
     
-    #### Approach 2: create kNN network for leiden clustering
-    
-    # method to create kNN network
-    knn_method = "dbscan",
-    # number of nearest neighbors based on physical distance
-    k = 6,
-    # distance cuttoff for nearest neighbors to consider for kNN network
-    maximum_distance_knn = NULL
   )
   
-  # `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` function returns a data.frame of connected transcripts among chosen_transcripts, 
+  # `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` function returns a data.frame of connected transcripts among chosen_transcripts, 
   # with each transcript in row, the group ID for the connected transcript groups and the original cell ID, spatial coordinates in column.
   
   if(groupTranscripts_method == 'delaunay'){
-    flaggedSVM_transGroupDF3d <- groupTranscripts_Delanuay(chosen_transcripts = flaggedSVM_transID3d, 
+    flaggedSVM_transGroupDF3d <- groupTranscripts_Delaunay(chosen_transcripts = flaggedSVM_transID3d, 
                                                            config_spatNW_transcript = config_spatNW, 
                                                            distance_cutoff = molecular_distance_cutoff,
                                                            transcript_df = flagged_transDF3d, 
@@ -634,7 +626,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when save_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, save when save_intermediates = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when save_intermediates = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when save_intermediates = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -782,6 +774,7 @@ fastReseg_internalRef <- function(counts,
                                   combine_extra = FALSE){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
+  message(sprintf("Use %s for grouping low-score transcripts within each cell in space. ", groupTranscripts_method))
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -1076,7 +1069,7 @@ fastReseg_internalRef <- function(counts,
     # # `fastReseg_core_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
     # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE
-    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delanuay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE
+    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE
     # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE
     # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE
     # updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter

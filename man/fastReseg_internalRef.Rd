@@ -24,6 +24,7 @@ fastReseg_internalRef(
   flagCell_lrtest_cutoff = 5,
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
+  groupTranscripts_method = c("delaunay", "dbscan"),
   molecular_distance_cutoff = 2.7,
   cellular_distance_cutoff = NULL,
   score_baseline = NULL,
@@ -77,6 +78,8 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{svm_args}{a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale}
 
+\item{groupTranscripts_method}{use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')}
+
 \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, unit in micron (default = 2.7 micron).
 If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
 
@@ -121,7 +124,7 @@ wrapper for resegmentation pipeline using internal reference profiles and cutoff
 \details{
 The pipeline would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set.
 And then, the pipeline would use the estimated cluster-specific profile as reference profiles and calculate suitable cutoff for distance search, transcript number and score in first provided per FOV transcript data frame when those cutoffs are not provided.
-When transcript data.frame is provided as a list of file path, the pipeline would further perform resegmentation on individual transcript data.frame using the baseline and cutoff defined globally.
+When transcript data.frame is provided as multiple file paths in \code{transDF_fileInfo} data.frame, the pipeline would further perform resegmentation on individual transcript data.frame using the baseline and cutoff defined globally.
 For each transcript data.frame, the pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment,
 identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile,
 evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
@@ -129,7 +132,7 @@ The pipeline would save the each per FOV output as individual file in \code{path
 When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when save_intermediates = TRUE}
-\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delanuay} functions, save when save_intermediates = TRUE}
+\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when save_intermediates = TRUE}
 \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when save_intermediates = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
 \item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
