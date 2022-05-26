@@ -1059,6 +1059,7 @@ fastReseg_internalRef <- function(counts,
     # resegment current FOV
     message(sprintf("\n##############\nProcessing file `%d`: %s\n\n\n",
                     idx, path_to_transDF))
+    timestamp()
     if(!is.null(transcript_df[['extraC']])){
       message(sprintf("Exclude %d extracellular transcripts from downstream, %.4f of total molecules.\n\n", 
                       nrow(transcript_df[['extraC']]), 
@@ -1514,6 +1515,7 @@ findSegmentError_allFiles <- function(counts,
     # processing current FOV
     message(sprintf("\n##############\nProcessing file `%d`: %s\n\n\n",
                     idx, path_to_transDF))
+    timestamp()
     if(!is.null(transcript_df[['extraC']])){
       message(sprintf("Exclude %d extracellular transcripts from downstream, %.4f of total molecules.\n\n", 
                       nrow(transcript_df[['extraC']]), 
@@ -1809,10 +1811,6 @@ myFun_fov_prep_dropOrig <- function(each_transDF,
   # add location in global coordinate
   each_transDF <- cbind(each_transDF, raw_locs)
   
-  # whether to drop original coordinates and CellId
-  if(drop_original){
-    each_transDF <- each_transDF[, c("UMI_cellID","UMI_transID", "target", colnames(raw_locs))]
-  }
   
   # initialize results with all transcripts as intracellular
   res <- list(intraC = each_transDF, 
@@ -1828,8 +1826,18 @@ myFun_fov_prep_dropOrig <- function(each_transDF,
         res <- list(intraC = each_transDF[intraC_idx, ],  
                     extraC = each_transDF[extraC_idx, ])
         
+        # whether to drop original coordinates and CellId
+        if(drop_original){
+          res[['extraC']] <- res[['extraC']][, c("UMI_cellID","UMI_transID", "target", colnames(raw_locs))]
+        }
+        
       }
     }
+  }
+  
+  # whether to drop original coordinates and CellId
+  if(drop_original){
+    res[['intraC']] <- res[['intraC']][, c("UMI_cellID","UMI_transID", "target", colnames(raw_locs))]
   }
   
   

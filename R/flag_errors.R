@@ -371,8 +371,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   
   score_GeneMatrix <- score_GeneMatrix[common_genes, ]
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
-  
-  
+
   
   ## operate in vector form to speed up the process
   # (1) filter cells based on transcript numbers
@@ -384,7 +383,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
-  
+
   
   # (2) get new coordinate columns, class and cell_ID, scores, same order as transcript_df
   coord_df <- transcript_df[, .SD, .SDcols = c(transID_coln, cellID_coln, score_coln, spatLocs_colns)]
@@ -413,9 +412,7 @@ flagTranscripts_SVM <- function(chosen_cells,
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
   coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
-  
-  
-  
+
   # (3) perform svm by group, not working for near-zero variance predictors
   my_fun <- function(data){
     current_args <- svm_args
@@ -431,7 +428,7 @@ flagTranscripts_SVM <- function(chosen_cells,
     
     return(outputs)
   }
-  
+
   model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
   model_stats <- do.call(rbind, model_stats)
   # model_stats[['cell_ID']] <- sapply(strsplit(rownames(model_stats), split = "[.]"),"[[", 1)
