@@ -296,6 +296,87 @@ fastReseg_core_externalRef <- function(refProfiles,
   message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
                   length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
   
+  
+  ## (1.3) if no flagged cells for resegment, prepare the proper outputs and return the results right away 
+  if(length(flagged_cells)<1){
+    message("No cells being flagged for resegmentation, no further operation is performed on this dataset.")
+    
+    # return NULL for some intermediates
+    if(return_intermediates){
+      final_res[['groupDF_ToFlagTrans']] <- NULL
+
+      final_res[['neighborhoodDF_ToReseg']] <- NULL
+      final_res[['reseg_actions']] <- list(cells_to_discard = NULL, 
+                                           cells_to_update = NULL, 
+                                           cells_to_keep = NULL, 
+                                           reseg_full_converter = NULL)
+      
+    }
+    
+    # updated transcript DF with missing columns
+    # update the transcript_df with flagged transcript_group
+    reseg_transcript_df <- transcript_df
+    reseg_transcript_df[['connect_group']] <- 0
+    reseg_transcript_df[['tmp_cellID']] <- reseg_transcript_df[[cellID_coln]]
+    reseg_transcript_df[['group_maxCellType']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
+    
+    # update transcript df with resegmentation outcomes
+    reseg_transcript_df[['updated_cellID']] <- reseg_transcript_df[[cellID_coln]]
+    reseg_transcript_df[['updated_celltype']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
+    reseg_transcript_df[['score_updated_celltype']] <- reseg_transcript_df[['score_tLLRv2_maxCellType']]
+    
+    final_res[['updated_transDF']] <- reseg_transcript_df
+    
+    # perCellDT
+    # get cell type
+    perCell_DT <- data.table::setDT(reseg_transcript_df)[, .SD[1], by = updated_cellID, .SDcols = 'updated_celltype']
+    
+    # get mean spatial coordinates
+    if(!is.null(spatLocs_colns)){
+      perCell_dt2 <- reseg_transcript_df[, lapply(.SD, mean), by = 'updated_cellID', .SDcols = spatLocs_colns] 
+      perCell_DT <- merge(perCell_DT, perCell_dt2, by = 'updated_cellID')
+    }
+    
+    # mark each cell with the type of resegmetaion actions applied to them
+    perCell_DT[['reSeg_action']] <- 'none'
+    
+    final_res[['updated_perCellDT']] <- perCell_DT 
+    
+    
+    if(return_perCellData){
+      # get per cell expression matrix
+      exprs_tmp <- data.table::setDT(reseg_transcript_df)[, .SD, .SDcols = c('updated_cellID', transGene_coln)]
+      exprs_tmp <- reshape2::dcast(exprs_tmp, paste0("updated_cellID~", transGene_coln), 
+                                   value.var = transGene_coln, 
+                                   fun.aggregate = length, fill = 0)
+      rownames(exprs_tmp) <- exprs_tmp[['updated_cellID']]
+      exprs_tmp <- Matrix::Matrix(as.matrix(exprs_tmp[, -1]), sparse = TRUE)
+      
+      perCell_expression <- Matrix::t(exprs_tmp)
+      
+      
+      # impute zero value for missing genes not in `perCell_expression` but in `all_genes`
+      if(includeAllRefGenes){
+        missingGenes <- setdiff(all_genes, rownames(perCell_expression))
+        if(length(missingGenes)>0){
+          message(sprintf("%d genes do not present in updated transcript data.frame, impute 0 for missing genes: `%s`.", 
+                          length(missingGenes), paste0(missingGenes, collapse = '`, `')))
+          mockExprs <- matrix(0, nrow = length(missingGenes), 
+                              ncol = ncol(perCell_expression), 
+                              dimnames = list(missingGenes, 
+                                              colnames(perCell_expression)))
+          mockExprs <- Matrix::Matrix(mockExprs, sparse = TRUE)
+          perCell_expression <- rbind(perCell_expression, 
+                                      mockExprs)
+        }
+      }
+      final_res[['updated_perCellExprs']] <- perCell_expression
+    }
+    
+    return(final_res)
+    
+  }
+  
   ## (2) use SVM~hyperplane to identify the connected transcripts group based on tLLRv2 score ----
   # SVM can separate continuous low score transcript from the rest.
   # but observed flagged cells with no flagged transcripts or multiple groups of flagged transcripts
@@ -1586,38 +1667,45 @@ findSegmentError_allFiles <- function(counts,
     ## (5) use SVM~hyperplane to identify the connected transcripts group based on tLLRv2 score ----
     # SVM can separate continuous low score transcript from the rest.
     # but observed flagged cells with no flagged transcripts or multiple groups of flagged transcripts
-    classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
     
-    # `flagTranscripts_SVM` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
-    tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells,
-                                  score_GeneMatrix = tLLRv2_geneMatrix,
-                                  transcript_df = classDF_ToFlagTrans, 
-                                  cellID_coln = 'UMI_cellID', 
-                                  transID_coln = 'UMI_transID', 
-                                  score_coln = 'score_tLLRv2_maxCellType',
-                                  spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
-                                  model_cutoff = flagModel_TransNum_cutoff, 
-                                  score_cutoff = svmClass_score_cutoff, 
-                                  svm_args = svm_args)
-    
-    # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
-    classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
-                                 as.data.frame(tmp_df)[, c('UMI_transID','DecVal','SVM_class','SVM_cell_type')], 
-                                 by = 'UMI_transID')
-    
-    message(sprintf("Remove %d cells with raw transcript score all in same class based on cutoff %.2f when running spatial SVM model.", 
-                    length(flagged_cells) - length(unique(classDF_ToFlagTrans[['UMI_cellID']])), svmClass_score_cutoff))
-    rm(tmp_df)
-    
-    # write into disk
-    write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
-    
-    
-    # flagged transcript ID, character vector
-    flaggedSVM_transID3d <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
-    # assign SVM_class =0 for transcripts with low goodness-of-fit
-    transcript_df[['intraC']][['SVM_class']] <- 1- as.numeric(transcript_df[['intraC']][['UMI_transID']] %in% flaggedSVM_transID3d)
-    
+    if(length(flagged_cells)>0){
+      classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
+      
+      # `flagTranscripts_SVM` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
+      tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells,
+                                    score_GeneMatrix = tLLRv2_geneMatrix,
+                                    transcript_df = classDF_ToFlagTrans, 
+                                    cellID_coln = 'UMI_cellID', 
+                                    transID_coln = 'UMI_transID', 
+                                    score_coln = 'score_tLLRv2_maxCellType',
+                                    spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
+                                    model_cutoff = flagModel_TransNum_cutoff, 
+                                    score_cutoff = svmClass_score_cutoff, 
+                                    svm_args = svm_args)
+      
+      # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
+      classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
+                                   as.data.frame(tmp_df)[, c('UMI_transID','DecVal','SVM_class','SVM_cell_type')], 
+                                   by = 'UMI_transID')
+      
+      message(sprintf("Remove %d cells with raw transcript score all in same class based on cutoff %.2f when running spatial SVM model.", 
+                      length(flagged_cells) - length(unique(classDF_ToFlagTrans[['UMI_cellID']])), svmClass_score_cutoff))
+      rm(tmp_df)
+      
+      # write into disk
+      write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
+      
+      
+      # flagged transcript ID, character vector
+      flaggedSVM_transID3d <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
+      # assign SVM_class =0 for transcripts with low goodness-of-fit
+      transcript_df[['intraC']][['SVM_class']] <- 1- as.numeric(transcript_df[['intraC']][['UMI_transID']] %in% flaggedSVM_transID3d)
+    } else {
+      # no cells flaggged for resegmentation
+      message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")
+      transcript_df[['intraC']][['SVM_class']] <- 1
+    }
+
     
     # intracellular vs extracelluar compartment 
     transcript_df[['intraC']][['transComp']] <- 'intraC' 
