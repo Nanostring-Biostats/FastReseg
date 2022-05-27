@@ -57,52 +57,62 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
   
-  # (2) get new coordinate columns and cell_ID, scores, same order as transcript_df
-  coord_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, score_coln, spatLocs_colns)]
-  
-  # spatial quadratic model
-  # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
-  if(d2_or_d3 ==2){
-    colnames(coord_df) <- c('cell_ID','score','x','y')
-    mod_formula <- 'score ~ x + y + x2 + y2 + xy'
-  } else {
-    colnames(coord_df) <- c('cell_ID','score','x','y','z')
-    mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
-  }
-  
-  coord_df[['x2']] <- coord_df[['x']]^2
-  coord_df[['y2']] <- coord_df[['y']]^2
-  coord_df[['xy']] <- coord_df[['x']]*coord_df[['y']]
-  
-  if(d2_or_d3 ==3){
-    coord_df[['z2']] <- coord_df[['z']]^2
-    coord_df[['xz']] <- coord_df[['x']]*coord_df[['z']]
-    coord_df[['yz']] <- coord_df[['y']]*coord_df[['z']]
-  }
-  
-  
-  # (3) perform lm and lrtest by group
-  my_fun <- function(data){
-    # null linear model, lm(tLLRv2 ~ 1)
-    mod_null <- lm(score~1, data = data)
+  # check if any cell required evaluation 
+  if(nrow(transcript_df)>0){
+    # (2) get new coordinate columns and cell_ID, scores, same order as transcript_df
+    coord_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, score_coln, spatLocs_colns)]
     
     # spatial quadratic model
     # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
-    mod_alternative <- lm(as.formula(mod_formula), data = data)
+    if(d2_or_d3 ==2){
+      colnames(coord_df) <- c('cell_ID','score','x','y')
+      mod_formula <- 'score ~ x + y + x2 + y2 + xy'
+    } else {
+      colnames(coord_df) <- c('cell_ID','score','x','y','z')
+      mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
+    }
     
-    #likelihood ratio test of nested model
-    lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+    coord_df[['x2']] <- coord_df[['x']]^2
+    coord_df[['y2']] <- coord_df[['y']]^2
+    coord_df[['xy']] <- coord_df[['x']]*coord_df[['y']]
     
-    outputs <- data.frame(transcript_num = nrow(data), 
-                          modAlt_rsq = summary(mod_alternative)$r.squared,
-                          lrtest_ChiSq = lrtest_res$Chisq[2],
-                          lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
-    return(outputs)
+    if(d2_or_d3 ==3){
+      coord_df[['z2']] <- coord_df[['z']]^2
+      coord_df[['xz']] <- coord_df[['x']]*coord_df[['z']]
+      coord_df[['yz']] <- coord_df[['y']]*coord_df[['z']]
+    }
+    
+    
+    # (3) perform lm and lrtest by group
+    my_fun <- function(data){
+      # null linear model, lm(tLLRv2 ~ 1)
+      mod_null <- lm(score~1, data = data)
+      
+      # spatial quadratic model
+      # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
+      mod_alternative <- lm(as.formula(mod_formula), data = data)
+      
+      #likelihood ratio test of nested model
+      lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+      
+      outputs <- data.frame(transcript_num = nrow(data), 
+                            modAlt_rsq = summary(mod_alternative)$r.squared,
+                            lrtest_ChiSq = lrtest_res$Chisq[2],
+                            lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
+      return(outputs)
+    }
+    
+    model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
+    model_stats <- do.call(rbind, model_stats)
+    model_stats[['cell_ID']] <- rownames(model_stats)
+  } else {
+    # no cells for evaluation, return NULL for model_stats
+    message(sprintf("No single cell with transcript number above model_cutoff = %s, skip the evaluation.", 
+                    as.character(model_cutoff)))
+    model_stats <- NULL
+    
   }
   
-  model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
-  model_stats <- do.call(rbind, model_stats)
-  model_stats[['cell_ID']] <- rownames(model_stats)
   
   return(model_stats)
   

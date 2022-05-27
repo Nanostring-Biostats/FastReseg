@@ -281,22 +281,34 @@ fastReseg_core_externalRef <- function(refProfiles,
                                           spatLocs_colns = spatLocs_colns, 
                                           model_cutoff = flagModel_TransNum_cutoff)
   
-  #-log10(P)
-  tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
-  modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
-  rm(tmp_df)
-  
-  if(return_intermediates){
-    final_res[['modStats_ToFlagCells']] <- modStats_tLLRv2_3D
+  # if no cells being evaluated due to too few counts per cell
+  if(is.null(tmp_df)){
+    if(return_intermediates){
+      final_res[['modStats_ToFlagCells']] <- NULL
+    }
+    
+    flagged_cells <- NULL
+    
+  } else{
+    
+    #-log10(P)
+    tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+    modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
+    rm(tmp_df)
+    
+    if(return_intermediates){
+      final_res[['modStats_ToFlagCells']] <- modStats_tLLRv2_3D
+    }
+    
+    
+    ## (1.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
+    flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lrtest_-log10P']] > flagCell_lrtest_cutoff )]
+    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
+                    length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
+    
+    
   }
-  
-  
-  ## (1.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-  flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lrtest_-log10P']] > flagCell_lrtest_cutoff )]
-  message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                  length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
-  
-  
+    
   ## (1.3) if no flagged cells for resegment, prepare the proper outputs and return the results right away 
   if(length(flagged_cells)<1){
     message("No cells being flagged for resegmentation, no further operation is performed on this dataset.")
@@ -1645,22 +1657,31 @@ findSegmentError_allFiles <- function(counts,
                                             spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                             model_cutoff = flagModel_TransNum_cutoff)
     
-    #-log10(P)
-    tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
-    modStats_ToFlagCells <- merge(select_cellmeta, tmp_df, by.x = 'UMI_cellID', by.y = 'cell_ID')
-    rm(tmp_df)
-    
-    
-    ## (4.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-    modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
-    flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
-    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                    length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
-    
-    # write into disk
-    # add idx as file idx
-    modStats_ToFlagCells[['file_idx']] <- idx
-    write.csv(modStats_ToFlagCells, file = fs::path(path_to_output, paste0(idx, '_modStats_ToFlagCells.csv')), row.names = FALSE)
+    if(is.null(tmp_df)){
+      # if no cells with enough transcript per cell for model evaluation
+      modStats_ToFlagCells <- NULL
+      flagged_cells <- NULL
+      
+    } else {
+      #-log10(P)
+      tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+      modStats_ToFlagCells <- merge(select_cellmeta, tmp_df, by.x = 'UMI_cellID', by.y = 'cell_ID')
+      rm(tmp_df)
+      
+      
+      ## (4.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
+      modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+      flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
+      message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
+                      length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
+      
+      # write into disk
+      # add idx as file idx
+      modStats_ToFlagCells[['file_idx']] <- idx
+      write.csv(modStats_ToFlagCells, file = fs::path(path_to_output, paste0(idx, '_modStats_ToFlagCells.csv')), row.names = FALSE)
+      
+      
+    }
     
     
     
@@ -1753,7 +1774,8 @@ findSegmentError_allFiles <- function(counts,
   
   # combine `modStats_ToFlagCells` data for each FOV
   combined_modStats_ToFlagCells <- lapply(process_outputs, '[[', 'modStats_ToFlagCells')
-  combined_modStats_ToFlagCells <- do.call(rbind, combined_modStats_ToFlagCells)
+  combined_modStats_ToFlagCells <- do.call(rbind, 
+                                           combined_modStats_ToFlagCells[!sapply(combined_modStats_ToFlagCells, is.null)])
   
   all_segRes[['combined_modStats_ToFlagCells']] <- combined_modStats_ToFlagCells
   all_segRes[['combined_flaggedCells']] <- lapply(process_outputs, '[[', 'flagged_cells')
