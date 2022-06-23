@@ -35,6 +35,9 @@ cellClus_to_exclude <- 'NotDet'
 # if FALSE, stop processing when missing target call files
 removeUnpaired <- FALSE
 
+# flag to include ctrl_genes in analysis
+include_ctrlgenes <- FALSE
+
 # SMI TAP output folder
 scAnalysis_dir <- "/home/rstudio/NAS_data/lwu/testRun/SpatialTest/giotto_test/melanoma/Run4104_melanoma_980plx/giotto_output/Run4104_cellpose_vs_oldDASH"
 # get config files to get path to sample annotation file
@@ -98,26 +101,37 @@ sink(logHandle, type = "message")
 # # `findSegmentError_allFiles` function returns a list of 
 # refProfiles: a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline.
 # baselineData: a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.
+# ctrl_genes: a vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not NULL.
 # combined_modStats_ToFlagCells: a data.frame for spatial modeling statistics of each cell for all cells in the data set, output of `score_cell_segmentation_error` function.
 # combined_flaggedCells: a list with each element to be a vector of `UMI_cellID` for cells flagged for potential cell segmentation errors within each FOV.
 
-reseg_outputs <- findSegmentError_allFiles(counts = smi_inputs[['counts']],
-                                           clust = NULL,
-                                           refProfiles = smi_inputs[['refProfiles']],
-                                           transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
-                                           filepath_coln = 'file_path',
-                                           prefix_colns = c('slide','fov'),
-                                           fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
-                                           pixel_size = pixel_size, 
-                                           zstep_size = zStep_size, 
-                                           transcript_df = NULL,
-                                           transID_coln = NULL, # row index as transcript_id
-                                           transGene_coln = "target",
-                                           cellID_coln = "CellId",
-                                           spatLocs_colns = c("x","y","z"),
-                                           extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
-                                           path_to_output = sub_out_dir, 
-                                           combine_extra = TRUE) # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
+if(include_ctrlgenes){
+  # if ctrl_genes = smi_inputs$ctrl_genes, the control genes like NegPrbs and FalseCodes would be included in analysis.
+  ctrl_genes <- smi_inputs$ctrl_genes
+} else {
+  ctrl_genes <- NULL
+}
+
+reseg_outputs <- findSegmentError_allFiles(
+  counts = smi_inputs[['counts']],
+  clust = NULL,
+  refProfiles = smi_inputs[['refProfiles']],
+  transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
+  filepath_coln = 'file_path',
+  prefix_colns = c('slide','fov'),
+  fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
+  pixel_size = pixel_size, 
+  zstep_size = zStep_size, 
+  transcript_df = NULL,
+  transID_coln = NULL, # row index as transcript_id
+  transGene_coln = "target",
+  cellID_coln = "CellId",
+  spatLocs_colns = c("x","y","z"),
+  extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
+  path_to_output = sub_out_dir, 
+  combine_extra = TRUE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
+  ctrl_genes = ctrl_genes
+  )
 
 
 ## revert output back to the console -- only then access the file!
@@ -250,6 +264,28 @@ tmp_max <- apply(transcript_loglik, 1, max)
 tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
 rm(tmp_max, transcript_loglik)
 
+
+# set tLLR score for control genes, same as `svmClass_score_cutoff`
+if(!is.null(ctrl_genes)){
+  message(sprintf("Include the following `ctrl_genes` in analysis: `%s`.\nIt's recommended to have total counts of those genes below 1%% of total counts of all genes in each cell.", 
+                  paste0(ctrl_genes, collapse = "`, `")))
+  
+  if(any(ctrl_genes %in% rownames(tLLRv2_geneMatrix))){
+    message(sprintf("Overwrite transcript score for %d `ctrl_genes` shared with `refProfiles`: `%s`.", 
+                    sum(ctrl_genes %in% rownames(tLLRv2_geneMatrix)),
+                    paste0(intersect(ctrl_genes, rownames(tLLRv2_geneMatrix)), collapse = "`, `")))
+    
+    tLLRv2_geneMatrix <- tLLRv2_geneMatrix[!(rownames(tLLRv2_geneMatrix) %in% ctrl_genes), ]
+  }
+  
+  tLLRv2_geneMatrix <- rbind(tLLRv2_geneMatrix, 
+                             matrix(svmClass_score_cutoff, 
+                                    nrow = length(ctrl_genes), ncol = ncol(tLLRv2_geneMatrix),
+                                    dimnames = list(ctrl_genes, colnames(tLLRv2_geneMatrix)))
+  )
+  
+  
+}
 
 ## (6.2) get file path to transcript data.frame
 files_flagged_transDF <- dir(path = sub_out_dir, pattern = "^[0-9]+_flagged_transDF.csv", full.names = TRUE)

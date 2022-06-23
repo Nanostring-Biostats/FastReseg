@@ -19,6 +19,7 @@
 #'    \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Use the 2 times of average 2D cell diameter.}
 #'    \item{transDF_fov_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset, in colnames of `file_path`, `slide`,`slideName`,`fov`,`offset_x`, `offset_y`.}
 #'    \item{sample_annot}{a data.frame of sample annotation with each row for each slide, columns for file path and metedata that are read from file path of `config_loading[["annotfile"]]`.}
+#'    \item{ctrl_genes}{a vector of ctrl genes in SMI object, include all feat_ID not under `rna` feat_type. }
 #' }
 #' @details The function requires the pre-built \code{"Giotto"} object that contains single cell typing results on original cell segmentation outcomes. This pre-built object may contain multi-slide multi-FOV data and should be built with raw data whose file path information is stored in `config_loading`.
 #' `config_loading` should contain at least the following 6 elements:
@@ -101,6 +102,8 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
                  path_to_SMIobject))
   }
   
+  # get ctrl genes in SMI object, include all feat_ID not under `rna` feat_type. 
+  ctrl_genes <- unique(unlist(gem@feat_ID[names(gem@feat_ID) != 'rna']))
   
   ## get cell typing and per cell info
   cell_metadata <- Giotto::pDataDT(gem)
@@ -275,7 +278,9 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   # cellular_distance_cutoff: maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Use the 2 times of average 2D cell diameter.
   # transDF_fov_fileInfo: a data.frame with each row for each individual file of per FOV transcript data.frame, columns for `file_path`, `slide`,`slideName`,`fov`,`offset_x`, `offset_y`.
   # sample_annot: a data.frame of sample annotation with each row for each slide, columns for file path and metedata that are read from file path of `config_loading[["annotfile"]]`.} 
+  # ctrl_genes: a vector of ctrl genes in SMI object, include all feat_ID not under `rna` feat_type. 
   
+    
   res <- list(counts = counts, # cells x genes count matrix stored in SMI object
               clust = clust, # cluster assignments stored in SMI object
               refProfiles = refProfiles, 
@@ -283,7 +288,8 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
               lowerCutoff_transNum = lowerCutoff_transNum,
               higherCutoff_transNum = higherCutoff_transNum, 
               cellular_distance_cutoff = cellular_distance_cutoff, 
-              transDF_fov_fileInfo = transDF_fov_fileInfo)
+              transDF_fov_fileInfo = transDF_fov_fileInfo, 
+              ctrl_genes = ctrl_genes)
   
   # clean up information stored in the original `annotfile`
   colns_to_remove <- c('folderpathColumn','slidefoldersColumn','votedfoldersColumn')

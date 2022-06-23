@@ -32,6 +32,9 @@ cellClus_to_exclude <- 'NotDet'
 # if FALSE, stop processing when missing target call files
 removeUnpaired <- TRUE
 
+# flag to include ctrl_genes in analysis
+include_ctrlgenes <- FALSE
+
 # SMI TAP output folder
 scAnalysis_dir <- "/home/rstudio/smiqumulo/01 SMI TAP project/SMI-0003_DavidTing_MGH/6.4 Analysis combined"
 # get config files to get path to sample annotation file
@@ -106,6 +109,7 @@ sink(logHandle, type = "message")
 # refProfiles: a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline.
 # baselineData: a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.
 # cutoffs_list: a list of cutoffs used in resegmentation pipeline, including, `score_baseline`, `lowerCutoff_transNum`, `higherCutoff_transNum`, `cellular_distance_cutoff`, `molecular_distance_cutoff`.
+# ctrl_genes: a vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not NULL.
 # updated_perCellDT: a per cell data.table with mean spatial coordinates and new cell type after resegmentation, return when return_perCellData = TRUE.
 # updated_perCellExprs: a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE.
 # reseg_actions: a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE.
@@ -113,30 +117,42 @@ sink(logHandle, type = "message")
 # For automatic calculation of `molecular_distance_cutoff` based on 1st FOV, set `molecular_distance_cutoff` to NULL
 # But for SMI dataset, it's recommended to use `molecular_distance_cutoff` = 2.7 um as hard cutoff given the footprint of fiducials
 
-reseg_outputs <- fastReseg_internalRef(counts = smi_inputs[['counts']],
-                                       clust = NULL,
-                                       refProfiles = smi_inputs[['refProfiles']],
-                                       transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
-                                       filepath_coln = 'file_path',
-                                       prefix_colns = c('slide','fov'),
-                                       fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
-                                       pixel_size = pixel_size, 
-                                       zstep_size = zStep_size, 
-                                       transcript_df = NULL,
-                                       transID_coln = NULL, # row index as transcript_id
-                                       transGene_coln = "target",
-                                       cellID_coln = "CellId",
-                                       spatLocs_colns = c("x","y","z"),
-                                       extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
-                                       groupTranscripts_method = 'delaunay', # use 'delaunay' network to group low-score transcripts in space, option to use 'dbscan' instead
-                                       molecular_distance_cutoff = 2.7, # recommend to use footprint of fiducials as cutoff in SMI dataset; if NULL, automatic calculation based on 1st FOV
-                                       cellular_distance_cutoff = smi_inputs[['cellular_distance_cutoff']], # if NULL, automatic calculation based on 1st FOV
-                                       score_baseline = smi_inputs[['score_baseline']],
-                                       lowerCutoff_transNum = smi_inputs[['lowerCutoff_transNum']],
-                                       higherCutoff_transNum= smi_inputs[['higherCutoff_transNum']],
-                                       imputeFlag_missingCTs = TRUE,
-                                       path_to_output = sub_out_dir, 
-                                       combine_extra = FALSE) # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
+if(include_ctrlgenes){
+  # if ctrl_genes = smi_inputs$ctrl_genes, the control genes like NegPrbs and FalseCodes would be included in analysis.
+  ctrl_genes <- smi_inputs$ctrl_genes
+} else {
+  ctrl_genes <- NULL
+}
+
+
+reseg_outputs <- fastReseg_internalRef(
+  counts = smi_inputs[['counts']],
+  clust = NULL,
+  refProfiles = smi_inputs[['refProfiles']],
+  transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
+  filepath_coln = 'file_path',
+  prefix_colns = c('slide','fov'),
+  fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
+  pixel_size = pixel_size, 
+  zstep_size = zStep_size, 
+  transcript_df = NULL,
+  transID_coln = NULL, # row index as transcript_id
+  transGene_coln = "target",
+  cellID_coln = "CellId",
+  spatLocs_colns = c("x","y","z"),
+  extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
+  groupTranscripts_method = 'delaunay', # use 'delaunay' network to group low-score transcripts in space, option to use 'dbscan' instead
+  molecular_distance_cutoff = 2.7, # recommend to use footprint of fiducials as cutoff in SMI dataset; if NULL, automatic calculation based on 1st FOV
+  cellular_distance_cutoff = smi_inputs[['cellular_distance_cutoff']], # if NULL, automatic calculation based on 1st FOV
+  score_baseline = smi_inputs[['score_baseline']],
+  lowerCutoff_transNum = smi_inputs[['lowerCutoff_transNum']],
+  higherCutoff_transNum= smi_inputs[['higherCutoff_transNum']],
+  imputeFlag_missingCTs = TRUE,
+  path_to_output = sub_out_dir, 
+  combine_extra = FALSE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
+  ctrl_genes = ctrl_genes
+  )
+
 
 ## revert output back to the console -- only then access the file!
 sink(type = "message")
@@ -155,17 +171,31 @@ cat(readLines(logFile), sep="\n")
 ## and then apply to the original transcript data.frame to assign cell_ID for those genes mising from reference profiles. 
 
 ## (5.1) prepare expression list for multi-slot giotto object
+# when use ctrl_genes = NULL, 
 # NegPrb and FalseCode genes are absence from refernece profiles and thus missing in the transcript data.frame with updated cell segmentaion. 
 # assume 0 values for both NegPrb and FalseCode genes for now
-expr_lists <- list(rna = list(raw = reseg_outputs[['updated_perCellExprs']]))
-expr_lists[['negprobes']] <- list(raw = matrix(0, nrow = 5,
-                                               ncol = ncol(reseg_outputs[['updated_perCellExprs']]),
-                                               dimnames = list(paste0('NegPrb', seq_len(5)),
-                                                               colnames(reseg_outputs[['updated_perCellExprs']]))))
-expr_lists[['falsecode']] <- list(raw = matrix(0, nrow = 5,
-                                               ncol = ncol(reseg_outputs[['updated_perCellExprs']]),
-                                               dimnames = list(paste0('FalseCode', seq_len(5)),
-                                                               colnames(reseg_outputs[['updated_perCellExprs']]))))
+if(is.null(ctrl_genes)){
+  expr_lists <- list(rna = list(raw = reseg_outputs[['updated_perCellExprs']]))
+  expr_lists[['negprobes']] <- list(raw = matrix(0, nrow = 5,
+                                                 ncol = ncol(reseg_outputs[['updated_perCellExprs']]),
+                                                 dimnames = list(paste0('NegPrb', seq_len(5)),
+                                                                 colnames(reseg_outputs[['updated_perCellExprs']]))))
+  expr_lists[['falsecode']] <- list(raw = matrix(0, nrow = 5,
+                                                 ncol = ncol(reseg_outputs[['updated_perCellExprs']]),
+                                                 dimnames = list(paste0('FalseCode', seq_len(5)),
+                                                                 colnames(reseg_outputs[['updated_perCellExprs']]))))
+} else {
+  tmpExp <- reseg_outputs[['updated_perCellExprs']]
+  
+  expr_lists <- list(rna = list(raw = tmpExp[!(rownames(tmpExp) %in% ctrl_genes), ]))
+  
+  expr_lists[['negprobes']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('NegPrb', ctrl_genes)], ])
+  expr_lists[['falsecode']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('FalseCode', ctrl_genes)], ])
+  
+  rm(tmpExp)
+  
+}
+
 
 ## (5.2) prepare cell annotation file
 cell_annotDF <- as.data.frame(reseg_outputs[['updated_perCellDT']])
