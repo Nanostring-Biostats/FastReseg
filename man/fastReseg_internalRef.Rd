@@ -37,7 +37,8 @@ fastReseg_internalRef(
   path_to_output = "reSeg_res",
   save_intermediates = TRUE,
   return_perCellData = TRUE,
-  combine_extra = FALSE
+  combine_extra = FALSE,
+  ctrl_genes = NULL
 )
 }
 \arguments{
@@ -105,6 +106,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
+\item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
 \value{
@@ -113,9 +116,10 @@ a list
 \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
 \item{baselineData}{a list of two matrice in cluster X percentile format for the cluster-specific percentile distribution of per cell value; \code{span_score} is for the average per molecule transcript tLLR score of each cell, \code{span_transNum} is for the transcript number of each cell.}
 \item{cutoffs_list}{a list of cutoffs used in resegmentation pipeline, including, \code{score_baseline}, \code{lowerCutoff_transNum}, \code{higherCutoff_transNum}, \code{cellular_distance_cutoff}, \code{molecular_distance_cutoff}}
-\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
-\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
+\item{ctrl_genes}{a vector of control genes whose transcript scores are set to fixed value for all cell types, return when \code{ctrl_genes} is not NULL.}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when \code{save_intermediates} = TRUE}
 }
 }
 \description{
@@ -128,21 +132,24 @@ When transcript data.frame is provided as multiple file paths in \code{transDF_f
 For each transcript data.frame, the pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment,
 identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile,
 evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
+
+To account for genes missing in \code{refProfiles} but present in input transcript data.frame, genes in \code{ctrl_genes} would be assigned with goodness-of-fit score equal to \code{svmClass_score_cutoff} for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those \code{ctrl_genes}, it's recommended to have total counts of those genes below 1\% of total counts of all genes in each cell.
+
 The pipeline would save the each per FOV output as individual file in \code{path_to_output} directory; \code{updated_transDF} would be saved as csv file.
 When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
 \describe{
-\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when save_intermediates = TRUE}
-\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when save_intermediates = TRUE}
-\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when save_intermediates = TRUE}
-\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when save_intermediates = TRUE}
+\item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when \code{save_intermediates} = TRUE}
+\item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flagTranscripts_SVM} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when \code{save_intermediates} = TRUE}
+\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{neighborhood_for_resegment_spatstat} function, save when \code{save_intermediates} = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, save when \code{save_intermediates} = TRUE}
 \item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
-\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 }
-The pipeline would also combine per cell data for all FOVs, save and return the combined data when return_perCellData = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would be save as single .RData object in \code{path_to_output} directory.
+The pipeline would also combine per cell data for all FOVs, save and return the combined data when \code{return_perCellData} = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would be save as single .RData object in \code{path_to_output} directory.
 \describe{
-\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+\item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
+\item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 }
 }
 \examples{
