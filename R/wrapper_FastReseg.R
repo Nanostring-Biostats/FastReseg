@@ -24,17 +24,21 @@
 #' @param return_intermediates flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell  
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param includeAllRefGenes flag to include all genes in `refProfiles` in the returned `updated_perCellExprs` with missing genes of value 0 (default = FALSE)
+#' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
 #' @return a list 
 #' \describe{
-#'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE}
-#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE}
-#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE}
+#'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when `return_intermediates` = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when `return_intermediates` = TRUE}
+#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when `return_intermediates` = TRUE}
+#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when `return_intermediates` = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
+#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
 #' @details The pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile, evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell. 
+#' 
+#' To account for genes missing in `refProfiles` but present in input transcript data.frame, genes in `ctrl_genes` would be assigned with goodness-of-fit score equal to `svmClass_score_cutoff` for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those `ctrl_genes`, it's recommended to have total counts of those genes below 1% of total counts of all genes in each cell. 
+#' 
 #' @examples 
 #' data(example_refProfiles)
 #' data(mini_transcriptDF)
@@ -79,7 +83,8 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        flagMerge_sharedLeiden_cutoff = 0.5,
                                        return_intermediates = TRUE,
                                        return_perCellData = TRUE, 
-                                       includeAllRefGenes = FALSE){
+                                       includeAllRefGenes = FALSE, 
+                                       ctrl_genes = NULL){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
     
@@ -176,6 +181,31 @@ fastReseg_core_externalRef <- function(refProfiles,
   tmp_max <- apply(transcript_loglik, 1, max)
   tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
   rm(tmp_max)
+  
+  # set tLLR score for control genes, same as `svmClass_score_cutoff`
+  if(!is.null(ctrl_genes)){
+    message(sprintf("Include the following `ctrl_genes` in analysis: `%s`.\nIt's recommended to have total counts of those genes below 1%% of total counts of all genes in each cell.", 
+                    paste0(ctrl_genes, collapse = "`, `")))
+    
+    if(any(ctrl_genes %in% rownames(refProfiles))){
+      message(sprintf("Overwrite transcript score for %d `ctrl_genes` shared with `refProfiles`: `%s`.", 
+                      sum(ctrl_genes %in% rownames(refProfiles)),
+                      paste0(intersect(ctrl_genes, rownames(refProfiles)), collapse = "`, `")))
+      
+      tLLRv2_geneMatrix <- tLLRv2_geneMatrix[!(rownames(tLLRv2_geneMatrix) %in% ctrl_genes), ]
+    }
+    
+    tLLRv2_geneMatrix <- rbind(tLLRv2_geneMatrix, 
+                               matrix(svmClass_score_cutoff, 
+                                      nrow = length(ctrl_genes), ncol = ncol(tLLRv2_geneMatrix),
+                                      dimnames = list(ctrl_genes, colnames(tLLRv2_geneMatrix)))
+    )
+    
+    # include ctrl_genes 
+    all_genes <- unique(c(all_genes, ctrl_genes))
+    
+    
+  }
   
   ## (0.2) remove extracellular transcript from transcript_df ----
   common_cells <- unique(transcript_df[[cellID_coln]])
@@ -370,6 +400,7 @@ fastReseg_core_externalRef <- function(refProfiles,
       # impute zero value for missing genes not in `perCell_expression` but in `all_genes`
       if(includeAllRefGenes){
         missingGenes <- setdiff(all_genes, rownames(perCell_expression))
+        
         if(length(missingGenes)>0){
           message(sprintf("%d genes do not present in updated transcript data.frame, impute 0 for missing genes: `%s`.", 
                           length(missingGenes), paste0(missingGenes, collapse = '`, `')))
@@ -700,14 +731,16 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @param save_intermediates flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,  
 #' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
+#' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
 #'    \item{baselineData}{a list of two matrice in cluster X percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.}
 #'    \item{cutoffs_list}{a list of cutoffs used in resegmentation pipeline, including, `score_baseline`, `lowerCutoff_transNum`, `higherCutoff_transNum`, `cellular_distance_cutoff`, `molecular_distance_cutoff`}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
-#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
+#'    \item{ctrl_genes}{a vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not NULL.}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
+#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
+#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when `save_intermediates` = TRUE}
 #' }
 #' @details The pipeline would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set. 
 #' And then, the pipeline would use the estimated cluster-specific profile as reference profiles and calculate suitable cutoff for distance search, transcript number and score in first provided per FOV transcript data frame when those cutoffs are not provided. 
@@ -715,21 +748,24 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' For each transcript data.frame, the pipeline would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, 
 #' identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile, 
 #' evaluate the neighborhood environment of low-score transcript groups and perform resegmentation actions including triming to extracellular space, merging to neighbor cell or labeling as new cell.
+#' 
+#' To account for genes missing in `refProfiles` but present in input transcript data.frame, genes in `ctrl_genes` would be assigned with goodness-of-fit score equal to `svmClass_score_cutoff` for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those `ctrl_genes`, it's recommended to have total counts of those genes below 1% of total counts of all genes in each cell.
+#' 
 #' The pipeline would save the each per FOV output as individual file in `path_to_output` directory; `updated_transDF` would be saved as csv file. 
 #' When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
 #' \describe{
-#'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when save_intermediates = TRUE}
-#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when save_intermediates = TRUE}
-#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when save_intermediates = TRUE}
-#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when save_intermediates = TRUE}
+#'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when `save_intermediates` = TRUE}
+#'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when `save_intermediates` = TRUE}
+#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when `save_intermediates` = TRUE}
+#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when `save_intermediates` = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
+#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
-#' The pipeline would also combine per cell data for all FOVs, save and return the combined data when return_perCellData = TRUE; `updated_perCellDT` and `updated_perCellExprs` would be save as single .RData object in `path_to_output` directory.
+#' The pipeline would also combine per cell data for all FOVs, save and return the combined data when `return_perCellData` = TRUE; `updated_perCellDT` and `updated_perCellExprs` would be save as single .RData object in `path_to_output` directory.
 #' \describe{
-#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE}
-#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE}
+#'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
+#'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
 #' @examples 
 #' # get example based on example dataset
@@ -864,7 +900,8 @@ fastReseg_internalRef <- function(counts,
                                   path_to_output = "reSeg_res", 
                                   save_intermediates = TRUE,
                                   return_perCellData = TRUE, 
-                                  combine_extra = FALSE){
+                                  combine_extra = FALSE, 
+                                  ctrl_genes = NULL){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
   message(sprintf("Use %s for grouping low-score transcripts within each cell in space. ", groupTranscripts_method))
@@ -1117,8 +1154,19 @@ fastReseg_internalRef <- function(counts,
                                           reseg_full_converter = list())
   }
   
-  
-  
+  # warning for special treatment on `ctrl_genes`
+  if(!is.null(ctrl_genes)){
+    message(sprintf("Include the following `ctrl_genes` in analysis: `%s`.\nIt's recommended to have total counts of those genes below 1%% of total counts of all genes in each cell.", 
+                    paste0(ctrl_genes, collapse = "`, `")))
+    
+    if(any(ctrl_genes %in% rownames(refProfiles))){
+      message(sprintf("Overwrite transcript score for %d `ctrl_genes` shared with `refProfiles`: `%s`.", 
+                      sum(ctrl_genes %in% rownames(refProfiles)),
+                      paste0(intersect(ctrl_genes, rownames(refProfiles)), collapse = "`, `")))
+    }
+    
+    all_segRes[['ctrl_genes']] <- ctrl_genes
+  }
   
   ## apply the fixed cutoffs settings to individual FOVs for resegmentation ----
   
@@ -1162,16 +1210,20 @@ fastReseg_internalRef <- function(counts,
     
     # # `fastReseg_core_externalRef` function is a wrapper for resegmentation pipeline using external reference profiles and cutoffs. 
     # # The function returns a list containing the following elements:
-    # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when return_intermediates = TRUE
-    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when return_intermediates = TRUE
-    # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when return_intermediates = TRUE
-    # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when return_intermediates = TRUE
+    # modStats_ToFlagCells, a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when `return_intermediates` = TRUE
+    # groupDF_ToFlagTrans, data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, return when `return_intermediates` = TRUE
+    # neighborhoodDF_ToReseg, a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, return when `return_intermediates` = TRUE
+    # reseg_actions, a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when `return_intermediates` = TRUE
     # updated_transDF, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter
-    # updated_perCellDT, a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when return_perCellData = TRUE
-    # updated_perCellExprs, a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when return_perCellData = TRUE
+    # updated_perCellDT, a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE
+    # updated_perCellExprs, a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE
     
     # set `includeAllRefGenes` to TRUE, to ensure return of all genes in `refProfiles` to `each_segRes[['updated_perCellExprs']]`
-    # mising genes would have imputed value of zero
+    # missing genes would have imputed value of zero
+    
+    # To account for genes missing in `refProfiles` but present in input transcript data.frame, 
+    # genes in `ctrl_genes` would be assigned with goodness-of-fit score equal to `svmClass_score_cutoff` for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. 
+    # It's recommended to have total counts of those genes below 1% of total counts of all genes in each cell to avoid significant interference from those `ctrl_genes`,  
     each_segRes <- fastReseg_core_externalRef(refProfiles = refProfiles,
                                               transcript_df = transcript_df[['intraC']],
                                               extracellular_cellID = NULL,
@@ -1193,7 +1245,8 @@ fastReseg_internalRef <- function(counts,
                                               flagMerge_sharedLeiden_cutoff = flagMerge_sharedLeiden_cutoff,
                                               return_intermediates = save_intermediates,
                                               return_perCellData = return_perCellData, 
-                                              includeAllRefGenes = TRUE)
+                                              includeAllRefGenes = TRUE,
+                                              ctrl_genes = ctrl_genes)
     
     # intracellular in original and updated segmentation
     each_segRes[['updated_transDF']][['transComp']] <- 'intraC' 
@@ -1346,10 +1399,12 @@ fastReseg_internalRef <- function(counts,
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
 #' @param combine_extra flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)
+#' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
 #'    \item{baselineData}{a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.}
+#'    \item{ctrl_genes}{a vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not NULL.}
 #'    \item{combined_modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell for all cells in the data set, output of `score_cell_segmentation_error` function}
 #'    \item{combined_flaggedCells}{a list with each element to be a vector of `UMI_cellID` for cells flagged for potential cell segmentation errors within each FOV}
 #' }
@@ -1362,6 +1417,9 @@ fastReseg_internalRef <- function(counts,
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function}
 #'    \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flagTranscripts_SVM` functions}
 #' }
+#' 
+#' To account for genes missing in `refProfiles` but present in input transcript data.frame, genes in `ctrl_genes` would be assigned with goodness-of-fit score equal to `svmClass_score_cutoff` for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those `ctrl_genes`, it's recommended to have total counts of those genes below 1% of total counts of all genes in each cell. 
+#' 
 #' @examples 
 #' # get example based on example dataset
 #' data("mini_transcriptDF")
@@ -1443,7 +1501,8 @@ findSegmentError_allFiles <- function(counts,
                                                       scale = FALSE, 
                                                       gamma = 0.4),
                                       path_to_output = "reSeg_res", 
-                                      combine_extra = FALSE){
+                                      combine_extra = FALSE, 
+                                      ctrl_genes = NULL){
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -1581,6 +1640,30 @@ findSegmentError_allFiles <- function(counts,
   tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
   rm(tmp_max, transcript_loglik)
   
+  # set tLLR score for control genes, same as `svmClass_score_cutoff`
+  if(!is.null(ctrl_genes)){
+    message(sprintf("Include the following `ctrl_genes` in analysis: `%s`.\nIt's recommended to have total counts of those genes below 1%% of total counts of all genes in each cell.", 
+                    paste0(ctrl_genes, collapse = "`, `")))
+    
+    all_segRes[['ctrl_genes']] <- ctrl_genes
+    
+    if(any(ctrl_genes %in% rownames(refProfiles))){
+      message(sprintf("Overwrite transcript score for %d `ctrl_genes` shared with `refProfiles`: `%s`.", 
+                      sum(ctrl_genes %in% rownames(refProfiles)),
+                      paste0(intersect(ctrl_genes, rownames(refProfiles)), collapse = "`, `")))
+      
+      tLLRv2_geneMatrix <- tLLRv2_geneMatrix[!(rownames(tLLRv2_geneMatrix) %in% ctrl_genes), ]
+    }
+    
+    tLLRv2_geneMatrix <- rbind(tLLRv2_geneMatrix, 
+                               matrix(svmClass_score_cutoff, 
+                                      nrow = length(ctrl_genes), ncol = ncol(tLLRv2_geneMatrix),
+                                      dimnames = list(ctrl_genes, colnames(tLLRv2_geneMatrix)))
+                               )
+    
+    
+  }
+  
   
   # function for processing each FOV 
   # return `modStats_ToFlagCells` when complete, save results to disk
@@ -1632,7 +1715,7 @@ findSegmentError_allFiles <- function(counts,
     all_cells <- select_cellmeta[['UMI_cellID']]
     
     transcript_df[['intraC']] <- merge(transcript_df[['intraC']], select_cellmeta, by = 'UMI_cellID')
-    message(sprintf("Found %d cells and assigned cell type based on the provided 'refProfiles` cluster profiles.", nrow(select_cellmeta)))
+    message(sprintf("Found %d cells and assigned cell type based on the provided `refProfiles` cluster profiles.", nrow(select_cellmeta)))
     
     
     ## (3) for each transcript, calculate tLLR score based on the max cell type

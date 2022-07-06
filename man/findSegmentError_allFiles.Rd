@@ -25,7 +25,8 @@ findSegmentError_allFiles(
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   path_to_output = "reSeg_res",
-  combine_extra = FALSE
+  combine_extra = FALSE,
+  ctrl_genes = NULL
 )
 }
 \arguments{
@@ -70,6 +71,8 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{combine_extra}{flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)}
 
+\item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
 \value{
@@ -77,6 +80,7 @@ a list
 \describe{
 \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
 \item{baselineData}{a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; \code{span_score} is for the average per molecule transcript tLLR score of each cell, \code{span_transNum} is for the transcript number of each cell.}
+\item{ctrl_genes}{a vector of control genes whose transcript scores are set to fixed value for all cell types, return when \code{ctrl_genes} is not NULL.}
 \item{combined_modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell for all cells in the data set, output of \code{score_cell_segmentation_error} function}
 \item{combined_flaggedCells}{a list with each element to be a vector of \code{UMI_cellID} for cells flagged for potential cell segmentation errors within each FOV}
 }
@@ -94,6 +98,8 @@ The function would save the each per FOV output as individual file in \code{path
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function}
 \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of \code{flagTranscripts_SVM} functions}
 }
+
+To account for genes missing in \code{refProfiles} but present in input transcript data.frame, genes in \code{ctrl_genes} would be assigned with goodness-of-fit score equal to \code{svmClass_score_cutoff} for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those \code{ctrl_genes}, it's recommended to have total counts of those genes below 1\% of total counts of all genes in each cell.
 }
 \examples{
 # get example based on example dataset

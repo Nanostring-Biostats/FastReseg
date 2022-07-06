@@ -41,6 +41,7 @@ a list
 \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Use the 2 times of average 2D cell diameter.}
 \item{transDF_fov_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset, in colnames of \code{file_path}, \code{slide},\code{slideName},\code{fov},\code{offset_x}, \code{offset_y}.}
 \item{sample_annot}{a data.frame of sample annotation with each row for each slide, columns for file path and metedata that are read from file path of \code{config_loading[["annotfile"]]}.}
+\item{ctrl_genes}{a vector of ctrl genes in SMI object, include all feat_ID not under \code{rna} feat_type. }
 }
 }
 \description{
