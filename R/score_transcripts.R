@@ -98,25 +98,22 @@ getCellType_maxScore <- function(score_GeneMatrix,
   if(length(common_genes)<1){
     stop("Too few common genes to proceed. Check if score_GeneMatrix is a gene x cell-type matrix.")
   }
-  
-  transcript_df <- transcript_df[which(transcript_df[[transGene_coln]] %in% common_genes), ]
-  
-  
+ 
+  transcript_df <- transcript_df[get(transGene_coln) %in% common_genes, ]
+ 
+  gene_scores <- as.data.table(score_GeneMatrix, keep.rownames = transGene_coln)
   # get score for each transcripts
-  transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
-  rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
-  tmp_score <- as.data.frame(transcriptGeneScore)
+  transcriptGeneScore <- gene_scores[transcript_df, on = transGene_coln]
   
-  # sparse matrix gave bigger size, so not to use
+  tmp_score <- transcriptGeneScore[, lapply(.SD, sum),
+                                   .SDcols = colnames(score_GeneMatrix),
+                                   by = cellID_coln]
+  
   if(!return_transMatrix){
     # to save some memory 
     rm(transcriptGeneScore)
   }
   
-  
-  tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
-  
-  tmp_score <-data.table::setDT(tmp_score)[, lapply(.SD, sum), by = cellID_coln] 
   tmp_cellID <- tmp_score[[cellID_coln]]
   tmp_score[[cellID_coln]] <- NULL
   # assign cell type based on max values
@@ -128,7 +125,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
   outputs <- list(cellType_DF = cellType_DF)
   
   if(return_transMatrix){
-    outputs[[score_TransMatrix]] <- transcriptGeneScore 
+    outputs[['score_TransMatrix']] <- transcriptGeneScore 
   }
   
   return(outputs)
