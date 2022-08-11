@@ -92,7 +92,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                 colnames(transcript_df)), collapse = "`, `")))
   }
   
-  transcript_df <- data.table::as.data.table(transcript_df)
+  setDT(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, celltype_coln,transID_coln, transGene_coln, transSpatLocs_coln)]
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
   
@@ -122,7 +122,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   }
   
   score_GeneMatrix <- score_GeneMatrix[common_genes, ]
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
+  transcript_df <- transcript_df[(get(cellID_coln) %in% common_cells) & (get(transGene_coln) %in% common_genes), ]
   
   # get per cell dataframe and search range if neighbor_distance_xy = NULL
   perCell_coordM <- transcript_df[, list(CenterX = mean(get(transSpatLocs_coln[1])), 
