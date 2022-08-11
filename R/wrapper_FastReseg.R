@@ -85,9 +85,9 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        return_perCellData = TRUE, 
                                        includeAllRefGenes = FALSE, 
                                        ctrl_genes = NULL){
-  
+  setDT(transcript_df)
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
-    
+  
   # final results
   final_res <- list()
   #### check inputs ----
@@ -98,8 +98,8 @@ fastReseg_core_externalRef <- function(refProfiles,
                                 colnames(transcript_df)), collapse = "`, `")))
   }
   # extract the needed columns only
-  transcript_df <- as.data.frame(transcript_df)
-  transcript_df <- transcript_df[, c(transID_coln, transGene_coln, spatLocs_colns, cellID_coln)]
+  transcript_df <- transcript_df[, c(transID_coln, transGene_coln, spatLocs_colns, cellID_coln),
+                                 with = FALSE]
   
   # check if cutoff for spatial modeling making sense
   if(flagModel_TransNum_cutoff < 2){
@@ -214,7 +214,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   if(!is.null(extracellular_cellID)){
     if(length(extracellular_cellID)>1){
       common_cells <- setdiff(common_cells, extracellular_cellID)
-      transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells), ]
+      transcript_df <- transcript_df[get(cellID_coln) %in% common_cells, ]
       
       message(sprintf("%d transcript records within %d cells remain after removal of extracellular transcripts within %d cell_ID in provided `extracellular_cellID` vector.", 
                       nrow(transcript_df), length(common_cells), length(extracellular_cellID)))
@@ -285,8 +285,9 @@ fastReseg_core_externalRef <- function(refProfiles,
   select_cellmeta <- tmp_df[['cellType_DF']]
   colnames(select_cellmeta) <- c(cellID_coln,'tLLRv2_maxCellType')
   rm(tmp_df)
-  
-  transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
+  setDT(select_cellmeta)
+ 
+  transcript_df <- select_cellmeta[transcript_df, on = cellID_coln]
   message(sprintf("Found %d cells and assigned cell type based on the provided 'refProfiles` cluster profiles.", nrow(select_cellmeta)))
   
   
@@ -297,7 +298,8 @@ fastReseg_core_externalRef <- function(refProfiles,
                                   transID_coln = transID_coln,
                                   transGene_coln = transGene_coln,
                                   celltype_coln = 'tLLRv2_maxCellType')
-  transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
+  setDT(tmp_df)
+  transcript_df <- tmp_df[transcript_df, on = transID_coln]
   rm(tmp_df)
   
   ####re-segmentation based on tLLRv2 score (1) flag cells, identify transcript groups ----
@@ -310,7 +312,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                           score_coln = 'score_tLLRv2_maxCellType',
                                           spatLocs_colns = spatLocs_colns, 
                                           model_cutoff = flagModel_TransNum_cutoff)
-  
+  setDT(tmp_df) 
   # if no cells being evaluated due to too few counts per cell
   if(is.null(tmp_df)){
     if(return_intermediates){
@@ -322,7 +324,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else{
     
     #-log10(P)
-    tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+    tmp_df[, lrtest_-log10P := -log10(lrtest_Pr)]
     modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
     rm(tmp_df)
     
@@ -448,7 +450,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   
   
   # flagged transcript ID, character vector
-  flaggedSVM_transID3d <- flagged_transDF_SVM3[flagged_transDF_SVM3[['SVM_class']] ==0, transID_coln]
+  flaggedSVM_transID3d <- flagged_transDF_SVM3[SVM_class == 0, get(transID_coln)]
   
   
   ## (3) do network analysis on flagged transcript in vectorized operation to see if more than 1 connected group ----

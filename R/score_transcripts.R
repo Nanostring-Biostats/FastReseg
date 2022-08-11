@@ -85,7 +85,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
                                 colnames(transcript_df)), collapse = "`, `")))
   }
   
-  transcript_df <- data.table::as.data.table(transcript_df)
+  setDT(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transGene_coln, transID_coln)]
   
   
@@ -154,7 +154,7 @@ getScoreCellType_gene <- function(score_GeneMatrix, transcript_df,
                  paste0(setdiff(c(transID_coln, transGene_coln, celltype_coln), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
-  transcript_df <- data.table::as.data.table(transcript_df)
+  setDT(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(transID_coln, transGene_coln, celltype_coln)]
   
   common_genes <- intersect(transcript_df[[transGene_coln]], rownames(score_GeneMatrix))
@@ -163,7 +163,7 @@ getScoreCellType_gene <- function(score_GeneMatrix, transcript_df,
   } 
   
   # get same transcript_id order 
-  transcript_df <- transcript_df[which(transcript_df[[transGene_coln]] %in% common_genes), ]
+  transcript_df <- transcript_df[get(transGene_coln) %in% common_genes, ]
   score_matrix <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
   
   # loop over each cell type to get score

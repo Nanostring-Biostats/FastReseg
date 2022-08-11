@@ -44,9 +44,9 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
                  paste0(setdiff(c(cellID_coln, transID_coln, score_coln, spatLocs_colns), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
-  transcript_df <- data.table::as.data.table(transcript_df)
+  setDT(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transID_coln, score_coln, spatLocs_colns)]
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
+  transcript_df <- transcript_df[get(cellID_coln) %in% chosen_cells, ]
   
   ## operate in vector form to speed up the process
   # (1) filter cells based on transcript numbers
@@ -55,7 +55,7 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
   
   warning(sprintf("Below model_cutoff = %s, skip %d cells with fewer transcripts. Move forward with remaining %d cells.", 
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
+  transcript_df <- transcript_df[get(cellID_coln) %in% chosen_cells2, ]
   
   # check if any cell required evaluation 
   if(nrow(transcript_df)>0){
@@ -72,14 +72,14 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
       mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
     }
     
-    coord_df[['x2']] <- coord_df[['x']]^2
-    coord_df[['y2']] <- coord_df[['y']]^2
-    coord_df[['xy']] <- coord_df[['x']]*coord_df[['y']]
+    coord_df[, x2 := x^2]
+    coord_df[, y2 := y^2]
+    coord_df[, xy := x*y]
     
     if(d2_or_d3 ==3){
-      coord_df[['z2']] <- coord_df[['z']]^2
-      coord_df[['xz']] <- coord_df[['x']]*coord_df[['z']]
-      coord_df[['yz']] <- coord_df[['y']]*coord_df[['z']]
+      coord_df[, z2 := z^2]
+      coord_df[, xz := x*z]
+      coord_df[, yz := y*z]
     }
     
     
