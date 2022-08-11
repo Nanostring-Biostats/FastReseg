@@ -141,7 +141,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                    y = perCell_coordM[['CenterY']], 
                                    range(perCell_coordM[['CenterX']]), 
                                    range(perCell_coordM[['CenterY']]), 
-                                   marks = factor(perCell_coordM[[cellID_coln]]), 
+                                   marks = perCell_coordM[[cellID_coln]], 
                                    unitname = c("um","um"))
   # subset to get ppp for all query cells
   query_pp <- spatstat.geom::subset.ppp(perCell_pp, marks %in% chosen_cells)
@@ -161,7 +161,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                             colnames(neighbor_matrix)[2:ncol(neighbor_matrix)]))
   
   # data for chosen cells only
-  chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
+  chosen_transDF <- transcript_df[get(cellID_coln) %in% chosen_cells, ]
   
   ## get molecular_distance_cutoff between neighbor cells from 10 randomly selected ROIs with 5* neighbor_distance_xy 
   if(is.null(distance_cutoff)){
@@ -244,8 +244,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   
   
   # functions for each cell
-  my_fun_eachCell <- function(query_df){
-    each_cell <- query_df[[cellID_coln]][1]
+  my_fun_eachCell <- function(query_df, each_cell){
     query_transID <- query_df[[transID_coln]] 
     
     # get neighbor cells
@@ -423,13 +422,13 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     }
     
     outputs <- cbind(queryPerCell_df, neighborInfo_df)
+    setDT(outputs)
     return(outputs)
   }
   
   
   # for each chosen cell, find out its neighborhood
-  resegmented_df <- by(chosen_transDF, chosen_transDF[[cellID_coln]], my_fun_eachCell)
-  resegmented_df <- do.call(rbind, resegmented_df)
+  resegmented_df <- chosen_transDF[, my_fun_eachCell(.SD, get(cellID_coln)), by = cellID_coln]
   return(resegmented_df)
 }
 
