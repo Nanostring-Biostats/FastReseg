@@ -95,16 +95,14 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
       #likelihood ratio test of nested model
       lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
       
-      outputs <- data.frame(transcript_num = nrow(data), 
+      outputs <- data.table::data.table(transcript_num = nrow(data), 
                             modAlt_rsq = summary(mod_alternative)$r.squared,
                             lrtest_ChiSq = lrtest_res$Chisq[2],
                             lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
       return(outputs)
     }
     
-    model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
-    model_stats <- do.call(rbind, model_stats)
-    model_stats[['cell_ID']] <- rownames(model_stats)
+    model_stats <- coord_df[, my_fun(.SD), by = "cell_ID"]
   } else {
     # no cells for evaluation, return NULL for model_stats
     message(sprintf("No single cell with transcript number above model_cutoff = %s, skip the evaluation.", 
@@ -363,7 +361,7 @@ flagTranscripts_SVM <- function(chosen_cells,
                  paste0(setdiff(c(cellID_coln, transID_coln, transGene_coln, score_coln, spatLocs_colns), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
-  transcript_df <- data.table::as.data.table(transcript_df)
+  setDT(transcript_df)
   transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transID_coln, transGene_coln, score_coln, spatLocs_colns)]
   
   # get common cells
@@ -380,7 +378,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   }
   
   score_GeneMatrix <- score_GeneMatrix[common_genes, ]
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
+  transcript_df <- transcript_df[(get(cellID_coln) %in% common_cells) & (get(transGene_coln) %in% common_genes), ]
 
   
   ## operate in vector form to speed up the process
@@ -390,7 +388,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   
   warning(sprintf("Below model_cutoff = %s, skip %d cells with fewer transcripts. Move forward with remaining %d cells.", 
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
+  transcript_df <- transcript_df[get(cellID_coln) %in% chosen_cells2, ]
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
 
@@ -409,7 +407,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   }
   
   # classify based on decision boundaries
-  coord_df[['above_cutoff']] <- ifelse(coord_df[['score']]<score_cutoff, 0, 1)
+  coord_df[, above_cutoff := ifelse(score < score_cutoff, 0, 1)]
   
   # skip the cell if no element in either group
   # count 0 or 1 for each cell
@@ -420,8 +418,8 @@ flagTranscripts_SVM <- function(chosen_cells,
   
   warning(sprintf("Skip %d cells with all transcripts in same class given `score_cutoff = %s`. Move forward with remaining %d cells.", 
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
-  coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
+  transcript_df <- transcript_df[get(cellID_coln) %in% chosen_cells3, ]
+  coord_df <- coord_df[cell_ID %in% chosen_cells3]
 
   # (3) perform svm by group, not working for near-zero variance predictors
   my_fun <- function(data){
@@ -432,19 +430,20 @@ flagTranscripts_SVM <- function(chosen_cells,
     mod_svm <- do.call(e1071::svm,current_args)
     
     # Make predictions
-    outputs <- data.frame(transcript_id = names(mod_svm$fitted), 
+    outputs <- data.table::data.table(transcript_id = names(mod_svm$fitted), 
                           SVM_class = mod_svm$fitted,
                           DecVal = mod_svm$decision.values[, 1])
     
     return(outputs)
   }
 
-  model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
-  model_stats <- do.call(rbind, model_stats)
+  model_stats <- coord_df[, my_fun(.SD), by = "cell_ID"]
   # model_stats[['cell_ID']] <- sapply(strsplit(rownames(model_stats), split = "[.]"),"[[", 1)
   
   # merge SVM_class and DecVal value to original transcript_df, by cell ID first, then transcript ID
-  transcript_df <- merge(transcript_df, model_stats, by.x = transID_coln, by.y = 'transcript_id', all.x = TRUE)
+  transcript_df <- merge(transcript_df,
+                         model_stats[, -c("cell_ID"), with = FALSE],
+                         by.x = transID_coln, by.y = 'transcript_id', all.x = TRUE)
   
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))

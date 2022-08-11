@@ -324,7 +324,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else{
     
     #-log10(P)
-    tmp_df[, lrtest_-log10P := -log10(lrtest_Pr)]
+    tmp_df[, `lrtest_-log10P` := -log10(lrtest_Pr)]
     modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
     rm(tmp_df)
     
