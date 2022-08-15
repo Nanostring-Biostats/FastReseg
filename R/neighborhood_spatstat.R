@@ -203,7 +203,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       cells_to_keep <- perCell_coordM[[cellID_coln]]
     }
     
-    cutoff_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% cells_to_keep), ]
+    cutoff_transDF <- transcript_df[get(cellID_coln) %in% cells_to_keep, ]
     # drop the dimension without variance in coordinates
     spatLocs_to_use <- transSpatLocs_coln[apply(cutoff_transDF[, .SD, .SDcols = transSpatLocs_coln], 
                                                 2, function(x) diff(range(x)))>0]
@@ -245,8 +245,6 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   
   # functions for each cell
   my_fun_eachCell <- function(query_df, each_cell){
-    query_transID <- query_df[[transID_coln]] 
-    
     # get neighbor cells
     neighborCells_NT <- perCell_pp$marks[neighbor_matrix[each_cell,]]
     neighborCells_NT <- as.character(neighborCells_NT[!is.na(neighborCells_NT)])
@@ -254,8 +252,8 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     # for both query and neighbor cells
     df_subset <- transcript_df[get(cellID_coln) %in% c(each_cell, neighborCells_NT), ]
     # drop the dimension without variance in coordinates
-    spatLocs_to_use <- transSpatLocs_coln[apply(df_subset[, .SD, .SDcols = transSpatLocs_coln], 
-                                                2, function(x) diff(range(x)))>0]
+    spatLocs_to_use <- transSpatLocs_coln[df_subset[, lapply(.SD, var) != 0,
+                                                    .SDcols = transSpatLocs_coln]]
     
     ### use spatstat to find direct neighbor cells based on transcript-to-transcript distance in xyz
     # no neighbor, few transcripts
@@ -378,7 +376,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     # get neighbor cell type and check the query transcript cell type against it
     if(length(directCell_neighbors)>0){
       # found connected neighbor cells with close enough transcripts
-      neighbors_df <- df_subset[which(df_subset[[cellID_coln]] %in% directCell_neighbors),]
+      neighbors_df <- df_subset[get(cellID_coln) %in% directCell_neighbors,]
       neighbors_df <- as.data.frame(neighbors_df)[, c(cellID_coln, celltype_coln)]
       neighbors_df <- unique(neighbors_df)
       neighbors_df[['score_under_neighbor']] <- cell_score[each_cell, neighbors_df[[celltype_coln]]]/nrow(query_df)
