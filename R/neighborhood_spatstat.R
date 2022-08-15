@@ -250,7 +250,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     neighborCells_NT <- as.character(neighborCells_NT[!is.na(neighborCells_NT)])
     
     # for both query and neighbor cells
-    df_subset <- transcript_df[get(cellID_coln) %in% c(each_cell, neighborCells_NT), ]
+    df_subset <- transcript_df[c(each_cell, neighborCells_NT)]
     # drop the dimension without variance in coordinates
     spatLocs_to_use <- transSpatLocs_coln[df_subset[, lapply(.SD, var) != 0,
                                                     .SDcols = transSpatLocs_coln]]
