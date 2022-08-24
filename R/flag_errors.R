@@ -57,52 +57,62 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
   
-  # (2) get new coordinate columns and cell_ID, scores, same order as transcript_df
-  coord_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, score_coln, spatLocs_colns)]
-  
-  # spatial quadratic model
-  # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
-  if(d2_or_d3 ==2){
-    colnames(coord_df) <- c('cell_ID','score','x','y')
-    mod_formula <- 'score ~ x + y + x2 + y2 + xy'
-  } else {
-    colnames(coord_df) <- c('cell_ID','score','x','y','z')
-    mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
-  }
-  
-  coord_df[['x2']] <- coord_df[['x']]^2
-  coord_df[['y2']] <- coord_df[['y']]^2
-  coord_df[['xy']] <- coord_df[['x']]*coord_df[['y']]
-  
-  if(d2_or_d3 ==3){
-    coord_df[['z2']] <- coord_df[['z']]^2
-    coord_df[['xz']] <- coord_df[['x']]*coord_df[['z']]
-    coord_df[['yz']] <- coord_df[['y']]*coord_df[['z']]
-  }
-  
-  
-  # (3) perform lm and lrtest by group
-  my_fun <- function(data){
-    # null linear model, lm(tLLRv2 ~ 1)
-    mod_null <- lm(score~1, data = data)
+  # check if any cell required evaluation 
+  if(nrow(transcript_df)>0){
+    # (2) get new coordinate columns and cell_ID, scores, same order as transcript_df
+    coord_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, score_coln, spatLocs_colns)]
     
     # spatial quadratic model
     # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
-    mod_alternative <- lm(as.formula(mod_formula), data = data)
+    if(d2_or_d3 ==2){
+      colnames(coord_df) <- c('cell_ID','score','x','y')
+      mod_formula <- 'score ~ x + y + x2 + y2 + xy'
+    } else {
+      colnames(coord_df) <- c('cell_ID','score','x','y','z')
+      mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
+    }
     
-    #likelihood ratio test of nested model
-    lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+    coord_df[['x2']] <- coord_df[['x']]^2
+    coord_df[['y2']] <- coord_df[['y']]^2
+    coord_df[['xy']] <- coord_df[['x']]*coord_df[['y']]
     
-    outputs <- data.frame(transcript_num = nrow(data), 
-                          modAlt_rsq = summary(mod_alternative)$r.squared,
-                          lrtest_ChiSq = lrtest_res$Chisq[2],
-                          lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
-    return(outputs)
+    if(d2_or_d3 ==3){
+      coord_df[['z2']] <- coord_df[['z']]^2
+      coord_df[['xz']] <- coord_df[['x']]*coord_df[['z']]
+      coord_df[['yz']] <- coord_df[['y']]*coord_df[['z']]
+    }
+    
+    
+    # (3) perform lm and lrtest by group
+    my_fun <- function(data){
+      # null linear model, lm(tLLRv2 ~ 1)
+      mod_null <- lm(score~1, data = data)
+      
+      # spatial quadratic model
+      # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
+      mod_alternative <- lm(as.formula(mod_formula), data = data)
+      
+      #likelihood ratio test of nested model
+      lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+      
+      outputs <- data.frame(transcript_num = nrow(data), 
+                            modAlt_rsq = summary(mod_alternative)$r.squared,
+                            lrtest_ChiSq = lrtest_res$Chisq[2],
+                            lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
+      return(outputs)
+    }
+    
+    model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
+    model_stats <- do.call(rbind, model_stats)
+    model_stats[['cell_ID']] <- rownames(model_stats)
+  } else {
+    # no cells for evaluation, return NULL for model_stats
+    message(sprintf("No single cell with transcript number above model_cutoff = %s, skip the evaluation.", 
+                    as.character(model_cutoff)))
+    model_stats <- NULL
+    
   }
   
-  model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
-  model_stats <- do.call(rbind, model_stats)
-  model_stats[['cell_ID']] <- rownames(model_stats)
   
   return(model_stats)
   
@@ -371,8 +381,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   
   score_GeneMatrix <- score_GeneMatrix[common_genes, ]
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
-  
-  
+
   
   ## operate in vector form to speed up the process
   # (1) filter cells based on transcript numbers
@@ -384,7 +393,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
-  
+
   
   # (2) get new coordinate columns, class and cell_ID, scores, same order as transcript_df
   coord_df <- transcript_df[, .SD, .SDcols = c(transID_coln, cellID_coln, score_coln, spatLocs_colns)]
@@ -413,9 +422,7 @@ flagTranscripts_SVM <- function(chosen_cells,
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
   coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
-  
-  
-  
+
   # (3) perform svm by group, not working for near-zero variance predictors
   my_fun <- function(data){
     current_args <- svm_args
@@ -431,7 +438,7 @@ flagTranscripts_SVM <- function(chosen_cells,
     
     return(outputs)
   }
-  
+
   model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
   model_stats <- do.call(rbind, model_stats)
   # model_stats[['cell_ID']] <- sapply(strsplit(rownames(model_stats), split = "[.]"),"[[", 1)
@@ -467,7 +474,7 @@ flagTranscripts_SVM <- function(chosen_cells,
   return(transcript_df)
 }
 
-#' @title groupTranscripts_Delanuay
+#' @title groupTranscripts_Delaunay
 #' @description group the flagged transcript within each cell based on spatial connectivity of their transcript delaunay network
 #' @param chosen_transcripts the transcript_id of chosen transcript
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level
@@ -485,7 +492,7 @@ flagTranscripts_SVM <- function(chosen_cells,
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
 #' @export
-groupTranscripts_Delanuay <- function(chosen_transcripts = NULL, 
+groupTranscripts_Delaunay <- function(chosen_transcripts = NULL, 
                                       config_spatNW_transcript, 
                                       distance_cutoff = "auto",
                                       transcript_df, 
@@ -639,9 +646,9 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
     transcript_df[['transcript_group']][tmp_idx] <- group_converter[transcript_df[[transID_coln]][tmp_idx]]
   }
   
-  # (5) assign group for multiple flagged transcript cases using delanuay network analysis
+  # (5) assign group for multiple flagged transcript cases using delaunay network analysis
   # function for each cell based on delaunay
-  my_fun_delanuay <- function(df_subset){
+  my_fun_delaunay <- function(df_subset){
     each_cell <- df_subset[[cellID_coln]][1]
     
     # some cells may have multiple transcripts in exactly same location
@@ -782,7 +789,7 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
   
   chosenTrans_df4 <-  chosenTrans_df[which(chosenTrans_df[[cellID_coln]] %in% count_df[N >3, get]), ]
   if(nrow(chosenTrans_df4) >0){
-    tmp_group <- by(chosenTrans_df4, chosenTrans_df4[[cellID_coln]], my_fun_delanuay)
+    tmp_group <- by(chosenTrans_df4, chosenTrans_df4[[cellID_coln]], my_fun_delaunay)
     tmp_group <- do.call(rbind, tmp_group)
     group_converter <- tmp_group[['transcript_group']] 
     names(group_converter) <- tmp_group[[transID_coln]]
@@ -795,7 +802,7 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
 
 
 #' @title myFun_3point_singleCell
-#' @description supporting function for \code{groupTranscripts_Delanuay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
+#' @description supporting function for \code{groupTranscripts_Delaunay}, assign group ID for 3 transcripts in single cell in 3D based on distant cutoff
 #' @param dfCoord_subset transcript data.table for single cell with only 3 transcripts in rows
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param distance_cutoff maximum distance within connected transcript group 
@@ -803,9 +810,9 @@ groupTranscripts_Delanuay <- function(chosen_transcripts = NULL,
 #' @importFrom data.table as.data.table setDT
 # function for 3 point case in a single cell only
 myFun_3point_singleCell <- function(dfCoord_subset, 
-                                  transSpatLocs_coln = c('x','y','z'),
-                                  distance_cutoff = 2.7, 
-                                  startGroup = 1){
+                                    transSpatLocs_coln = c('x','y','z'),
+                                    distance_cutoff = 2.7, 
+                                    startGroup = 1){
   
   dfCoord_subset <- data.table::as.data.table(dfCoord_subset)
   dist_df <- cbind(dfCoord_subset[1:3, .SD, .SDcols = transSpatLocs_coln], dfCoord_subset[c(2,3,1), .SD, .SDcols = transSpatLocs_coln])
@@ -839,3 +846,113 @@ myFun_3point_singleCell <- function(dfCoord_subset,
   
   return(dfCoord_subset)
 }
+
+
+#' @title groupTranscripts_dbscan
+#' @description group the flagged transcript within each cell based on spatial clustering using dbscan
+#' @param chosen_transcripts the transcript_id of chosen transcript
+#' @param distance_cutoff maximum molecule-to-molecule distance within same transcript group (default = "auto")
+#' @param transcript_df the data.frame with transcript_id, target/geneName, x, y and cell_id
+#' @param cellID_coln the column name of cell_ID in transcript_df
+#' @param transID_coln the column name of transcript_ID in transcript_df
+#' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @return data frame of connected transcripts among chosen_transcripts
+#' #' \enumerate{
+#'    \item{cellID_coln, orignal cell_ID}
+#'    \item{transID_coln, connected transcripts among chosen_transcripts}
+#'    \item{transSpatLocs_coln, spatial coordiantes of transcript}
+#'    \item{transcript_group, group of chosen_transcripts}
+#' } 
+#' @details For query cell, group flagged transcripts only based on their molecular distance to each other. When distance cutoff = 'auto', use 20% average XY cell range as cutoff. In case of no more than 3 flagged transcripts per cell, determine the grouping based on distance cutoff directly. In case of more transcripts per cell, use \code{dbscan} to group transcripts with distance_cutoff as `eps` and `minPts = 1`.  
+#' @importFrom dbscan dbscan
+#' @export
+groupTranscripts_dbscan <- function(chosen_transcripts = NULL, 
+                                    distance_cutoff = 'auto',
+                                    transcript_df, 
+                                    cellID_coln = "CellId", transID_coln = "transcript_id",
+                                    transSpatLocs_coln = c('x','y','z')){
+  
+  
+  if(distance_cutoff =='auto'){
+    message("Automatic cutoff as 20% diameter of query cell.")
+  } else if (is.numeric(distance_cutoff)){
+    if (distance_cutoff <= 0){
+      stop("distance_cutoff must be positive number")
+    }
+  }else {
+    stop("distance_cutoff must be positive number")
+  }
+  
+  d2_or_d3 <- length(transSpatLocs_coln)
+  
+  if(!(d2_or_d3 %in% c(2,3))){
+    stop("transSpatLocs_coln must be the column names for 1st, 2nd, optional 3rd dimension of spatial coordinates in transcript_df.")
+  } else {
+    message(sprintf("Do spatial network analysis in %d Dimension.", d2_or_d3))
+  }
+  
+  # check format of transcript_df
+  if(any(!c(cellID_coln, transID_coln, transSpatLocs_coln) %in% colnames(transcript_df))){
+    stop(sprintf("Not all necessary columns can be found in provided transcript_df, missing columns include `%s`.",
+                 paste0(setdiff(c(cellID_coln, transID_coln, transSpatLocs_coln), 
+                                colnames(transcript_df)), collapse = "`, `")))
+  }
+  transcript_df <- data.table::as.data.table(transcript_df)
+  transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transID_coln, transSpatLocs_coln)]
+  
+  if(is.null(chosen_transcripts)){
+    stop("chosen_transcripts = NULL. No resegmentation is done.")
+  } else {
+    chosen_transcripts <- intersect(chosen_transcripts, transcript_df[[transID_coln]])
+    if(length(chosen_transcripts) <1){
+      stop("Common cells contain no provided chosen_transcripts. No resegmentation is done.")
+    } else {
+      message(sprintf("%d chosen_transcripts are found in common cells.", length(chosen_transcripts)))
+    }
+  }
+  
+  
+  # which cells contained the chosen_transcripts
+  # only cells with chosen transcript
+  chosen_cells <- unique(transcript_df[which(transcript_df[[transID_coln]] %in% chosen_transcripts), get(cellID_coln)])
+  
+  # all transcripts of chosen_cells
+  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
+  
+  ## operate in vector form to speed up the process
+  # (1) get distance cutoff based on cell size if "auto"
+  if(distance_cutoff == 'auto'){
+    # size range of cells
+    cellsize_df <- transcript_df[, lapply(.SD, function(x) (range(x)[2] - range(x)[1])),  by = .(get(cellID_coln)), .SDcols = transSpatLocs_coln]
+    # cutoff for absolute distance between orphan transcript, defined as 20% of xy cell size range as a cube
+    orphan_cutoff <- 0.2*rowMeans(cellsize_df[, 2:3])
+    names(orphan_cutoff) <- cellsize_df[[1]]
+    
+    transcript_df[['distCutoff']] <- orphan_cutoff[transcript_df[[cellID_coln]]]
+    
+  }else{
+    transcript_df[['distCutoff']] <- distance_cutoff
+    
+  }
+  
+  # (2) apply dbscan to the flagged transcripts of each cells
+  idx_flagTrans <- which(transcript_df[[transID_coln]] %in% chosen_transcripts)
+  groupDF <- by(transcript_df[idx_flagTrans, ], 
+                transcript_df[[cellID_coln]][idx_flagTrans], 
+                function(df_subset){
+                  df_subset[['transcript_group']] <- dbscan::dbscan(as.data.frame(df_subset)[, transSpatLocs_coln], 
+                                                                    eps = df_subset[['distCutoff']][1], minPts = 1)$cluster
+                  return(df_subset)
+                })
+  groupDF <- do.call(rbind, groupDF)
+  # combine back to original transcript DF, assign 0 for unflagged transcripts
+  idx_otherTrans <- setdiff(seq_len(nrow(transcript_df)), idx_flagTrans)
+  transcript_df <- transcript_df[idx_otherTrans, ]
+  transcript_df[['transcript_group']] <- 0
+  transcript_df <- rbind(transcript_df, groupDF)
+  
+  transcript_df[['distCutoff']] <- NULL
+  
+  return(transcript_df)
+}
+

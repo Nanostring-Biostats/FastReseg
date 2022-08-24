@@ -7,7 +7,7 @@
 check_config_spatialNW(config, spat_locs)
 }
 \arguments{
-\item{config}{a list of config would be used to create spatial network via Giotto::createSpatialNetwork}
+\item{config}{a list of config would be used to create spatial network using delaunay method only via Giotto::createSpatialNetwork}
 
 \item{spat_locs}{a data.frame with spatial location info}
 }

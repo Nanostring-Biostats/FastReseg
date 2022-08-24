@@ -270,7 +270,7 @@ checkTypeLengthValue <- function(config, name,
 
 #' @title check_config_spatialNW
 #' @description check config used to create spatial network, assign default values if missing arguments
-#' @param config a list of config would be used to create spatial network via Giotto::createSpatialNetwork
+#' @param config a list of config would be used to create spatial network using delaunay method only via Giotto::createSpatialNetwork
 #' @param spat_locs a data.frame with spatial location info
 #' @importFrom Giotto createSpatialNetwork
 #' @return the corrected config list
@@ -280,7 +280,7 @@ check_config_spatialNW <- function(config, spat_locs){
     config$method <- 'Delaunay'
     message("Create Delanay network when config$method is NULL.")
   }
-  config$method <- match.arg(config$method, c("Delaunay", "kNN"))
+  config$method <- match.arg(config$method, c("Delaunay"))
   msg <- character()
   
   # check common config for both methods
@@ -385,34 +385,6 @@ check_config_spatialNW <- function(config, spat_locs){
     
   }
   
-  # check config for kNN network
-  if(config$method == 'kNN'){
-    if(!is.null(config$knn_method)){
-      msg <- c(msg, checkTypeLengthValue(config, "knn_method", expect_type = "character", 
-                                                 expect_len = 1, expect_range = "within", 
-                                                 expect_value = "dbscan"))
-    } else {
-      config$knn_method <- 'dbscan'
-    }
-    if(!is.null(config$k)){
-      # positive integer
-      msg <- c(msg, checkTypeLengthValue(config,"k", expect_type = c("numeric","integer"), 
-                                                 expect_len = 1, expect_range = "larger", 
-                                                 expect_value = 0))
-    } else {
-      config$k <- 4
-    }
-    if(!is.null(config$maximum_distance_knn)){
-      # NULL or non-negative number
-      msg <- c(msg, checkTypeLengthValue(config, "maximum_distance_knn",
-                                                 expect_type = "numeric", expect_len = 1, 
-                                                 expect_range = "larger", 
-                                                 expect_value = (-1e-23)))
-    } else {
-      config$maximum_distance_knn <- NULL
-    }
-    
-  }
   
   if(length(msg) > 0L){
     stop( "Configuration Issues:\n" , paste( msg , collapse = "\n" ) )

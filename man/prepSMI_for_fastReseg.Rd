@@ -32,15 +32,16 @@ prepSMI_for_fastReseg(
 \value{
 a list
 \describe{
-\item{counts}{a cells * genes count matrix for entire dataset, stored in SMI object.}
+\item{counts}{a cells X genes count matrix for entire dataset, stored in SMI object.}
 \item{clust}{vector of cluster assignments for each cell in \code{counts}, stored in SMI object.}
-\item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
+\item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles estimated from entire dataset.}
 \item{score_baseline}{a named vector of score baseline under each cell type listed in \code{refProfiles} such that  per cell transcript score higher than the baseline is required to call a cell type of high enough confidence.}
 \item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is.}
 \item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}
 \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron. Use the 2 times of average 2D cell diameter.}
 \item{transDF_fov_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset, in colnames of \code{file_path}, \code{slide},\code{slideName},\code{fov},\code{offset_x}, \code{offset_y}.}
 \item{sample_annot}{a data.frame of sample annotation with each row for each slide, columns for file path and metedata that are read from file path of \code{config_loading[["annotfile"]]}.}
+\item{ctrl_genes}{a vector of ctrl genes in SMI object, include all feat_ID not under \code{rna} feat_type. }
 }
 }
 \description{

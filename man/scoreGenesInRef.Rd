@@ -9,10 +9,10 @@ scoreGenesInRef(genes, ref_profiles)
 \arguments{
 \item{genes}{a vector of gene name to score}
 
-\item{ref_profiles}{a gene x cell_type expression matrix for reference profiles}
+\item{ref_profiles}{a gene X cell_type expression matrix for reference profiles}
 }
 \value{
-loglik, a gene x cell_type matrix of loglik score for each gene
+loglik, a gene X cell_type matrix of loglik score for each gene
 }
 \description{
 calculate log-likilhood score of each gene based on reference expression profiles

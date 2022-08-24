@@ -136,8 +136,8 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 
 
 #' @title decide_ReSegment_Operations_leidenCut
-#' @description Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. 
-#' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of neighborhood_for_resegment function.Use leiden clustering to determine whether a merge event is allowed.
+#' @description Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. Use leiden clustering to determine whether a merge event is allowed.
+#' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of neighborhood_for_resegment function.
 #' @param selfcellID_coln the column name of cell_ID of query cell in neighborhood_df 
 #' @param transNum_coln the column name of transcript number of query cell in neighborhood_df
 #' @param selfCellType_coln the column name of cell_type under query cell in neighborhood_df 
@@ -385,9 +385,7 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
             outputs[['merge']] <- TRUE
           } 
         }
-        
-        
-        
+
         
       }
       
@@ -459,3 +457,258 @@ decide_ReSegment_Operations_leidenCut <- function(neighborhood_df,
   
   return(reseg_operations)
 }
+
+#' @title decide_ReSegment_Operations_geometry
+#' @description Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. Use geometry statistics to determine whether a merge event is allowed.
+#' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of neighborhood_for_resegment function. 
+#' @param selfcellID_coln the column name of cell_ID of query cell in neighborhood_df 
+#' @param transNum_coln the column name of transcript number of query cell in neighborhood_df
+#' @param selfCellType_coln the column name of cell_type under query cell in neighborhood_df 
+#' @param selfScore_coln the column name of average transcript score under query cell in neighborhood_df 
+#' @param neighborcellID_coln the column name of cell_ID of neighbor cell in neighborhood_df 
+#' @param neighborCellType_coln the column name of cell_type under neighbor cell in neighborhood_df 
+#' @param neighborScore_coln the column name of average transcript score under neighbor cell in neighborhood_df 
+#' @param score_baseline a named vector of score baseline for all cell type listed in neighborhood_df such that per cell transcript score higher than the baseline is required to call a cell type of high enough confidence 
+#' @param lowerCutoff_transNum a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is
+#' @param higherCutoff_transNum a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
+#' @param config_spatNW_transcript configuration list to create spatial network at transcript level
+#' @param transcript_df the data.frame with transcript_id, target/geneName, x, y and cell_id
+#' @param cellID_coln the column name of cell_ID in transcript_df
+#' @param transID_coln the column name of transcript_ID in transcript_df
+#' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param cutoff_diffWB maximum percentage of white space change upon merging of query cell and neighbor cell for a valid merging event; default = 0.5 for 50% cutoff
+#' @return a list 
+#' \enumerate{
+#'    \item{cells_to_discard, a vector of cell ID that should be discarded during resegmentation}
+#'    \item{cells_to_update, a named vector of cell ID whether the cell_ID in name would be replaced with cell_ID in value.}
+#'    \item{cells_to_keep, a vector of cell ID that should be kept as it is.}
+#'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
+#' }
+#' @details Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflict due to merging multiple query cells into one. In case of merging into neighbor cell, first calculate white space, i.e. the area difference between convex and concave hulls, respectively, for query cell, neighbor cell, and the corresponding merged cell; and then calculate the white space difference between the merged cell and two separate cells and normalize that value with respect to the concave area of query and neighbor cells, respectively; lastly, allow a valid merging when the normalized white space difference upon merging for both query and neighbor cells are smaller than the provided `cutoff_diffWB`.
+#' Notice that geometry analysis on potential merge pairs is done at 2D and thus cells with z-overlaid have high chance of merging. 
+#' @importFrom spatstat.geom area.owin convexhull.xy
+#' @importFrom concaveman concaveman
+#' @export
+decide_ReSegment_Operations_geometry <- function(neighborhood_df,
+                                                 selfcellID_coln = 'CellId', 
+                                                 transNum_coln = 'transcript_num', 
+                                                 selfCellType_coln = 'self_celltype',
+                                                 selfScore_coln = 'score_under_self', 
+                                                 neighborcellID_coln = 'neighbor_CellId', 
+                                                 neighborCellType_coln = 'neighbor_celltype', 
+                                                 neighborScore_coln = 'score_under_neighbor',
+                                                 score_baseline = NULL, 
+                                                 lowerCutoff_transNum = NULL, 
+                                                 higherCutoff_transNum= NULL, 
+                                                 transcript_df, 
+                                                 cellID_coln = "CellId",
+                                                 transID_coln = "transcript_id",
+                                                 transSpatLocs_coln = c('x','y','z'), 
+                                                 cutoff_diffWB = 0.5){
+  
+  # check format of neighborhood_df
+  if(any(!c(selfcellID_coln, transNum_coln, selfCellType_coln, selfScore_coln, 
+            neighborcellID_coln, neighborCellType_coln, neighborScore_coln) %in% colnames(neighborhood_df))){
+    stop(sprintf("Not all necessary columns can be found in provided neighborhood_df, missing columns include `%s`.",
+                 paste0(setdiff(c(selfcellID_coln, transNum_coln, selfCellType_coln, selfScore_coln, 
+                                  neighborcellID_coln, neighborCellType_coln, neighborScore_coln), 
+                                colnames(neighborhood_df)), collapse = "`, `")))
+  }
+  
+  all_celltypes <- unique(c(neighborhood_df[[selfCellType_coln]], neighborhood_df[[neighborCellType_coln]]))
+  
+  # check the format for all cutoff, make sure it's number and has names for all cell types used.
+  for(cutoff_var in c("score_baseline", "lowerCutoff_transNum", "higherCutoff_transNum")){
+    if(is.null(get(cutoff_var))){
+      stop(sprintf("The `%s` must be provided as a named numeric vector for score cutoff under each cell type used in neighborhood_df.", cutoff_var))
+    } else {
+      if(!any(class(get(cutoff_var)) %in% c('numeric'))){
+        stop(sprintf("The provided `%s` must be a named numeric vector. ", cutoff_var))
+      }
+      if(length(setdiff(all_celltypes, names(get(cutoff_var))))>0){
+        stop(sprintf("The provided `%s` is missing for the following cell types used in neighborhood_df: `%s`.", 
+                     cutoff_var, paste0(setdiff(all_celltypes, names(get(cutoff_var))), collapse="`, `")))
+      }
+    }
+    
+  }
+  
+  # make sure lowerCutoff is lower than higherCutoff such that the merge would overwrite the keep. 
+  lowerCutoff_transNum <- lowerCutoff_transNum[match(all_celltypes, names(lowerCutoff_transNum))]
+  higherCutoff_transNum <- higherCutoff_transNum[match(all_celltypes, names(higherCutoff_transNum))]
+  if(any(lowerCutoff_transNum > higherCutoff_transNum)){
+    stop(sprintf("`lowerCutoff_transNum` is larger than `higherCutoff_transNum` in cell type: `%s`.", 
+                 paste0(names(lowerCutoff_transNum)[lowerCutoff_transNum > higherCutoff_transNum], collapse = "`, `")))
+  }
+  
+  # check format of transcript_df
+  if(any(!c(cellID_coln, transID_coln, transSpatLocs_coln) %in% colnames(transcript_df))){
+    stop(sprintf("Not all necessary columns can be found in provided transcript_df, missing columns include `%s`.",
+                 paste0(setdiff(c(cellID_coln, transID_coln, transSpatLocs_coln), 
+                                colnames(transcript_df)), collapse = "`, `")))
+  }
+  
+  d2_or_d3 <- length(transSpatLocs_coln)
+  
+  if(!(d2_or_d3 %in% c(2,3))){
+    stop("spatLocs_colns must be the column names for 1st, 2nd, optional 3rd dimension of spatial coordinates in transcript_df.")
+  } else {
+    message(sprintf("Perform geometry analysis in 2D for potential merging events despite the provided %d Dimension data.", d2_or_d3))
+  }
+  
+  # get transcript information for cells in neighborhood_df
+  all_cellIDs <- unique(c(neighborhood_df[[selfcellID_coln]], neighborhood_df[[neighborcellID_coln]]))
+  transcript_df <- as.data.frame(transcript_df)
+  transcript_df <- transcript_df[transcript_df[[cellID_coln]] %in% all_cellIDs, ]
+  
+  # geometry constraints on valid merging event 
+  if(cutoff_diffWB <=0 | cutoff_diffWB >1){
+    stop(sprintf("The providied cutoff_diffWB = %.3f, must be within (0, 1].", cutoff_diffWB))
+  } else {
+    message(sprintf("A valid merging event to neighbor cell of consistent cell type must have no more than %.3f area change in white space upon merging with respect to the concave area of either source cells. ", cutoff_diffWB))
+  }
+  
+  
+  # (1) whether consistent neighbor
+  neighborhood_df[['consist_neighbor']] <- (neighborhood_df[[selfCellType_coln]] == neighborhood_df[[neighborCellType_coln]])
+  
+  # (2) whether high enough transcript number on self cell type for evaluate merging or keep as new cell
+  neighborhood_df[['enough_to_keep']] <-( neighborhood_df[[transNum_coln]] > higherCutoff_transNum[neighborhood_df[[selfCellType_coln]]])
+  neighborhood_df[['enough_to_merge']] <-( neighborhood_df[[transNum_coln]] > lowerCutoff_transNum[neighborhood_df[[selfCellType_coln]]])
+  
+  # (3) high enough score under self
+  neighborhood_df[['high_selfscore']] <- (neighborhood_df[[selfScore_coln]] > score_baseline[neighborhood_df[[selfCellType_coln]]])
+  
+  # merge if consist neighbors and fewer than average transcript number
+  idx_to_merge <- which(neighborhood_df[['consist_neighbor']] & !(neighborhood_df[['enough_to_keep']]))
+  # keep as new cell id if no consist neighbor, but high self score and higher than minimal transcript number
+  idx_to_keep <- which(neighborhood_df[['high_selfscore']] & neighborhood_df[['enough_to_merge']])
+  
+  # (4) for cells that might be merged, check spatial network to decide if merging is allowed by geometry analysis
+  
+  # for each pair of cells that would be merged
+  myfun_NWclustering <- function(neighborDF_eachCell){
+    query_cellID <- neighborDF_eachCell[[selfcellID_coln]][1]
+    neighbor_cellID <- neighborDF_eachCell[[neighborcellID_coln]][1]
+    outputs <- data.frame(query_cellID = query_cellID, 
+                          neighbor_cellID = neighbor_cellID, 
+                          origin_Idx = neighborDF_eachCell[['origin_Idx']][1])
+    
+    merged_pair <- unique(c(query_cellID, neighbor_cellID))
+    if (length(merged_pair) !=2) {
+      outputs[['merge']] <- FALSE
+    } else {
+      queryDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == query_cellID), ])
+      neighDF <- as.data.frame(transcript_df[which(transcript_df[[cellID_coln]] == neighbor_cellID), ])
+      
+      # if either cell has only 1~2 transcripts of unique coordinates, merge as it is
+      flag_geometry <- sapply(list(query = queryDF, 
+                                   neighbor = neighDF), 
+                              function(eachDF){
+                                nrow(unique(eachDF[, transSpatLocs_coln[1:2]])) <3
+                              })
+      
+      if(any(flag_geometry)){
+        outputs[['merge']] <- TRUE
+      } else {
+        # geometry analysis on 2D
+        areaRes <- sapply(list(query = queryDF, 
+                               neighbor = neighDF, 
+                               merged = rbind(queryDF, neighDF)),
+                          function(eachDF){
+                            # convex hull area
+                            convexArea <- spatstat.geom::area.owin(spatstat.geom::convexhull.xy(eachDF[, transSpatLocs_coln[1:2]]))
+                            
+                            # concave hull area
+                            polyClockwise <- concaveman::concaveman(as.matrix(eachDF[, transSpatLocs_coln[1:2]]))
+                            # need anti-clockwise polygonal as external boundary 
+                            concaveArea <- spatstat.geom::area.owin(spatstat.geom::owin(poly=list(x=polyClockwise[nrow(polyClockwise):1, 1],y=polyClockwise[nrow(polyClockwise):1, 2])))
+                            
+                            areaStats <- c(convexArea, concaveArea, convexArea - concaveArea)
+                            names(areaStats) <- c('convex', 'concave', 'whitespace')
+                            
+                            return(areaStats)
+                          })
+        
+        # difference in white space due to merged, negative value means merged cell has high convexity 
+        diffWB <- areaRes['whitespace', 'merged'] - areaRes['whitespace', 'query'] - areaRes['whitespace', 'neighbor']
+        
+        # normalized by the the concave area of either source cell, check if maximum normlaized value less than cutoff
+        if(max(diffWB/areaRes['concave', c('query', 'neighbor')]) < cutoff_diffWB){
+          outputs[['merge']] <- TRUE
+        } else {
+          outputs[['merge']] <- FALSE
+        } 
+        
+      }
+      
+      
+    }
+    return(outputs)
+  }
+  
+  
+  # check merging interface if any merging candidate
+  if(length(idx_to_merge) >0){
+    neighDF_for_mergeCheck <- neighborhood_df[idx_to_merge, ]
+    neighDF_for_mergeCheck[['origin_Idx']] <- idx_to_merge
+    
+    message(sprintf("Perform geometry analysis on %d potential merging events. ", length(idx_to_merge)))
+    
+    mergeCheck_res <- by(neighDF_for_mergeCheck, neighDF_for_mergeCheck[[selfcellID_coln]], myfun_NWclustering)
+    mergeCheck_res <- do.call(rbind, mergeCheck_res)
+    
+    # update the idx_to_merge after merge checking with geometry analysis
+    idx_to_merge <- mergeCheck_res[['origin_Idx']][which(mergeCheck_res[['merge']] == TRUE)]
+    
+  } 
+  
+  # assign new cell id, NA to discard the cells with no consistent neighbor, few transcripts and low self score
+  neighborhood_df[['corrected_cellID']] <- rep(NA, nrow(neighborhood_df))
+  neighborhood_df[['corrected_cellID']][idx_to_keep] <- neighborhood_df[[selfcellID_coln]][idx_to_keep]
+  neighborhood_df[['corrected_cellID']][idx_to_merge] <- neighborhood_df[[neighborcellID_coln]][idx_to_merge]
+  
+  #### clean up cells that need update and resolve circular referencing using network component analysis----
+  cells_to_discard <- neighborhood_df[[selfcellID_coln]][is.na(neighborhood_df[['corrected_cellID']])]
+  cells_to_update <- neighborhood_df[['corrected_cellID']][!(is.na(neighborhood_df[['corrected_cellID']]))]
+  names(cells_to_update) <- neighborhood_df[[selfcellID_coln]][!(is.na(neighborhood_df[['corrected_cellID']]))]
+  
+  # remove the ones in both names and values
+  cells_to_update <- cells_to_update[which(cells_to_update != names(cells_to_update))]
+  # deal with pairs and groups, take advantage of the component network analysis to find membership between cells_to_update
+  tmp_networkDF <- data.frame(from = names(cells_to_update), 
+                              to = cells_to_update, 
+                              distance = rep(1, length(cells_to_update)))
+  
+  all_index = unique(x = c(tmp_networkDF$from, tmp_networkDF$to))
+  network_igraph = igraph::graph_from_data_frame(tmp_networkDF, directed = TRUE, vertices = all_index)
+  group_vector <- igraph::components(network_igraph, mode = "weak")[['membership']]
+  cells_to_update <- NULL
+  for (groupID in unique(group_vector)){
+    nodes <- names(group_vector)[which(group_vector == groupID)]
+    # sort by iD
+    nodes <- sort(nodes)
+    current_vector <- rep(nodes[1], length(nodes)-1)
+    names(current_vector) <- nodes[2: length(nodes)]
+    cells_to_update <- c(cells_to_update, current_vector)
+  }
+  
+  # update cells_to_discard, make sure not in the values or names of cells_to_udpate
+  cells_to_discard <- cells_to_discard[which(!(cells_to_discard %in% cells_to_update))]
+  cells_to_discard <- cells_to_discard[which(!(cells_to_discard %in% names(cells_to_update)))]
+  
+  # cells to keep as it is
+  cells_to_keep <- setdiff(neighborhood_df[[selfcellID_coln]], c(cells_to_discard, names(cells_to_update)))
+  
+  # compile the single cellID converter for all operations, assign NA for cells_to_discard
+  reseg_full_converter <- c(cells_to_update, cells_to_keep, rep(NA, length(cells_to_discard)))
+  names(reseg_full_converter) <- c(names(cells_to_update), cells_to_keep, cells_to_discard)
+  
+  reseg_operations <- list(cells_to_discard = cells_to_discard, 
+                           cells_to_update = cells_to_update, 
+                           cells_to_keep = cells_to_keep, 
+                           reseg_full_converter = reseg_full_converter)
+  
+  return(reseg_operations)
+}
+

@@ -7,5 +7,5 @@
 myFun_fov_load(path_to_fov)
 }
 \description{
-supporting function for \code{fastReseg_internalRef}, to load transcript data.frame of each FOV from file path
+supporting function for \code{fastReseg_internalRef} and \code{findSegmentError_allFiles}, to load transcript data.frame of each FOV from file path
 }
