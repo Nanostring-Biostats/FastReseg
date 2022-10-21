@@ -92,8 +92,9 @@ update_transDF_ResegActions <- function(transcript_df,
   ## get new cell types for cells being updated ----
   subTransDF <- transcript_df[which(transcript_df[['updated_cellID']] %in% unique(cells_to_update) & transcript_df[[transGene_coln]] %in% common_genes), ]
   
-  
-  if(celltype_method == 'LogLikeRatio'){
+  if(nrow(subTransDF)<1){
+    newCellTypes <- NULL
+  } else if(celltype_method == 'LogLikeRatio'){
     # get score for each transcripts
     transcriptGeneScore <- score_GeneMatrix[subTransDF[[transGene_coln]], ]
     
