@@ -82,8 +82,8 @@ save(smi_inputs, file = fs::path(sub_out_dir, "smi_inputs.RData"))
 # # cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 # flagModel_TransNum_cutoff = 50 
 # 
-# # cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
-# flagCell_lrtest_cutoff = 5
+# # cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+# flagCell_lm_cutoff = 5
 # 
 # # cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 # svmClass_score_cutoff = -2 

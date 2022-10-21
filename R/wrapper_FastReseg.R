@@ -9,7 +9,7 @@
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param groupTranscripts_method use either `delaunay` or `dbscan` method to group transcripts in space (default = 'delaunay')
@@ -66,7 +66,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        spatLocs_colns = c('x','y','z'), 
                                        extracellular_cellID = NULL, 
                                        flagModel_TransNum_cutoff = 50, 
-                                       flagCell_lrtest_cutoff = 5,
+                                       flagCell_lm_cutoff = 5,
                                        svmClass_score_cutoff = -2, 
                                        svm_args = list(kernel = "radial", 
                                                        scale = FALSE, 
@@ -299,7 +299,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   }
   
   
-  colnames(select_cellmeta) <- c(cellID_coln,'tLLRv2_maxCellType')
+  colnames(select_cellmeta) <- c(cellID_coln,'tSum_maxCellType')
   
   
   transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
@@ -312,7 +312,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                   transcript_df = transcript_df, 
                                   transID_coln = transID_coln,
                                   transGene_coln = transGene_coln,
-                                  celltype_coln = 'tLLRv2_maxCellType')
+                                  celltype_coln = 'tSum_maxCellType')
   transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
   rm(tmp_df)
   
@@ -323,7 +323,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                           transcript_df = transcript_df, 
                                           cellID_coln = cellID_coln, 
                                           transID_coln = transID_coln, 
-                                          score_coln = 'score_tLLRv2_maxCellType',
+                                          score_coln = 'score_tSum_maxCellType',
                                           spatLocs_colns = spatLocs_colns, 
                                           model_cutoff = flagModel_TransNum_cutoff)
   
@@ -338,7 +338,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else{
     
     #-log10(P)
-    tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+    tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pvalue']])
     modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
     rm(tmp_df)
     
@@ -347,10 +347,10 @@ fastReseg_core_externalRef <- function(refProfiles,
     }
     
     
-    ## (1.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-    flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lrtest_-log10P']] > flagCell_lrtest_cutoff )]
-    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                    length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
+    ## (1.2) flag cells based on linear regression of tLLRv2, lm_-log10P
+    flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lm_-log10P']] > flagCell_lm_cutoff )]
+    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lm_-log10P > %.1f.", 
+                    length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lm_cutoff))
     
     
   }
@@ -376,12 +376,12 @@ fastReseg_core_externalRef <- function(refProfiles,
     reseg_transcript_df <- transcript_df
     reseg_transcript_df[['connect_group']] <- 0
     reseg_transcript_df[['tmp_cellID']] <- reseg_transcript_df[[cellID_coln]]
-    reseg_transcript_df[['group_maxCellType']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
+    reseg_transcript_df[['group_maxCellType']] <- reseg_transcript_df[['tSum_maxCellType']]
     
     # update transcript df with resegmentation outcomes
     reseg_transcript_df[['updated_cellID']] <- reseg_transcript_df[[cellID_coln]]
-    reseg_transcript_df[['updated_celltype']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
-    reseg_transcript_df[['score_updated_celltype']] <- reseg_transcript_df[['score_tLLRv2_maxCellType']]
+    reseg_transcript_df[['updated_celltype']] <- reseg_transcript_df[['tSum_maxCellType']]
+    reseg_transcript_df[['score_updated_celltype']] <- reseg_transcript_df[['score_tSum_maxCellType']]
     
     final_res[['updated_transDF']] <- reseg_transcript_df
     
@@ -447,7 +447,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                 transcript_df = flagged_transDF3d, 
                                 cellID_coln = cellID_coln, 
                                 transID_coln = transID_coln, 
-                                score_coln = 'score_tLLRv2_maxCellType',
+                                score_coln = 'score_tSum_maxCellType',
                                 spatLocs_colns = spatLocs_colns, 
                                 model_cutoff = flagModel_TransNum_cutoff, 
                                 score_cutoff = svmClass_score_cutoff, 
@@ -587,7 +587,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   tmp_idx <- which(is.na(reseg_transcript_df[['connect_group']]))
   reseg_transcript_df[['connect_group']][tmp_idx]<-rep(0, length(tmp_idx))
   reseg_transcript_df[['tmp_cellID']][tmp_idx] <- reseg_transcript_df[[cellID_coln]][tmp_idx]
-  reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tLLRv2_maxCellType']][tmp_idx]
+  reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tSum_maxCellType']][tmp_idx]
   rm(tmp_idx)
   
   ## (4.3) evaluate the neighborhood of each group for re-segmentation ----
@@ -774,7 +774,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param groupTranscripts_method use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')
@@ -941,7 +941,7 @@ fastReseg_internalRef <- function(counts,
                                   spatLocs_colns = c('x','y','z'), 
                                   extracellular_cellID = NULL, 
                                   flagModel_TransNum_cutoff = 50, 
-                                  flagCell_lrtest_cutoff = 5,
+                                  flagCell_lm_cutoff = 5,
                                   svmClass_score_cutoff = -2, 
                                   svm_args = list(kernel = "radial", 
                                                   scale = FALSE, 
@@ -1302,7 +1302,7 @@ fastReseg_internalRef <- function(counts,
                                               cellID_coln = 'UMI_cellID', 
                                               spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                               flagModel_TransNum_cutoff = flagModel_TransNum_cutoff, 
-                                              flagCell_lrtest_cutoff = flagCell_lrtest_cutoff,
+                                              flagCell_lm_cutoff = flagCell_lm_cutoff,
                                               svmClass_score_cutoff = svmClass_score_cutoff, 
                                               svm_args = svm_args,
                                               groupTranscripts_method = groupTranscripts_method, 
@@ -1460,7 +1460,7 @@ fastReseg_internalRef <- function(counts,
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
@@ -1562,7 +1562,7 @@ findSegmentError_allFiles <- function(counts,
                                       spatLocs_colns = c('x','y','z'), 
                                       extracellular_cellID = NULL, 
                                       flagModel_TransNum_cutoff = 50, 
-                                      flagCell_lrtest_cutoff = 5,
+                                      flagCell_lm_cutoff = 5,
                                       svmClass_score_cutoff = -2, 
                                       svm_args = list(kernel = "radial", 
                                                       scale = FALSE, 
@@ -1794,7 +1794,7 @@ findSegmentError_allFiles <- function(counts,
     }
     
     
-    colnames(select_cellmeta) <- c('UMI_cellID','tLLRv2_maxCellType')
+    colnames(select_cellmeta) <- c('UMI_cellID','tSum_maxCellType')
     all_cells <- select_cellmeta[['UMI_cellID']]
     
     transcript_df[['intraC']] <- merge(transcript_df[['intraC']], select_cellmeta, by = 'UMI_cellID')
@@ -1807,7 +1807,7 @@ findSegmentError_allFiles <- function(counts,
                                     transcript_df = transcript_df[['intraC']], 
                                     transID_coln = 'UMI_transID',
                                     transGene_coln = 'target',
-                                    celltype_coln = 'tLLRv2_maxCellType')
+                                    celltype_coln = 'tSum_maxCellType')
     transcript_df[['intraC']] <- merge(transcript_df[['intraC']], tmp_df, by = 'UMI_transID')
     rm(tmp_df)
     
@@ -1819,7 +1819,7 @@ findSegmentError_allFiles <- function(counts,
                                             transcript_df = transcript_df[['intraC']], 
                                             cellID_coln = 'UMI_cellID', 
                                             transID_coln = 'UMI_transID', 
-                                            score_coln = 'score_tLLRv2_maxCellType',
+                                            score_coln = 'score_tSum_maxCellType',
                                             spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                             model_cutoff = flagModel_TransNum_cutoff)
     
@@ -1830,16 +1830,16 @@ findSegmentError_allFiles <- function(counts,
       
     } else {
       #-log10(P)
-      tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+      tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pvalue']])
       modStats_ToFlagCells <- merge(select_cellmeta, tmp_df, by.x = 'UMI_cellID', by.y = 'cell_ID')
       rm(tmp_df)
       
       
-      ## (4.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-      modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+      ## (4.2) flag cells based on linear regression of tLLRv2, lm_-log10P
+      modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lm_-log10P']] > flagCell_lm_cutoff )
       flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
-      message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                      length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
+      message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lm_-log10P > %.1f.", 
+                      length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lm_cutoff))
       
       # write into disk
       # add idx as file idx
@@ -1864,7 +1864,7 @@ findSegmentError_allFiles <- function(counts,
                                     transcript_df = classDF_ToFlagTrans, 
                                     cellID_coln = 'UMI_cellID', 
                                     transID_coln = 'UMI_transID', 
-                                    score_coln = 'score_tLLRv2_maxCellType',
+                                    score_coln = 'score_tSum_maxCellType',
                                     spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                     model_cutoff = flagModel_TransNum_cutoff, 
                                     score_cutoff = svmClass_score_cutoff, 

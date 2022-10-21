@@ -11,11 +11,12 @@
 #' \enumerate{
 #'    \item{cell_ID, cell id}
 #'    \item{transcript_num, number of transcripts in given cell}
-#'    \item{modAlt_rsq, summary(mod_alternative)$r.squared}
-#'    \item{lrtest_ChiSq, lrtest chi-squared value}
-#'    \item{lrtest_Pr, lrtest probability larger than chi-squared value, p-value}
+#'    \item{modAlt_rsq, the root mean square for residual of the alternative model }
+#'    \item{lm_Fstat, the F-test statistic of the alternative model against null model}
+#'    \item{lm_Pvalue, the p.value calculated from the F-test statstic}
 #' }
-#' @details For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D and a null model: mod_null = lm(tLLRv2 ~ 1); then run lmtest::lrtest(mod_alternative, mod_null). Return statistics for mod_alternative$fitted.values (standard deviation and minimal value), summary(mod_alternative)$r.squared and as well as lrtest chi-squared value.  
+#' @details For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D. Return the root mean square of residual after fitting, the F statistics and p.value of alternative model against null model. 
+#' @importFrom RcppEigen fastLmPure
 #' @export
 score_cell_segmentation_error <- function(chosen_cells, transcript_df, 
                                           cellID_coln = "CellId", 
@@ -66,10 +67,14 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
     # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
     if(d2_or_d3 ==2){
       colnames(coord_df) <- c('cell_ID','score','x','y')
-      mod_formula <- 'score ~ x + y + x2 + y2 + xy'
+      # mod_formula <- 'score ~ x + y + x2 + y2 + xy'
+      
+      colns_to_regress <- c('x','y','x2','y2','xy')
     } else {
       colnames(coord_df) <- c('cell_ID','score','x','y','z')
-      mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
+      # mod_formula <- 'score ~ x + y + z + x2 + y2 +z2 +xy + xz + yz'
+      
+      colns_to_regress <- c('x','y','z','x2','y2','z2','xy','xz','yz')
     }
     
     coord_df[['x2']] <- coord_df[['x']]^2
@@ -83,22 +88,62 @@ score_cell_segmentation_error <- function(chosen_cells, transcript_df,
     }
     
     
-    # (3) perform lm and lrtest by group
+    # (3) perform lm by group
+    # # lrtest to evaluate spatial dependency 
+    # my_fun <- function(data){
+    #   # null linear model, lm(tLLRv2 ~ 1)
+    #   mod_null <- lm(score~1, data = data)
+    #   
+    #   # spatial quadratic model
+    #   # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
+    #   mod_alternative <- lm(as.formula(mod_formula), data = data)
+    #   
+    #   #likelihood ratio test of nested model
+    #   lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+    #   
+    #   outputs <- data.frame(transcript_num = nrow(data), 
+    #                         modAlt_rsq = summary(mod_alternative)$r.squared,
+    #                         lrtest_ChiSq = lrtest_res$Chisq[2],
+    #                         lrtest_Pr= lrtest_res$`Pr(>Chisq)`[2])
+    #   
+    #   return(outputs)
+    # }
+    
+    # fastLmPure and F-statistics to evaluate spatial dependency 
+    fstat <- function(flmp,y){
+      n <- length(flmp$residuals)
+      sumsquares_residual_h0 <- var(y)*(n-1)
+      sumsquares_residual_h1 <- sum(flmp$residuals^2 )
+      p1 <- length(flmp$coefficients) 
+      p0 <- 1
+      fstat <- 
+        ((sumsquares_residual_h0 - sumsquares_residual_h1)/(p1-p0)) / 
+        ((sumsquares_residual_h1)/(n-p1))  
+      p.value <- pf(fstat, p1-p0, n-p1, lower.tail=FALSE)
+      
+      return(list(fstat = c("value" = fstat, "numdf" = p1-p0, "dendf" = n-p1)
+                  ,p.value = p.value
+      ))
+    }
+    
     my_fun <- function(data){
-      # null linear model, lm(tLLRv2 ~ 1)
-      mod_null <- lm(score~1, data = data)
-      
-      # spatial quadratic model
+     # linear regression using spatial quadratic model
       # lm(tLLRv2 ~ x + y + x2 + y2 + xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D
-      mod_alternative <- lm(as.formula(mod_formula), data = data)
       
-      #likelihood ratio test of nested model
-      lrtest_res <- lmtest::lrtest(mod_alternative, mod_null)
+      ## note that have to add the column of 1's for the intercept
+      flmp <- RcppEigen::fastLmPure(y=data$score, 
+                                    X=as.matrix(cbind(rep(1, nrow(data)), 
+                                                      data[,.SD, .SDcols = colns_to_regress]))
+                                    ) 
+      
+      # f-statistics and p.value
+      fstatistic <- fstat(flmp, data$score)
       
       outputs <- data.frame(transcript_num = nrow(data), 
-                            modAlt_rsq = summary(mod_alternative)$r.squared,
-                            lrtest_ChiSq = lrtest_res$Chisq[2],
-                            lrtest_Pr = lrtest_res$`Pr(>Chisq)`[2])
+                            modAlt_rsq = flmp$s,
+                            lm_Fstats = fstatistic[['fstat']][['value']],
+                            lm_Pvalue = fstatistic[['p.value']])
+      
       return(outputs)
     }
     
