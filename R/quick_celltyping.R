@@ -9,6 +9,7 @@
 #' @importFrom Matrix rowSums
 #' @importFrom stats dnbinom
 #' @return a cell x cell_type matrix of the log-likelihood
+#' @export
 lldist <- function(x, mat, bg = 0.01, size = 10, digits = 2) {
   # convert to matrix form if only a vector was input:
   if (is.vector(mat)) {
@@ -93,7 +94,7 @@ numCores <- function() {
 #'    \item clust: a vector given cells' cluster assignments
 #'    \item logliks: Matrix of cells' log-likelihoods under each cluster. Cells in rows, clusters in columns.
 #' }
-#' 
+#' @export
 quick_celltype <- function(x, bg = 0.01, reference_profiles, nb_size = 10, align_genes = TRUE) {
   
   if (any(rowSums(x) == 0)) {

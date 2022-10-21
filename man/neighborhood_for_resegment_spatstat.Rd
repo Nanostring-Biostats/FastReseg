@@ -6,7 +6,8 @@
 \usage{
 neighborhood_for_resegment_spatstat(
   chosen_cells = NULL,
-  score_GeneMatrix,
+  score_GeneMatrix = NULL,
+  refProfiles = NULL,
   score_baseline = NULL,
   neighbor_distance_xy = NULL,
   distance_cutoff = 2.7,
@@ -15,15 +16,18 @@ neighborhood_for_resegment_spatstat(
   celltype_coln = "cell_type",
   transID_coln = "transcript_id",
   transGene_coln = "target",
-  transSpatLocs_coln = c("x", "y", "z")
+  transSpatLocs_coln = c("x", "y", "z"),
+  celltype_method = "LogLikeRatio"
 )
 }
 \arguments{
 \item{chosen_cells}{the cell_ID of chosen cells need to be evaluate for re-segmentation}
 
-\item{score_GeneMatrix}{the gene x cell-type matrix of log-like score of gene in each cell type}
+\item{score_GeneMatrix}{the gene x cell-type matrix of log-like score of gene in each cell type, needed if using \code{LogLikeRatio} cell typing method (default  = NULL)}
 
-\item{score_baseline}{a named vector of score baseline for all cell type listed in score_GeneMatrix}
+\item{refProfiles}{A matrix of cluster profiles, genes X clusters, needed if using \code{NegBionomial} cell typing method (default  = NULL)}
+
+\item{score_baseline}{a named vector of score baseline for all cell type listed in \code{score_GeneMatrix} or \code{refProfiles}}
 
 \item{neighbor_distance_xy}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.}
 
@@ -41,6 +45,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 \item{transGene_coln}{the column name of target or gene name in transcript_df}
 
 \item{transSpatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 }
 \value{
 a data.frame

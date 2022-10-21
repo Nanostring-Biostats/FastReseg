@@ -11,7 +11,8 @@ prepSMI_for_fastReseg(
   cellClus_to_exclude = NULL,
   removeUnpaired = FALSE,
   blacklist_genes = NULL,
-  pixel_size = 0.18
+  pixel_size = 0.18,
+  celltype_method = "LogLikeRatio"
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ prepSMI_for_fastReseg(
 \item{blacklist_genes}{a vector of genes to be excluded from reference profile estimation (default = NULL)}
 
 \item{pixel_size}{the micrometer size of image pixel listed in \code{Width} and \code{Height} dimension of each cell stored in \code{cell_metadata} of the existing SMI object (default = 0.18)}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 }
 \value{
 a list
