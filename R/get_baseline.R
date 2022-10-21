@@ -255,44 +255,41 @@ get_baselineCT <- function(refProfiles,
     # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
     tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix
     
-    # assign cell type for each cell if not provided ----
+    # assign cell type for each cell if not provided
     if(is.null(clust)){
       message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
       
       # assign cell type based on max values
       max_idx_1st <- max.col(tLLRv2_cellMatrix, ties.method="first")
       clust <- colnames(tLLRv2_cellMatrix)[max_idx_1st]
-      
-      common_celltypes <- unique(clust)
+
       rm(max_idx_1st)
     }
     
     
   } else if (celltype_method == 'NegBinomial'){
-    
-    # assign cell type for each cell if not provided ----
-    if(is.null(clust)){
-      message('Perform cluster assignment based on negative binomial model given the provided `refProfiles`.')
-      
-      nb_res <- quick_celltype(counts, bg = 0.01, 
-                               reference_profiles = refProfiles, 
-                               align_genes = FALSE) 
-      
-      
-      clust <- nb_res[['clust']]
-      common_celltypes <- unique(clust)
-      
-    }
+    # get logliks for cell under all cell types
+    nb_res <- quick_celltype(counts, bg = 0.01, 
+                             reference_profiles = refProfiles, 
+                             align_genes = FALSE)
     
     # per cell logliks for all cells, cell x cell-cluster score matrix 
     tLLRv2_cellMatrix <- nb_res[['logliks']]
     
+    # assign cell type for each cell if not provided 
+    if(is.null(clust)){
+      message('Perform cluster assignment based on negative binomial model given the provided `refProfiles`.')
+      clust <- nb_res[['clust']]
+      
+    }
+    rm(nb_res)
+
     
   } else {
     stop(sprintf('The provided `celltype_method` = `%s` is not supported.', celltype_method))
   }
   
-  
+  common_celltypes <- unique(clust)
   
   # get transcript number quantile profile ---
   all_transNum <- rowSums(counts)
