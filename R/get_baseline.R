@@ -268,7 +268,7 @@ get_baselineCT <- function(refProfiles,
     }
     
     
-  } else if (celltype_method == ' NegBinomial'){
+  } else if (celltype_method == 'NegBinomial'){
     
     # assign cell type for each cell if not provided ----
     if(is.null(clust)){
