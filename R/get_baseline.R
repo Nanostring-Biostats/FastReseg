@@ -171,6 +171,7 @@ choose_distance_cutoff <- function(transcript_df,
 #' @param refProfiles A matrix of cluster profiles, genes X clusters
 #' @param counts Counts matrix, cells X genes.
 #' @param clust Vector of cluster assignments for each cell in `counts`, default = NULL to automatically assign the cell cluster for each cell based on maximum transcript score  
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @return a list
 #' \enumerate{
 #'    \item{span_score, a matrix of average transcript tLLR score per molecule per cell for 22 distinct cell types in rows, percentile at (0%, 25%, 50%, 75%, 100%) in columns}
@@ -188,7 +189,11 @@ choose_distance_cutoff <- function(transcript_df,
 #' @export
 get_baselineCT <- function(refProfiles, 
                            counts, 
-                           clust = NULL){
+                           clust = NULL,
+                           celltype_method = 'LogLikeRatio'){
+  
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial'))
+  
   # get common genes
   common_genes <- intersect(rownames(refProfiles), colnames(counts))
 
@@ -236,29 +241,58 @@ get_baselineCT <- function(refProfiles,
   counts <- as.matrix(counts)[, common_genes]
   
   # get score matrix based on refProfiles for each gene and cell ----
-  # replace zero in mean profiles with 1E-5
-  refProfiles <- pmax(refProfiles, 1e-5)
-  # tLL score
-  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
-  # tLLR score, re-center on maximum per row/transcript
-  tmp_max <- apply(transcript_loglik, 1, max)
-  tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
-  rm(tmp_max, transcript_loglik)
+  # replace zero in mean profiles with 1E-8
+  refProfiles <- pmax(refProfiles, 1e-8)
   
-  # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
-  tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix
-  
-  # assign cell type for each cell if not provided ----
-  if(is.null(clust)){
-    message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
-
-    # assign cell type based on max values
-    max_idx_1st <- max.col(tLLRv2_cellMatrix, ties.method="first")
-    clust <- colnames(tLLRv2_cellMatrix)[max_idx_1st]
-
-    common_celltypes <- unique(clust)
-    rm(max_idx_1st)
+  if(celltype_method == 'LogLikeRatio'){
+    # tLL score
+    transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
+    # tLLR score, re-center on maximum per row/transcript
+    tmp_max <- apply(transcript_loglik, 1, max)
+    tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
+    rm(tmp_max, transcript_loglik)
+    
+    # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
+    tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix
+    
+    # assign cell type for each cell if not provided ----
+    if(is.null(clust)){
+      message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
+      
+      # assign cell type based on max values
+      max_idx_1st <- max.col(tLLRv2_cellMatrix, ties.method="first")
+      clust <- colnames(tLLRv2_cellMatrix)[max_idx_1st]
+      
+      common_celltypes <- unique(clust)
+      rm(max_idx_1st)
+    }
+    
+    
+  } else if (celltype_method == ' NegBinomial'){
+    
+    # assign cell type for each cell if not provided ----
+    if(is.null(clust)){
+      message('Perform cluster assignment based on negative binomial model given the provided `refProfiles`.')
+      
+      nb_res <- quick_celltype(counts, bg = 0.01, 
+                               reference_profiles = refProfiles, 
+                               align_genes = FALSE) 
+      
+      
+      clust <- nb_res[['clust']]
+      common_celltypes <- unique(clust)
+      
+    }
+    
+    # per cell logliks for all cells, cell x cell-cluster score matrix 
+    tLLRv2_cellMatrix <- nb_res[['logliks']]
+    
+    
+  } else {
+    stop(sprintf('The provided `celltype_method` = `%s` is not supported.', celltype_method))
   }
+  
+  
   
   # get transcript number quantile profile ---
   all_transNum <- rowSums(counts)
@@ -274,6 +308,7 @@ get_baselineCT <- function(refProfiles,
     rowidx <- which(clust == each_celltype)
     all_tLLRv2[rowidx] <- tLLRv2_cellMatrix[rowidx, each_celltype]
   }
+  
   # normalized by transcript number to get per molecule transcript score for each cell
   all_tLLRv2 <- all_tLLRv2/all_transNum
   span_tLLRv2_CellType <- tapply(all_tLLRv2, 

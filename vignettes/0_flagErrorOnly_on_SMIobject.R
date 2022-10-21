@@ -38,6 +38,9 @@ removeUnpaired <- FALSE
 # flag to include ctrl_genes in analysis
 include_ctrlgenes <- FALSE
 
+# use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation
+celltype_method <- 'LogLikeRatio'
+
 # SMI TAP output folder
 scAnalysis_dir <- "/home/rstudio/NAS_data/lwu/testRun/SpatialTest/giotto_test/melanoma/Run4104_melanoma_980plx/giotto_output/Run4104_cellpose_vs_oldDASH"
 # get config files to get path to sample annotation file
@@ -68,7 +71,8 @@ smi_inputs <- prepSMI_for_fastReseg(path_to_SMIobject = path_to_SMIobject,
                                     cellClus_to_exclude = cellClus_to_exclude, 
                                     removeUnpaired = removeUnpaired,
                                     blacklist_genes = blacklist_genes,
-                                    pixel_size = pixel_size)
+                                    pixel_size = pixel_size,
+                                    celltype_method = celltype_method)
 # write `transDF_fov_fileInfo` into csv file
 write.csv(smi_inputs[['transDF_fov_fileInfo']], 
           file = fs::path(sub_out_dir, 'transDF_fov_fileInfo.csv'))
@@ -130,7 +134,8 @@ reseg_outputs <- findSegmentError_allFiles(
   extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
   path_to_output = sub_out_dir, 
   combine_extra = TRUE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
-  ctrl_genes = ctrl_genes
+  ctrl_genes = ctrl_genes,
+  celltype_method = celltype_method 
   )
 
 

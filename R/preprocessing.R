@@ -8,6 +8,7 @@
 #' @param removeUnpaired flag to remove FOVs with unpaired target call files and fov position information; default = FALSE, to stop processing when missing target call files
 #' @param blacklist_genes a vector of genes to be excluded from reference profile estimation (default = NULL)
 #' @param pixel_size the micrometer size of image pixel listed in `Width` and `Height` dimension of each cell stored in `cell_metadata` of the existing SMI object (default = 0.18)
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @return a list 
 #' \describe{
 #'    \item{counts}{a cells X genes count matrix for entire dataset, stored in SMI object.}
@@ -42,7 +43,11 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
                                   cellClus_to_exclude = NULL, 
                                   removeUnpaired = FALSE,
                                   blacklist_genes = NULL,
-                                  pixel_size = 0.18){
+                                  pixel_size = 0.18, 
+                                  celltype_method = 'LogLikeRatio'){
+  
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial'))
+  
   #### (1) prepare sample annotation file ----
   ## check config_loading
   colns_to_use <- c('folderpathColumn','slidefoldersColumn','slidenameColumn','votedfoldersColumn','versionColumn')
@@ -198,7 +203,7 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   # lowerCutoff_transNum, a named vector of 25% quantile of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that higher than the cutoff is required to keep query cell as it is
   # higherCutoff_transNum, a named vector of median value of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
   # clust_used,  a named vector of cluster assignments for each cell used in baseline calculation, cell_ID in `counts` as name
-  baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust))
+  baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust), celltype_method = celltype_method)
   
   score_baseline <- baselineData[['score_baseline']]
   lowerCutoff_transNum <- baselineData[['lowerCutoff_transNum']]
