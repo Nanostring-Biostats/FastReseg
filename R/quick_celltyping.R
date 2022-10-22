@@ -40,10 +40,11 @@ lldist <- function(x, mat, bg = 0.01, size = 10, digits = 2) {
   }
   
   # calc scaling factor to put y on the scale of x:
-  if (is.vector(bg)) {
+  if (is.vector(bg) & nrow(mat) >1) {
     bgsub <- apply(mat, 2, function(xx) xx - bg)
     bgsub <- pmax(bgsub, 0)
-  } else {
+  } else { 
+    # bg is a matrix or mat only has 1 row
     bgsub <- pmax(mat - bg, 0)
   }
   
@@ -135,8 +136,7 @@ quick_celltype <- function(x, bg = 0.01, reference_profiles, nb_size = 10, align
                                 size = nb_size,
                                 mc.cores = numCores())
   logliks <- do.call(cbind, logliks)
-
-
+  
   
   # get remaining outputs
   clust <- colnames(logliks)[apply(logliks, 1, which.max)]
