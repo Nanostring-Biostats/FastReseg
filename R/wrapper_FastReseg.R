@@ -963,7 +963,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @export 
 #' 
 fastReseg_internalRef <- function(counts, 
-                                  clust, 
+                                  clust = NULL, 
                                   refProfiles = NULL,
                                   transDF_fileInfo = NULL, 
                                   filepath_coln = 'file_path', 
@@ -1097,6 +1097,8 @@ fastReseg_internalRef <- function(counts,
                                            clust = as.character(clust), 
                                            s = Matrix::rowSums(as.matrix(counts)), 
                                            bg = rep(0, nrow(counts)))
+    }else {
+      refProfiles <- refProfiles[intersect(rownames(refProfiles), colnames(counts)), ]
     }
     
     # # `get_baselineCT` function gets cluster-specific quantile distribution of transcript number and per cell per molecule transcript score in the provided cell x gene expression matrix based on the reference profiles and cell cluster assignment. 
@@ -1111,6 +1113,8 @@ fastReseg_internalRef <- function(counts,
     
   } else {
     # reference profiles exists, but no cluster assignment
+    refProfiles <- refProfiles[intersect(rownames(refProfiles), colnames(counts)), ]
+    
     baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL, celltype_method = celltype_method)
     clust = baselineData[['clust_used']]
   }
