@@ -25,9 +25,10 @@ quick_celltype(
 }
 \value{
 A list, with the following elements:
-\enumerate{
-\item clust: a vector given cells' cluster assignments
-\item logliks: Matrix of cells' log-likelihoods under each cluster. Cells in rows, clusters in columns.
+\describe{
+\item{clust}{a vector given cells' cluster assignments, return NA for cells of zero counts. }
+\item{logliks}{a cells x clusters matrix of cells' log-likelihoods under each cluster, return -Inf for cells of zero counts. }
+\item{zeroCells}{a vector of cells of zero count, return NULL if none}
 }
 }
 \description{

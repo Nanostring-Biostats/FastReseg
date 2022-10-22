@@ -273,13 +273,13 @@ get_baselineCT <- function(refProfiles,
                              reference_profiles = refProfiles, 
                              align_genes = FALSE)
     
-    # per cell logliks for all cells, cell x cell-cluster score matrix 
-    tLLRv2_cellMatrix <- nb_res[['logliks']]
+    # per cell logliks for all cells, cell x cell-cluster score matrix, exclude cells of zero count
+    tLLRv2_cellMatrix <- nb_res[['logliks']][1: (length(nb_res[['clust']]) - length(nb_res[['zeroCells']])), ]
     
     # assign cell type for each cell if not provided 
     if(is.null(clust)){
       message('Perform cluster assignment based on negative binomial model given the provided `refProfiles`.')
-      clust <- nb_res[['clust']]
+      clust <- nb_res[['clust']][1: (length(nb_res[['clust']]) - length(nb_res[['zeroCells']]))]
       
     }
     rm(nb_res)

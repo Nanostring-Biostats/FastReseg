@@ -91,15 +91,35 @@ numCores <- function() {
 #' @param nb_size The size parameter to assume for the NB distribution.
 #' @param align_genes Logical, for whether to align the counts matrix and the reference_profiles by gene ID.
 #' @return A list, with the following elements:
-#' \enumerate{
-#'    \item clust: a vector given cells' cluster assignments
-#'    \item logliks: Matrix of cells' log-likelihoods under each cluster. Cells in rows, clusters in columns.
+#' \describe{
+#'    \item{clust}{a vector given cells' cluster assignments, return NA for cells of zero counts. }
+#'    \item{logliks}{a cells x clusters matrix of cells' log-likelihoods under each cluster, return -Inf for cells of zero counts. }
+#'    \item{zeroCells}{a vector of cells of zero count, return NULL if none}
 #' }
 #' @export
 quick_celltype <- function(x, bg = 0.01, reference_profiles, nb_size = 10, align_genes = TRUE) {
   
   if (any(rowSums(x) == 0)) {
-    stop("Cells with 0 counts were found. Please remove.")
+    zeroCells <- rownames(x)[rowSums(x)==0]
+    message(sprintf("%d cells with 0 counts are found. Return `clust = NA`, `logliks = -Inf` for those cells: `%s`.", 
+                    length(zeroCells), paste0(zeroCells, collapse = "`, `")))
+    
+    # bg is a vector of same length as x
+    if(is.vector(bg)){
+      if(identical(length(bg), nrow(x))){
+        bg <- bg[rowSums(x)!=0]
+      }
+      
+    } else {
+      # bg is a cell x gene matrix
+      bg <- bg[rowSums(x)!=0, ]
+    }
+    
+    # remove zero cells from x
+    x <- x[rowSums(x)!=0, ]
+    
+  } else {
+    zeroCells <- NULL
   }
 
   # accept a single value of bg if input by user:
@@ -107,6 +127,7 @@ quick_celltype <- function(x, bg = 0.01, reference_profiles, nb_size = 10, align
     bg <- rep(bg, nrow(x))
     names(bg) <- rownames(x)
   }
+  
   
   # align genes:
   if (align_genes) {
@@ -143,6 +164,20 @@ quick_celltype <- function(x, bg = 0.01, reference_profiles, nb_size = 10, align
   names(clust) <- rownames(logliks)
   
   out <- list(clust = clust,
-              logliks = round(logliks, 4))
+              logliks = round(logliks, 4), 
+              zeroCells = zeroCells)
+  
+  # add in zeroCell data
+  if(!is.null(zeroCells)){
+    clust <- rep(NA, length(zeroCells))
+    names(clust) <- zeroCells
+    
+    logliks <- matrix(-Inf, nrow = length(zeroCells), ncol = ncol(out[['logliks']]), 
+                      dimnames = list(zeroCells, colnames(out[['logliks']])))
+    
+    out[['clust']] <- c(out[['clust']], clust)
+    out[['logliks']] <- rbind(out[['logliks']], logliks)
+  }
+  
   return(out)    
 }

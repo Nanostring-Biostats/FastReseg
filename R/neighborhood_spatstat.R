@@ -209,6 +209,19 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
     
     nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    
+    # transcript groups without informative genes would use the original cluster assignment
+    if(!is.null(nb_res[['zeroCells']])){
+      oldCT_df <- unique(chosen_transDF[get(cellID_coln) %in% nb_res[['zeroCells']], 
+                                              .SD, .SDcols = c(cellID_coln, celltype_coln)])
+      oldCT_vector <- oldCT_df[[celltype_coln]]
+      names(oldCT_vector) <- oldCT_df[[cellID_coln]]
+      nb_res[['clust']] <- c(nb_res[['clust']][1: (length(nb_res[['clust']]) - length(nb_res[['zeroCells']]))], 
+                             oldCT_vector)
+      rm(oldCT_df, oldCT_vector)
+      
+    }
+    
     rm(exprMat, missingGenes)
   }
   
@@ -416,17 +429,19 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
         cell_score <- colSums(cell_score)
       }
       cell_score <- matrix(cell_score, nrow = 1, dimnames = list(each_cell, colnames(score_GeneMatrix)))
+      maxCT_1st <- colnames(cell_score)[max.col(cell_score, ties.method="first")]
+      
     } else if (celltype_method =='NegBinomial'){
       cell_score <- nb_res[['logliks']][each_cell, , drop = FALSE]
-      
+      maxCT_1st <- nb_res[['clust']][each_cell]
     }
 
-    max_idx_1st <- max.col(cell_score, ties.method="first")
+    
     queryPerCell_df <- data.frame(CellId = each_cell, 
                                   cell_type = query_df[[celltype_coln]][1], 
                                   transcript_num = nrow(query_df), 
-                                  self_celltype = colnames(cell_score)[max_idx_1st], 
-                                  score_under_self = cell_score[each_cell, max_idx_1st]/nrow(query_df))
+                                  self_celltype = maxCT_1st, 
+                                  score_under_self = cell_score[each_cell, maxCT_1st]/nrow(query_df))
     
     
     # get neighbor cell type and check the query transcript cell type against it

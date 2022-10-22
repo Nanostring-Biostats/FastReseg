@@ -118,8 +118,16 @@ update_transDF_ResegActions <- function(transcript_df,
                             dimnames = list(rownames(exprMat), missingGenes)))
     exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
     
-    newCellTypes <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)[['clust']]
-    rm(exprMat, missingGenes)
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    
+    # transcript groups without informative genes would use the original cluster assignment
+    if(!is.null(nb_res[['zeroCells']])){
+      cells_to_update <- setdiff(cells_to_update, nb_res[['zeroCells']])
+    }
+    
+    newCellTypes <- nb_res[['clust']]
+
+    rm(exprMat, missingGenes, nb_res)
     
   }
   

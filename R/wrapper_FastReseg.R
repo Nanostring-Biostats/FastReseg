@@ -302,6 +302,16 @@ fastReseg_core_externalRef <- function(refProfiles,
     nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
     select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
                                   celltype = nb_res[['clust']])
+    
+    # transcript groups without informative genes would be assigned with 1st cell type in refProfiles
+    if(!is.null(nb_res[['zeroCells']])){
+      message(sprintf("Found %d cells of zero informative counts in original transcript_df, assign initial cell type = `%s`: `%s`.",
+                      length(nb_res[['zeroCells']]), colnames(refProfiles)[1], 
+                      paste0(nb_res[['zeroCells']], collapse = "`, `")))
+      
+      select_cellmeta[['celltype']][is.na(select_cellmeta[['celltype']])] <- colnames(refProfiles)[1]
+    }
+    
     rm(exprMat, nb_res, missingGenes)
   }
   
@@ -561,6 +571,8 @@ fastReseg_core_externalRef <- function(refProfiles,
                                    transGene_coln = transGene_coln,
                                    cellID_coln = "tmp_cellID", 
                                    return_transMatrix = FALSE)
+    tmp_df <- tmp_df[['cellType_DF']]
+    
   } else if (celltype_method =='NegBinomial'){
     # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
     exprMat <- reshape2::acast(flagged_transDF_SVM3, as.formula(paste0("tmp_cellID", "~", transGene_coln)), length)
@@ -572,15 +584,26 @@ fastReseg_core_externalRef <- function(refProfiles,
     exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
     
     nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
-    tmp_df <- list(cellType_DF = data.frame(cellID = names(nb_res[['clust']]),
-                                            celltype = nb_res[['clust']]))
+    
+    tmp_df <- data.frame(tmp_cellID = names(nb_res[['clust']]),
+                         SVM_cell_type = nb_res[['clust']])
+    
+    # transcript groups without informative genes would use the original cluster assignment
+    if(!is.null(nb_res[['zeroCells']])){
+      oldCT_df <- unique(flagged_transDF_SVM3[tmp_cellID %in% nb_res[['zeroCells']], 
+                                              .SD, .SDcols = c('tmp_cellID','SVM_cell_type')])
+
+      tmp_df <- rbind(tmp_df[!is.na(tmp_df[['SVM_cell_type']]), ], oldCT_df)
+      rm(oldCT_df)
+    }
+    
     rm(exprMat, nb_res, missingGenes)
   }
   
   
   
-  colnames(tmp_df[['cellType_DF']]) <- c('tmp_cellID','group_maxCellType')
-  flagged_transDF_SVM3 <- merge(flagged_transDF_SVM3, tmp_df[['cellType_DF']], by = 'tmp_cellID', all.x = TRUE)
+  colnames(tmp_df) <- c('tmp_cellID','group_maxCellType')
+  flagged_transDF_SVM3 <- merge(flagged_transDF_SVM3, tmp_df, by = 'tmp_cellID', all.x = TRUE)
   flagged_transDF_SVM3 <- as.data.frame(flagged_transDF_SVM3)
   rm(tmp_df)
   
@@ -1812,6 +1835,16 @@ findSegmentError_allFiles <- function(counts,
       nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
       select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
                                     celltype = nb_res[['clust']])
+      
+      # transcript groups without informative genes would be assigned with 1st cell type in refProfiles
+      if(!is.null(nb_res[['zeroCells']])){
+        message(sprintf("Found %d cells of zero informative counts in original transcript_df, assign initial cell type = `%s`: `%s`.",
+                        length(nb_res[['zeroCells']]), colnames(refProfiles)[1], 
+                        paste0(nb_res[['zeroCells']], collapse = "`, `")))
+        
+        select_cellmeta[['celltype']][is.na(select_cellmeta[['celltype']])] <- colnames(refProfiles)[1]
+      }
+      
       rm(exprMat, nb_res, missingGenes)
       
     }
