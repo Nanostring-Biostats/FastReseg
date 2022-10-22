@@ -111,8 +111,15 @@ update_transDF_ResegActions <- function(transcript_df,
     
   } else if (celltype_method =='NegBinomial'){
     exprMat <- reshape2::acast(subTransDF, as.formula(paste('updated_cellID', '~', transGene_coln)), length)
-    newCellTypes <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = TRUE)[['clust']]
-    rm(exprMat)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    newCellTypes <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)[['clust']]
+    rm(exprMat, missingGenes)
     
   }
   

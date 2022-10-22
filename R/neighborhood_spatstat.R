@@ -201,8 +201,15 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   # get cell type and logliks for chosen cells only
   if(celltype_method == 'NegBinomial'){
     exprMat <- reshape2::acast(chosen_transDF, as.formula(paste(cellID_coln, '~', transGene_coln)), length)
-    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = TRUE)
-    rm(exprMat)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    rm(exprMat, missingGenes)
   }
   
   ## get molecular_distance_cutoff between neighbor cells from 10 randomly selected ROIs with 5* neighbor_distance_xy 

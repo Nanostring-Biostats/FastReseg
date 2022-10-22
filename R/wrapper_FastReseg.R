@@ -292,10 +292,17 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else if (celltype_method =='NegBinomial'){
     # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
     exprMat <- reshape2::acast(transcript_df, as.formula(paste0(cellID_coln, "~", transGene_coln)), length)
-    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = TRUE)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
     select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
                                   celltype = nb_res[['clust']])
-    rm(exprMat, nb_res)
+    rm(exprMat, nb_res, missingGenes)
   }
   
   
@@ -557,10 +564,17 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else if (celltype_method =='NegBinomial'){
     # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
     exprMat <- reshape2::acast(flagged_transDF_SVM3, as.formula(paste0("tmp_cellID", "~", transGene_coln)), length)
-    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = TRUE)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
     tmp_df <- list(cellType_DF = data.frame(cellID = names(nb_res[['clust']]),
                                             celltype = nb_res[['clust']]))
-    rm(exprMat, nb_res)
+    rm(exprMat, nb_res, missingGenes)
   }
   
   
@@ -1688,6 +1702,8 @@ findSegmentError_allFiles <- function(counts,
     stop("Too few common genes between the `refProfiles` (genes X clusters) and `counts` (cells X genes), check if correct format. ")
   }
   
+  refProfiles <- refProfiles[common_genes, ]
+  
   ## initialize list to collect each FOV outputs ----
   all_segRes <- list()
   
@@ -1786,10 +1802,17 @@ findSegmentError_allFiles <- function(counts,
     } else if (celltype_method =='NegBinomial'){
       # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
       exprMat <- reshape2::acast(transcript_df[['intraC']], as.formula(paste0("UMI_cellID", "~", "target")), length)
-      nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = TRUE)
+      # fill missing genes that in refProfiles but not in current data as 0
+      missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+      exprMat <- cbind(exprMat, 
+                       matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                              dimnames = list(rownames(exprMat), missingGenes)))
+      exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+      
+      nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
       select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
                                     celltype = nb_res[['clust']])
-      rm(exprMat, nb_res)
+      rm(exprMat, nb_res, missingGenes)
       
     }
     
