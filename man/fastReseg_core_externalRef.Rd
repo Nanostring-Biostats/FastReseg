@@ -13,7 +13,7 @@ fastReseg_core_externalRef(
   spatLocs_colns = c("x", "y", "z"),
   extracellular_cellID = NULL,
   flagModel_TransNum_cutoff = 50,
-  flagCell_lrtest_cutoff = 5,
+  flagCell_lm_cutoff = 5,
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   groupTranscripts_method = c("delaunay", "dbscan"),
@@ -28,7 +28,8 @@ fastReseg_core_externalRef(
   return_intermediates = TRUE,
   return_perCellData = TRUE,
   includeAllRefGenes = FALSE,
-  ctrl_genes = NULL
+  ctrl_genes = NULL,
+  celltype_method = "LogLikeRatio"
 )
 }
 \arguments{
@@ -48,13 +49,13 @@ fastReseg_core_externalRef(
 
 \item{flagModel_TransNum_cutoff}{the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)}
 
-\item{flagCell_lrtest_cutoff}{the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
+\item{flagCell_lm_cutoff}{the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
 
 \item{svmClass_score_cutoff}{the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)}
 
 \item{svm_args}{a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale}
 
-\item{groupTranscripts_method}{use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')}
+\item{groupTranscripts_method}{use either \code{delaunay} or \code{dbscan} method to group transcripts in space (default = 'delaunay')}
 
 \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron).
 If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of \code{cellular_distance_cutoff}, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90\% quantile of minimal molecular distance as \code{molecular_distance_cutoff}. This calculation is slow and is not recommended for large transcript data.frame.}
@@ -78,6 +79,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 \item{includeAllRefGenes}{flag to include all genes in \code{refProfiles} in the returned \code{updated_perCellExprs} with missing genes of value 0 (default = FALSE)}
 
 \item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 }
 \value{
 a list

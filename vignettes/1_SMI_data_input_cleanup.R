@@ -41,8 +41,8 @@ config_dimension[['CellNeighbor_z']] = config_dimension[['zstep_um']]*4
 config_dimension[['CellNeighbor_xy_in_transDF']] = config_dimension[['CellNeighbor_xy']]/3
 
 
-# lrtest_-log10P cutoff for flagging wronlgy segmented cells
-config_dimension[['flagCell_lrtestCutoff']] = 10 
+# lm_-log10P cutoff for flagging wronlgy segmented cells
+config_dimension[['flagCell_lmCutoff']] = 10 
 # high and low tLLRv2 score cutoff for SVM
 config_dimension[['tLLRv2_SVMcutoff']] = -2 
 

@@ -2,8 +2,9 @@
 #' @title neighborhood_for_resegment_spatstat
 #' @description find neighbor cells with transcripts that are direct neighbor of chosen_cell, check tLLRv2 score under neighbor cell type, return neighborhood information
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
-#' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
-#' @param score_baseline a named vector of score baseline for all cell type listed in score_GeneMatrix
+#' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type, needed if using `LogLikeRatio` cell typing method (default  = NULL)
+#' @param refProfiles A matrix of cluster profiles, genes X clusters, needed if using `NegBionomial` cell typing method (default  = NULL)
+#' @param score_baseline a named vector of score baseline for all cell type listed in `score_GeneMatrix` or `refProfiles`
 #' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
 #' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `neighbor_distance_xy`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
@@ -13,6 +14,7 @@
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @importFrom spatstat.geom ppp subset.ppp nncross pp3 subset.pp3
 #' @return a data.frame 
 #' #' \enumerate{
@@ -28,7 +30,8 @@
 #' @details Locate neighbor cells of each query cell firstly via cell-to-cell distance in 2D plane within neighbor_distance_xy, then via molecule-to-molecule 3D distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
 #' @export
 neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL, 
-                                                score_GeneMatrix,  
+                                                score_GeneMatrix = NULL,  
+                                                refProfiles = NULL,
                                                 score_baseline = NULL, 
                                                 neighbor_distance_xy = NULL,
                                                 distance_cutoff = 2.7,
@@ -37,7 +40,18 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
                                                 celltype_coln = "cell_type", 
                                                 transID_coln = "transcript_id",
                                                 transGene_coln = "target", 
-                                                transSpatLocs_coln = c('x','y','z')){
+                                                transSpatLocs_coln = c('x','y','z'),
+                                                celltype_method = 'LogLikeRatio'){
+  
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial')) 
+  
+  if(celltype_method == 'LogLikeRatio' & is.null(score_GeneMatrix)){
+    stop("Must provided `score_GeneMatrix` when using log-likelihood ratio based cell typing method.")
+  }
+  
+  if(celltype_method == 'NegBinomial' & is.null(refProfiles)){
+    stop("Must provided `refProfiles` when using negative binomial cell typing method.")
+  }
   
   if(is.null(chosen_cells)){
     stop("Must define chosen_cells to start resegmentation evaluation in neighborhood of each chosen cell.")
@@ -45,12 +59,23 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   
   if(!is.null(score_baseline)){
     if(!any(class(score_baseline) %in% c('numeric'))){
-      stop("The provided score_baseline must be either a named numeric vector or NUll which would disable comparision with score_baseline. ")
+      stop("The provided `score_baseline` must be either a named numeric vector or NUll which would disable comparision with `score_baseline`. ")
     }
-    if(length(setdiff(colnames(score_GeneMatrix), names(score_baseline)))>0){
-      stop(sprintf("The provided score_baseline is missing for the following cell types used in score_GeneMatrix: `%s`.", 
-                   paste0(setdiff(colnames(score_GeneMatrix), names(score_baseline)), collapse ="`, `")))
+    
+    
+    if(celltype_method == 'LogLikeRatio'){
+      if(length(setdiff(colnames(score_GeneMatrix), names(score_baseline)))>0){
+        stop(sprintf("The provided `score_baseline` is missing for the following cell types used in `score_GeneMatrix`: `%s`.", 
+                     paste0(setdiff(colnames(score_GeneMatrix), names(score_baseline)), collapse ="`, `")))
+      }
+    } else if (celltype_method =='NegBinomial'){
+      if(length(setdiff(colnames(refProfiles), names(score_baseline)))>0){
+        stop(sprintf("The provided `score_baseline` is missing for the following cell types used in `refProfiles`: `%s`.", 
+                     paste0(setdiff(colnames(refProfiles), names(score_baseline)), collapse ="`, `")))
+      }
     }
+
+    
   }
   
   
@@ -100,8 +125,14 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   common_cells <- unique(transcript_df[[cellID_coln]])
   
   # get common genes
-  common_genes <- intersect(rownames(score_GeneMatrix), 
-                            unique(transcript_df[[transGene_coln]]))
+  if(celltype_method == 'LogLikeRatio'){
+    common_genes <- intersect(rownames(score_GeneMatrix), 
+                              unique(transcript_df[[transGene_coln]]))
+  } else if (celltype_method =='NegBinomial'){
+    common_genes <- intersect(rownames(refProfiles), 
+                              unique(transcript_df[[transGene_coln]]))
+  }
+  
   message(sprintf("Found %d common cells and %d common genes among transcript_df, cell_networkDT, and score_GeneMatrix. ", 
                   length(common_cells), length(common_genes)))
   
@@ -121,8 +152,12 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     }
   }
   
-  score_GeneMatrix <- score_GeneMatrix[common_genes, ]
+  
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
+  
+  if(celltype_method == 'LogLikeRatio'){
+    score_GeneMatrix <- score_GeneMatrix[common_genes, ]
+  } 
   
   # get per cell dataframe and search range if neighbor_distance_xy = NULL
   perCell_coordM <- transcript_df[, list(CenterX = mean(get(transSpatLocs_coln[1])), 
@@ -162,6 +197,33 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
   
   # data for chosen cells only
   chosen_transDF <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells), ]
+  
+  # get cell type and logliks for chosen cells only
+  if(celltype_method == 'NegBinomial'){
+    exprMat <- reshape2::acast(chosen_transDF, as.formula(paste(cellID_coln, '~', transGene_coln)), length)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    
+    # transcript groups without informative genes would use the original cluster assignment
+    if(!is.null(nb_res[['zeroCells']])){
+      oldCT_df <- unique(chosen_transDF[get(cellID_coln) %in% nb_res[['zeroCells']], 
+                                              .SD, .SDcols = c(cellID_coln, celltype_coln)])
+      oldCT_vector <- oldCT_df[[celltype_coln]]
+      names(oldCT_vector) <- oldCT_df[[cellID_coln]]
+      nb_res[['clust']] <- c(nb_res[['clust']][1: (length(nb_res[['clust']]) - length(nb_res[['zeroCells']]))], 
+                             oldCT_vector)
+      rm(oldCT_df, oldCT_vector)
+      
+    }
+    
+    rm(exprMat, missingGenes)
+  }
   
   ## get molecular_distance_cutoff between neighbor cells from 10 randomly selected ROIs with 5* neighbor_distance_xy 
   if(is.null(distance_cutoff)){
@@ -360,20 +422,26 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
     }
     
     
-    # get score matrix for each transcript in query cell
-    cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
-    if(nrow(query_df) >1 ){
-      cell_score <- colSums(cell_score)
+    # get sum of score matrix for each transcript in query cell 
+    if(celltype_method == 'LogLikeRatio'){
+      cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
+      if(nrow(query_df) >1 ){
+        cell_score <- colSums(cell_score)
+      }
+      cell_score <- matrix(cell_score, nrow = 1, dimnames = list(each_cell, colnames(score_GeneMatrix)))
+      maxCT_1st <- colnames(cell_score)[max.col(cell_score, ties.method="first")]
+      
+    } else if (celltype_method =='NegBinomial'){
+      cell_score <- nb_res[['logliks']][each_cell, , drop = FALSE]
+      maxCT_1st <- nb_res[['clust']][each_cell]
     }
-    cell_score <- matrix(cell_score, nrow = 1, dimnames = list(each_cell, colnames(score_GeneMatrix)))
-    max_idx_1st <- max.col(cell_score, ties.method="first")
-    
+
     
     queryPerCell_df <- data.frame(CellId = each_cell, 
                                   cell_type = query_df[[celltype_coln]][1], 
                                   transcript_num = nrow(query_df), 
-                                  self_celltype = colnames(cell_score)[max_idx_1st], 
-                                  score_under_self = cell_score[each_cell, max_idx_1st]/nrow(query_df))
+                                  self_celltype = maxCT_1st, 
+                                  score_under_self = cell_score[each_cell, maxCT_1st]/nrow(query_df))
     
     
     # get neighbor cell type and check the query transcript cell type against it
@@ -382,8 +450,9 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
       neighbors_df <- df_subset[which(df_subset[[cellID_coln]] %in% directCell_neighbors),]
       neighbors_df <- as.data.frame(neighbors_df)[, c(cellID_coln, celltype_coln)]
       neighbors_df <- unique(neighbors_df)
-      neighbors_df[['score_under_neighbor']] <- cell_score[each_cell, neighbors_df[[celltype_coln]]]/nrow(query_df)
       
+      neighbors_df[['score_under_neighbor']] <- cell_score[each_cell, neighbors_df[[celltype_coln]]]/nrow(query_df)
+ 
       # if score baseline is provided, compare the net score above baseline to choose the consistent neighbor cell types
       if(!is.null(score_baseline)){
         neighbors_df[['baseline']] <- score_baseline[neighbors_df[[celltype_coln]]]

@@ -7,12 +7,14 @@
 update_transDF_ResegActions(
   transcript_df,
   reseg_full_converter,
-  score_GeneMatrix,
+  score_GeneMatrix = NULL,
+  refProfiles = NULL,
   transGene_coln = "target",
   cellID_coln = "cell_ID",
   celltype_coln = "cell_type",
   spatLocs_colns = c("x", "y", "z"),
-  return_perCellDF = TRUE
+  return_perCellDF = TRUE,
+  celltype_method = "LogLikeRatio"
 )
 }
 \arguments{
@@ -20,7 +22,9 @@ update_transDF_ResegActions(
 
 \item{reseg_full_converter}{a named converter to update the cell ID in \code{transcript_df}, cell_ID in name would be converted to cell_ID in value; discard cell_ID with value = NA}
 
-\item{score_GeneMatrix}{a gene x cell-type score matrix}
+\item{score_GeneMatrix}{the gene x cell-type matrix of log-like score of gene in each cell type, needed if using \code{LogLikeRatio} cell typing method (default  = NULL)}
+
+\item{refProfiles}{A matrix of cluster profiles, genes X clusters, needed if using \code{NegBionomial} cell typing method (default  = NULL)}
 
 \item{transGene_coln}{the column name of target or gene name in \code{transcript_df}}
 
@@ -31,6 +35,8 @@ update_transDF_ResegActions(
 \item{spatLocs_colns}{column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in transcript_df}
 
 \item{return_perCellDF}{flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 }
 \value{
 a list

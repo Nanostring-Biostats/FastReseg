@@ -9,10 +9,10 @@
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
-#' @param groupTranscripts_method use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')
+#' @param groupTranscripts_method use either `delaunay` or `dbscan` method to group transcripts in space (default = 'delaunay')
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
 #' @param molecular_distance_cutoff maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate (default = 2.7 micron). 
 #' If set to NULL, the pipeline would first randomly choose no more than 2500 cells from up to 10 random picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The pipeline would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
@@ -25,6 +25,7 @@
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param includeAllRefGenes flag to include all genes in `refProfiles` in the returned `updated_perCellExprs` with missing genes of value 0 (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when `return_intermediates` = TRUE}
@@ -65,7 +66,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        spatLocs_colns = c('x','y','z'), 
                                        extracellular_cellID = NULL, 
                                        flagModel_TransNum_cutoff = 50, 
-                                       flagCell_lrtest_cutoff = 5,
+                                       flagCell_lm_cutoff = 5,
                                        svmClass_score_cutoff = -2, 
                                        svm_args = list(kernel = "radial", 
                                                        scale = FALSE, 
@@ -84,9 +85,11 @@ fastReseg_core_externalRef <- function(refProfiles,
                                        return_intermediates = TRUE,
                                        return_perCellData = TRUE, 
                                        includeAllRefGenes = FALSE, 
-                                       ctrl_genes = NULL){
+                                       ctrl_genes = NULL,
+                                       celltype_method = 'LogLikeRatio'){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial'))
     
   # final results
   final_res <- list()
@@ -174,7 +177,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   }
   
   ## get tLL score matrix 
-  meanCelltype_profiles <- pmax(refProfiles, 1e-5)
+  meanCelltype_profiles <- pmax(refProfiles, 1e-8)
   transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = meanCelltype_profiles)
   
   # tLLRv2 score, re-center on maximum per row/transcript
@@ -274,17 +277,47 @@ fastReseg_core_externalRef <- function(refProfiles,
   
   
   ## (0.4) for each cell, get new cell type based on maximum score ----
-  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-  tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
-                                 transcript_df = transcript_df, 
-                                 transID_coln = transID_coln,
-                                 transGene_coln = transGene_coln,
-                                 cellID_coln = cellID_coln, 
-                                 return_transMatrix = FALSE)
+  if(celltype_method == 'LogLikeRatio'){
+    # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
+    tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
+                                   transcript_df = transcript_df, 
+                                   transID_coln = transID_coln,
+                                   transGene_coln = transGene_coln,
+                                   cellID_coln = cellID_coln, 
+                                   return_transMatrix = FALSE)
+    
+    select_cellmeta <- tmp_df[['cellType_DF']]
+    rm(tmp_df)
+    
+  } else if (celltype_method =='NegBinomial'){
+    # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
+    exprMat <- reshape2::acast(transcript_df, as.formula(paste0(cellID_coln, "~", transGene_coln)), length)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
+                                  celltype = nb_res[['clust']])
+    
+    # transcript groups without informative genes would be assigned with 1st cell type in refProfiles
+    if(!is.null(nb_res[['zeroCells']])){
+      message(sprintf("Found %d cells of zero informative counts in original transcript_df, assign initial cell type = `%s`: `%s`.",
+                      length(nb_res[['zeroCells']]), colnames(refProfiles)[1], 
+                      paste0(nb_res[['zeroCells']], collapse = "`, `")))
+      
+      select_cellmeta[['celltype']][is.na(select_cellmeta[['celltype']])] <- colnames(refProfiles)[1]
+    }
+    
+    rm(exprMat, nb_res, missingGenes)
+  }
   
-  select_cellmeta <- tmp_df[['cellType_DF']]
-  colnames(select_cellmeta) <- c(cellID_coln,'tLLRv2_maxCellType')
-  rm(tmp_df)
+  
+  colnames(select_cellmeta) <- c(cellID_coln,'tSum_maxCellType')
+  
   
   transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
   message(sprintf("Found %d cells and assigned cell type based on the provided 'refProfiles` cluster profiles.", nrow(select_cellmeta)))
@@ -296,7 +329,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                   transcript_df = transcript_df, 
                                   transID_coln = transID_coln,
                                   transGene_coln = transGene_coln,
-                                  celltype_coln = 'tLLRv2_maxCellType')
+                                  celltype_coln = 'tSum_maxCellType')
   transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
   rm(tmp_df)
   
@@ -307,7 +340,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                           transcript_df = transcript_df, 
                                           cellID_coln = cellID_coln, 
                                           transID_coln = transID_coln, 
-                                          score_coln = 'score_tLLRv2_maxCellType',
+                                          score_coln = 'score_tSum_maxCellType',
                                           spatLocs_colns = spatLocs_colns, 
                                           model_cutoff = flagModel_TransNum_cutoff)
   
@@ -322,7 +355,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   } else{
     
     #-log10(P)
-    tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+    tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pvalue']])
     modStats_tLLRv2_3D <- merge(select_cellmeta, tmp_df, by.x = cellID_coln, by.y = 'cell_ID')
     rm(tmp_df)
     
@@ -331,10 +364,10 @@ fastReseg_core_externalRef <- function(refProfiles,
     }
     
     
-    ## (1.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-    flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lrtest_-log10P']] > flagCell_lrtest_cutoff )]
-    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                    length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lrtest_cutoff))
+    ## (1.2) flag cells based on linear regression of tLLRv2, lm_-log10P
+    flagged_cells <- modStats_tLLRv2_3D[[cellID_coln]][which(modStats_tLLRv2_3D[['lm_-log10P']] > flagCell_lm_cutoff )]
+    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lm_-log10P > %.1f.", 
+                    length(flagged_cells), length(flagged_cells)/nrow(modStats_tLLRv2_3D), flagCell_lm_cutoff))
     
     
   }
@@ -360,12 +393,12 @@ fastReseg_core_externalRef <- function(refProfiles,
     reseg_transcript_df <- transcript_df
     reseg_transcript_df[['connect_group']] <- 0
     reseg_transcript_df[['tmp_cellID']] <- reseg_transcript_df[[cellID_coln]]
-    reseg_transcript_df[['group_maxCellType']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
+    reseg_transcript_df[['group_maxCellType']] <- reseg_transcript_df[['tSum_maxCellType']]
     
     # update transcript df with resegmentation outcomes
     reseg_transcript_df[['updated_cellID']] <- reseg_transcript_df[[cellID_coln]]
-    reseg_transcript_df[['updated_celltype']] <- reseg_transcript_df[['tLLRv2_maxCellType']]
-    reseg_transcript_df[['score_updated_celltype']] <- reseg_transcript_df[['score_tLLRv2_maxCellType']]
+    reseg_transcript_df[['updated_celltype']] <- reseg_transcript_df[['tSum_maxCellType']]
+    reseg_transcript_df[['score_updated_celltype']] <- reseg_transcript_df[['score_tSum_maxCellType']]
     
     final_res[['updated_transDF']] <- reseg_transcript_df
     
@@ -431,7 +464,7 @@ fastReseg_core_externalRef <- function(refProfiles,
                                 transcript_df = flagged_transDF3d, 
                                 cellID_coln = cellID_coln, 
                                 transID_coln = transID_coln, 
-                                score_coln = 'score_tLLRv2_maxCellType',
+                                score_coln = 'score_tSum_maxCellType',
                                 spatLocs_colns = spatLocs_colns, 
                                 model_cutoff = flagModel_TransNum_cutoff, 
                                 score_cutoff = svmClass_score_cutoff, 
@@ -530,15 +563,47 @@ fastReseg_core_externalRef <- function(refProfiles,
   flagged_transDF_SVM3[, tmp_cellID := ifelse(connect_group == 0, get(cellID_coln), paste0(get(cellID_coln),'_g', connect_group))]
   
   # get new cell type of each group based on maximum
-  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-  tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
-                                 transcript_df = flagged_transDF_SVM3, 
-                                 transID_coln = transID_coln,
-                                 transGene_coln = transGene_coln,
-                                 cellID_coln = "tmp_cellID", 
-                                 return_transMatrix = FALSE)
-  colnames(tmp_df[['cellType_DF']]) <- c('tmp_cellID','group_maxCellType')
-  flagged_transDF_SVM3 <- merge(flagged_transDF_SVM3, tmp_df[['cellType_DF']], by = 'tmp_cellID', all.x = TRUE)
+  if(celltype_method == 'LogLikeRatio'){
+    # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
+    tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
+                                   transcript_df = flagged_transDF_SVM3, 
+                                   transID_coln = transID_coln,
+                                   transGene_coln = transGene_coln,
+                                   cellID_coln = "tmp_cellID", 
+                                   return_transMatrix = FALSE)
+    tmp_df <- tmp_df[['cellType_DF']]
+    
+  } else if (celltype_method =='NegBinomial'){
+    # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
+    exprMat <- reshape2::acast(flagged_transDF_SVM3, as.formula(paste0("tmp_cellID", "~", transGene_coln)), length)
+    # fill missing genes that in refProfiles but not in current data as 0
+    missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+    exprMat <- cbind(exprMat, 
+                     matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                            dimnames = list(rownames(exprMat), missingGenes)))
+    exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+    
+    nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+    
+    tmp_df <- data.frame(tmp_cellID = names(nb_res[['clust']]),
+                         SVM_cell_type = nb_res[['clust']])
+    
+    # transcript groups without informative genes would use the original cluster assignment
+    if(!is.null(nb_res[['zeroCells']])){
+      oldCT_df <- unique(flagged_transDF_SVM3[tmp_cellID %in% nb_res[['zeroCells']], 
+                                              .SD, .SDcols = c('tmp_cellID','SVM_cell_type')])
+
+      tmp_df <- rbind(tmp_df[!is.na(tmp_df[['SVM_cell_type']]), ], oldCT_df)
+      rm(oldCT_df)
+    }
+    
+    rm(exprMat, nb_res, missingGenes)
+  }
+  
+  
+  
+  colnames(tmp_df) <- c('tmp_cellID','group_maxCellType')
+  flagged_transDF_SVM3 <- merge(flagged_transDF_SVM3, tmp_df, by = 'tmp_cellID', all.x = TRUE)
   flagged_transDF_SVM3 <- as.data.frame(flagged_transDF_SVM3)
   rm(tmp_df)
   
@@ -559,7 +624,7 @@ fastReseg_core_externalRef <- function(refProfiles,
   tmp_idx <- which(is.na(reseg_transcript_df[['connect_group']]))
   reseg_transcript_df[['connect_group']][tmp_idx]<-rep(0, length(tmp_idx))
   reseg_transcript_df[['tmp_cellID']][tmp_idx] <- reseg_transcript_df[[cellID_coln]][tmp_idx]
-  reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tLLRv2_maxCellType']][tmp_idx]
+  reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tSum_maxCellType']][tmp_idx]
   rm(tmp_idx)
   
   ## (4.3) evaluate the neighborhood of each group for re-segmentation ----
@@ -571,17 +636,36 @@ fastReseg_core_externalRef <- function(refProfiles,
   ### search within absolute distance, consider 25um in xy for cell level search and 15 pixel = 2.7um to be direct neighbor at transcript level.
   # using spatstat to locate neighbor cells and rank them by minimal molecular distance to query cell
   # `neighborhood_for_resegment_spatstat` function returns a data.frame with each cell in row and its neighborhood information in columns
-  neighborReSeg_df <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
-                                                          score_GeneMatrix = tLLRv2_geneMatrix,
-                                                          score_baseline = score_baseline,
-                                                          neighbor_distance_xy = cellular_distance_cutoff,
-                                                          distance_cutoff = molecular_distance_cutoff,
-                                                          transcript_df = reseg_transcript_df,
-                                                          cellID_coln = "tmp_cellID",
-                                                          celltype_coln = "group_maxCellType",
-                                                          transID_coln = transID_coln,
-                                                          transGene_coln = transGene_coln,
-                                                          transSpatLocs_coln = spatLocs_colns)
+  if(celltype_method == 'LogLikeRatio'){
+    neighborReSeg_df <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
+                                                            score_GeneMatrix = tLLRv2_geneMatrix,
+                                                            score_baseline = score_baseline,
+                                                            neighbor_distance_xy = cellular_distance_cutoff,
+                                                            distance_cutoff = molecular_distance_cutoff,
+                                                            transcript_df = reseg_transcript_df,
+                                                            cellID_coln = "tmp_cellID",
+                                                            celltype_coln = "group_maxCellType",
+                                                            transID_coln = transID_coln,
+                                                            transGene_coln = transGene_coln,
+                                                            transSpatLocs_coln = spatLocs_colns, 
+                                                            celltype_method = celltype_method)
+  } else if (celltype_method =='NegBinomial'){
+    neighborReSeg_df <- neighborhood_for_resegment_spatstat(chosen_cells = cells_to_use,
+                                                            refProfiles = refProfiles, 
+                                                            score_baseline = score_baseline,
+                                                            neighbor_distance_xy = cellular_distance_cutoff,
+                                                            distance_cutoff = molecular_distance_cutoff,
+                                                            transcript_df = reseg_transcript_df,
+                                                            cellID_coln = "tmp_cellID",
+                                                            celltype_coln = "group_maxCellType",
+                                                            transID_coln = transID_coln,
+                                                            transGene_coln = transGene_coln,
+                                                            transSpatLocs_coln = spatLocs_colns,
+                                                            celltype_method = celltype_method)
+  }
+  
+  
+  
   
   #### (4.4) decide resegmentation operation: merge, new cell, or discard ----
   # # `decide_ReSegment_Operations_leidenCut` function returns a list containing the following 4 elements:
@@ -613,15 +697,28 @@ fastReseg_core_externalRef <- function(refProfiles,
   # `updated_transDF`, the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter.
   # `perCell_DT`, a per cell data.table with mean spatial coordinates and new cell type when return_perCellDF = TRUE.
   # `perCell_expression`, a gene x cell count sparse matrix for updated transcript data.frame when return_perCellDF = TRUE.
+  if(celltype_method == 'LogLikeRatio'){
+    post_reseg_results <- update_transDF_ResegActions(transcript_df = reseg_transcript_df, 
+                                                      reseg_full_converter = reseg_actions$reseg_full_converter, 
+                                                      score_GeneMatrix = tLLRv2_geneMatrix, 
+                                                      transGene_coln = transGene_coln, 
+                                                      cellID_coln = 'tmp_cellID', 
+                                                      celltype_coln = 'group_maxCellType', 
+                                                      spatLocs_colns = spatLocs_colns, 
+                                                      return_perCellDF = return_perCellData, 
+                                                      celltype_method = celltype_method)
+  } else if (celltype_method =='NegBinomial'){
+    post_reseg_results <- update_transDF_ResegActions(transcript_df = reseg_transcript_df, 
+                                                      reseg_full_converter = reseg_actions$reseg_full_converter, 
+                                                      refProfiles = refProfiles,  
+                                                      transGene_coln = transGene_coln, 
+                                                      cellID_coln = 'tmp_cellID', 
+                                                      celltype_coln = 'group_maxCellType', 
+                                                      spatLocs_colns = spatLocs_colns, 
+                                                      return_perCellDF = return_perCellData,
+                                                      celltype_method = celltype_method)
+  }
   
-  post_reseg_results <- update_transDF_ResegActions(transcript_df = reseg_transcript_df, 
-                                                    reseg_full_converter = reseg_actions$reseg_full_converter, 
-                                                    score_GeneMatrix = tLLRv2_geneMatrix, 
-                                                    transGene_coln = transGene_coln, 
-                                                    cellID_coln = 'tmp_cellID', 
-                                                    celltype_coln = 'group_maxCellType', 
-                                                    spatLocs_colns = spatLocs_colns, 
-                                                    return_perCellDF = return_perCellData)
   
   
   # get tLLRv2 score under updated cell type
@@ -714,7 +811,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param groupTranscripts_method use either 'delaunay' or 'dbscan' method to group transcripts in space (default = 'delaunay')
@@ -732,6 +829,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -865,7 +963,7 @@ fastReseg_core_externalRef <- function(refProfiles,
 #' @export 
 #' 
 fastReseg_internalRef <- function(counts, 
-                                  clust, 
+                                  clust = NULL, 
                                   refProfiles = NULL,
                                   transDF_fileInfo = NULL, 
                                   filepath_coln = 'file_path', 
@@ -880,7 +978,7 @@ fastReseg_internalRef <- function(counts,
                                   spatLocs_colns = c('x','y','z'), 
                                   extracellular_cellID = NULL, 
                                   flagModel_TransNum_cutoff = 50, 
-                                  flagCell_lrtest_cutoff = 5,
+                                  flagCell_lm_cutoff = 5,
                                   svmClass_score_cutoff = -2, 
                                   svm_args = list(kernel = "radial", 
                                                   scale = FALSE, 
@@ -901,10 +999,14 @@ fastReseg_internalRef <- function(counts,
                                   save_intermediates = TRUE,
                                   return_perCellData = TRUE, 
                                   combine_extra = FALSE, 
-                                  ctrl_genes = NULL){
+                                  ctrl_genes = NULL,
+                                  celltype_method = 'LogLikeRatio'){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c('delaunay', 'dbscan'))
-  message(sprintf("Use %s for grouping low-score transcripts within each cell in space. ", groupTranscripts_method))
+  message(sprintf("Use `%s` for grouping low-score transcripts within each cell in space. ", groupTranscripts_method))
+  
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial'))
+  message(sprintf("Use `%s` method for quick cell typing in resegmentation. ", celltype_method))
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -995,6 +1097,8 @@ fastReseg_internalRef <- function(counts,
                                            clust = as.character(clust), 
                                            s = Matrix::rowSums(as.matrix(counts)), 
                                            bg = rep(0, nrow(counts)))
+    }else {
+      refProfiles <- refProfiles[intersect(rownames(refProfiles), colnames(counts)), ]
     }
     
     # # `get_baselineCT` function gets cluster-specific quantile distribution of transcript number and per cell per molecule transcript score in the provided cell x gene expression matrix based on the reference profiles and cell cluster assignment. 
@@ -1005,11 +1109,13 @@ fastReseg_internalRef <- function(counts,
     # lowerCutoff_transNum, a named vector of 25% quantile of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that higher than the cutoff is required to keep query cell as it is
     # higherCutoff_transNum, a named vector of median value of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
     # clust_used,  a named vector of cluster assignments for each cell used in baseline calculation, cell_ID in `counts` as name
-    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust))
+    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust), celltype_method = celltype_method)
     
   } else {
     # reference profiles exists, but no cluster assignment
-    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL)
+    refProfiles <- refProfiles[intersect(rownames(refProfiles), colnames(counts)), ]
+    
+    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL, celltype_method = celltype_method)
     clust = baselineData[['clust_used']]
   }
   
@@ -1237,7 +1343,7 @@ fastReseg_internalRef <- function(counts,
                                               cellID_coln = 'UMI_cellID', 
                                               spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                               flagModel_TransNum_cutoff = flagModel_TransNum_cutoff, 
-                                              flagCell_lrtest_cutoff = flagCell_lrtest_cutoff,
+                                              flagCell_lm_cutoff = flagCell_lm_cutoff,
                                               svmClass_score_cutoff = svmClass_score_cutoff, 
                                               svm_args = svm_args,
                                               groupTranscripts_method = groupTranscripts_method, 
@@ -1246,7 +1352,8 @@ fastReseg_internalRef <- function(counts,
                                               return_intermediates = save_intermediates,
                                               return_perCellData = return_perCellData, 
                                               includeAllRefGenes = TRUE,
-                                              ctrl_genes = ctrl_genes)
+                                              ctrl_genes = ctrl_genes, 
+                                              celltype_method = celltype_method)
     
     # intracellular in original and updated segmentation
     each_segRes[['updated_transDF']][['transComp']] <- 'intraC' 
@@ -1394,12 +1501,13 @@ fastReseg_internalRef <- function(counts,
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lm_cutoff the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
 #' @param combine_extra flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param celltype_method use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -1495,14 +1603,18 @@ findSegmentError_allFiles <- function(counts,
                                       spatLocs_colns = c('x','y','z'), 
                                       extracellular_cellID = NULL, 
                                       flagModel_TransNum_cutoff = 50, 
-                                      flagCell_lrtest_cutoff = 5,
+                                      flagCell_lm_cutoff = 5,
                                       svmClass_score_cutoff = -2, 
                                       svm_args = list(kernel = "radial", 
                                                       scale = FALSE, 
                                                       gamma = 0.4),
                                       path_to_output = "reSeg_res", 
                                       combine_extra = FALSE, 
-                                      ctrl_genes = NULL){
+                                      ctrl_genes = NULL,
+                                      celltype_method = 'LogLikeRatio'){
+  
+  celltype_method <- match.arg(celltype_method, c('LogLikeRatio', 'NegBinomial'))
+  message(sprintf("Use `%s` method for quick cell typing in resegmentation. ", celltype_method))
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -1603,11 +1715,11 @@ findSegmentError_allFiles <- function(counts,
     # lowerCutoff_transNum, a named vector of 25% quantile of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that higher than the cutoff is required to keep query cell as it is
     # higherCutoff_transNum, a named vector of median value of cluster-specific per molecule per cell transcript number, to be used as transcript number cutoff such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.
     # clust_used,  a named vector of cluster assignments for each cell used in baseline calculation, cell_ID in `counts` as name
-    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust))
+    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust), celltype_method = celltype_method)
     
   } else {
     # reference profiles exists, but no cluster assignment
-    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL)
+    baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL, celltype_method = celltype_method)
     clust = baselineData[['clust_used']]
   }
   
@@ -1616,6 +1728,8 @@ findSegmentError_allFiles <- function(counts,
   if(length(common_genes) <2){
     stop("Too few common genes between the `refProfiles` (genes X clusters) and `counts` (cells X genes), check if correct format. ")
   }
+  
+  refProfiles <- refProfiles[common_genes, ]
   
   ## initialize list to collect each FOV outputs ----
   all_segRes <- list()
@@ -1633,7 +1747,7 @@ findSegmentError_allFiles <- function(counts,
   # but also combine perCell data from all FOVs to return 
   
   ## (0) get transcript score matrix for each gene based on reference profile 
-  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(refProfiles, 1e-5))
+  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(refProfiles, 1e-8))
   
   # tLLRv2 score, re-center on maximum per row/transcript
   tmp_max <- apply(transcript_loglik, 1, max)
@@ -1700,18 +1814,47 @@ findSegmentError_allFiles <- function(counts,
     
     
     ## (2) for each cell, get new cell type based on maximum score ----
-    # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-    tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
-                                   transcript_df = transcript_df[['intraC']], 
-                                   transID_coln = 'UMI_transID',
-                                   transGene_coln = 'target',
-                                   cellID_coln = 'UMI_cellID', 
-                                   return_transMatrix = FALSE)
+    if(celltype_method == 'LogLikeRatio'){
+      # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
+      tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
+                                     transcript_df = transcript_df[['intraC']], 
+                                     transID_coln = 'UMI_transID',
+                                     transGene_coln = 'target',
+                                     cellID_coln = 'UMI_cellID', 
+                                     return_transMatrix = FALSE)
+      
+      select_cellmeta <- tmp_df[['cellType_DF']]
+      rm(tmp_df)
+      
+    } else if (celltype_method =='NegBinomial'){
+      # `quick_celltype` function returns a list contains element `clust`, a vector given cells' cluster assignments.
+      exprMat <- reshape2::acast(transcript_df[['intraC']], as.formula(paste0("UMI_cellID", "~", "target")), length)
+      # fill missing genes that in refProfiles but not in current data as 0
+      missingGenes <- setdiff(rownames(refProfiles), colnames(exprMat))
+      exprMat <- cbind(exprMat, 
+                       matrix(0, nrow = nrow(exprMat), ncol = length(missingGenes), 
+                              dimnames = list(rownames(exprMat), missingGenes)))
+      exprMat <- exprMat[, rownames(refProfiles), drop = FALSE]
+      
+      nb_res <- quick_celltype(exprMat, bg = 0, reference_profiles = refProfiles, align_genes = FALSE)
+      select_cellmeta <- data.frame(cellID = names(nb_res[['clust']]),
+                                    celltype = nb_res[['clust']])
+      
+      # transcript groups without informative genes would be assigned with 1st cell type in refProfiles
+      if(!is.null(nb_res[['zeroCells']])){
+        message(sprintf("Found %d cells of zero informative counts in original transcript_df, assign initial cell type = `%s`: `%s`.",
+                        length(nb_res[['zeroCells']]), colnames(refProfiles)[1], 
+                        paste0(nb_res[['zeroCells']], collapse = "`, `")))
+        
+        select_cellmeta[['celltype']][is.na(select_cellmeta[['celltype']])] <- colnames(refProfiles)[1]
+      }
+      
+      rm(exprMat, nb_res, missingGenes)
+      
+    }
     
-    select_cellmeta <- tmp_df[['cellType_DF']]
-    colnames(select_cellmeta) <- c('UMI_cellID','tLLRv2_maxCellType')
-    rm(tmp_df)
     
+    colnames(select_cellmeta) <- c('UMI_cellID','tSum_maxCellType')
     all_cells <- select_cellmeta[['UMI_cellID']]
     
     transcript_df[['intraC']] <- merge(transcript_df[['intraC']], select_cellmeta, by = 'UMI_cellID')
@@ -1724,19 +1867,19 @@ findSegmentError_allFiles <- function(counts,
                                     transcript_df = transcript_df[['intraC']], 
                                     transID_coln = 'UMI_transID',
                                     transGene_coln = 'target',
-                                    celltype_coln = 'tLLRv2_maxCellType')
+                                    celltype_coln = 'tSum_maxCellType')
     transcript_df[['intraC']] <- merge(transcript_df[['intraC']], tmp_df, by = 'UMI_transID')
     rm(tmp_df)
     
     
     
-    ## (4.1) spatial modeling of tLLR score profile within each cell to identify cells with strong spatail dependency 
+    ## (4.1) spatial modeling of tLLR score profile within each cell to identify cells with strong spatial dependency 
     # `score_cell_segmentation_error` function returns a data.frame with cell in row and spatial modeling outcomes in columns
     tmp_df <- score_cell_segmentation_error(chosen_cells = all_cells, 
                                             transcript_df = transcript_df[['intraC']], 
                                             cellID_coln = 'UMI_cellID', 
                                             transID_coln = 'UMI_transID', 
-                                            score_coln = 'score_tLLRv2_maxCellType',
+                                            score_coln = 'score_tSum_maxCellType',
                                             spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                             model_cutoff = flagModel_TransNum_cutoff)
     
@@ -1747,16 +1890,16 @@ findSegmentError_allFiles <- function(counts,
       
     } else {
       #-log10(P)
-      tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+      tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pvalue']])
       modStats_ToFlagCells <- merge(select_cellmeta, tmp_df, by.x = 'UMI_cellID', by.y = 'cell_ID')
       rm(tmp_df)
       
       
-      ## (4.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-      modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+      ## (4.2) flag cells based on linear regression of tLLRv2, lm_-log10P
+      modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lm_-log10P']] > flagCell_lm_cutoff )
       flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
-      message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                      length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
+      message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lm_-log10P > %.1f.", 
+                      length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lm_cutoff))
       
       # write into disk
       # add idx as file idx
@@ -1781,7 +1924,7 @@ findSegmentError_allFiles <- function(counts,
                                     transcript_df = classDF_ToFlagTrans, 
                                     cellID_coln = 'UMI_cellID', 
                                     transID_coln = 'UMI_transID', 
-                                    score_coln = 'score_tLLRv2_maxCellType',
+                                    score_coln = 'score_tSum_maxCellType',
                                     spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
                                     model_cutoff = flagModel_TransNum_cutoff, 
                                     score_cutoff = svmClass_score_cutoff, 

@@ -34,14 +34,14 @@ data.frame with columns for
 \enumerate{
 \item{cell_ID, cell id}
 \item{transcript_num, number of transcripts in given cell}
-\item{modAlt_rsq, summary(mod_alternative)$r.squared}
-\item{lrtest_ChiSq, lrtest chi-squared value}
-\item{lrtest_Pr, lrtest probability larger than chi-squared value, p-value}
+\item{modAlt_rsq, the root mean square for residual of the alternative model }
+\item{lm_Fstat, the F-test statistic of the alternative model against null model}
+\item{lm_Pvalue, the p.value calculated from the F-test statstic}
 }
 }
 \description{
 Score each cell for how much their transcripts change their goodness-of-fit over space.
 }
 \details{
-For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D and a null model: mod_null = lm(tLLRv2 ~ 1); then run lmtest::lrtest(mod_alternative, mod_null). Return statistics for mod_alternative$fitted.values (standard deviation and minimal value), summary(mod_alternative)$r.squared and as well as lrtest chi-squared value.
+For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D. Return the root mean square of residual after fitting, the F statistics and p.value of alternative model against null model.
 }

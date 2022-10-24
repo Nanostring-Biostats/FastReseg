@@ -1,7 +1,7 @@
 #### pipeline to process multi-FOV multi-slot data
 ## part 2:
 ## (2.0) load exisitng RData containing data.frame for all transcripts and cells and the reference cell type profiles
-## (2.1) flag cells based on linear regression of transcript score using lrtest_-log10P cutoff
+## (2.1) flag cells based on linear regression of transcript score using lm_-log10P cutoff
 ## (2.2) use SVM~hyperplane to identify the connected transcripts group based on transcript score
 ## (2.3) do network analysis on flagged transcript to split flagged transcript groups in space
 ## (2.4) re-segmentation of each flagged transcript groups based on their neighborhood
@@ -24,7 +24,7 @@ config_dimension[['CellNeighbor_xy']] = 25
 config_dimension[['CellNeighbor_xy_in_transDF']] = 25
 
 # change flaging cutoff to 5
-config_dimension[['flagCell_lrtestCutoff']] = 5
+config_dimension[['flagCell_lmCutoff']] = 5
 
 # change svm configuraiton
 config_dimension[['svm_config']] <- list(kernel = "radial", 
@@ -96,18 +96,18 @@ system.time(tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix_
 # user  system elapsed 
 # 431.748  61.822  96.555 
 
-colnames(tmp_df[['cellType_DF']]) <- c('cell_ID','cleaned_tLLRv2_maxCellType')
+colnames(tmp_df[['cellType_DF']]) <- c('cell_ID','cleaned_tSum_maxCellType')
 
 ## cells with no prior cell typing info in gem would be removed, due to failed QC 
 select_cellmeta <- merge(select_cellmeta, tmp_df[['cellType_DF']], by = 'cell_ID')
 
 # get score on assigned cell types at transcript level
 ## option 1: not used
-#### keep all cells in all_transDF, update the cell_type of missing cells based on cleaned_tLLRv2_maxCellType
+#### keep all cells in all_transDF, update the cell_type of missing cells based on cleaned_tSum_maxCellType
 #### remove c_0 from data.frame
 ## option 2: only keep the transcripts have cell_type information in gem
 all_transDF <- merge(all_transDF, 
-                     select_cellmeta[, c('cell_ID','cell_type','cleaned_tLLRv2_maxCellType')], 
+                     select_cellmeta[, c('cell_ID','cell_type','cleaned_tSum_maxCellType')], 
                      by = 'cell_ID')
 
 # need to have NotDet in reference if calculate tLLRv2 score for orignla cell type
@@ -117,7 +117,7 @@ tmp_df <- getScoreCellType_gene(score_GeneMatrix = tLLRv2_geneMatrix_cleaned,
                                 transcript_df = all_transDF, 
                                 transID_coln = "transcript_id",
                                 transGene_coln = "target",
-                                celltype_coln = 'cleaned_tLLRv2_maxCellType')
+                                celltype_coln = 'cleaned_tSum_maxCellType')
 all_transDF <- merge(all_transDF, tmp_df, by = 'transcript_id')
 
 reseg_logInfo[['common_data']][['feat_count']][['cellNum']] <-  nrow(select_cellmeta)
@@ -144,26 +144,26 @@ if(TRUE){
                                                       transcript_df = all_transDF, 
                                                       cellID_coln = 'cell_ID', 
                                                       transID_coln = 'transcript_id', 
-                                                      score_coln = 'score_cleaned_tLLRv2_maxCellType',
+                                                      score_coln = 'score_cleaned_tSum_maxCellType',
                                                       spatLocs_colns = c('x','y','z'), 
                                                       model_cutoff = 50))
   #-log10(P)
-  tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
-  modStats_cleaned_tLLRv2_3D <- merge(tmp_df, select_cellmeta[, c('cell_ID','cleaned_tLLRv2_maxCellType','slide')], by = 'cell_ID')
+  tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pvalue']])
+  modStats_cleaned_tLLRv2_3D <- merge(tmp_df, select_cellmeta[, c('cell_ID','cleaned_tSum_maxCellType','slide')], by = 'cell_ID')
   
   # visualize extreme cells, 2D plots
   if(TRUE){
     tmp_df <- data.table::copy(modStats_cleaned_tLLRv2_3D)
-    tmp_df <- tmp_df[order(tmp_df[['lrtest_-log10P']]),]
-    tmp_df[['labels']] <- paste0(tmp_df[['slide']],'_', tmp_df[['cleaned_tLLRv2_maxCellType']], 
-                                 ', -log10P=', round(tmp_df[['lrtest_-log10P']],2))
+    tmp_df <- tmp_df[order(tmp_df[['lm_-log10P']]),]
+    tmp_df[['labels']] <- paste0(tmp_df[['slide']],'_', tmp_df[['cleaned_tSum_maxCellType']], 
+                                 ', -log10P=', round(tmp_df[['lm_-log10P']],2))
     chosen_cells <- c(tmp_df$cell_ID[1:9], tmp_df$cell_ID[(nrow(tmp_df)-9):nrow(tmp_df)])
     fig1 <- plotSpatialScoreMultiCells(chosen_cells = chosen_cells, 
                                        cell_labels = tmp_df[match(chosen_cells, tmp_df$cell_ID), 'labels'], 
                                        transcript_df = all_transDF,
                                        cellID_coln = "cell_ID", 
                                        transID_coln = "transcript_id",
-                                       score_coln = "score_cleaned_tLLRv2_maxCellType", 
+                                       score_coln = "score_cleaned_tSum_maxCellType", 
                                        spatLocs_colns = c("x","y"))  
     
     pdf(fs::path(sub_out_dir3, paste0(blockID,"_SpatialPlot_SpatModel2_tLLRv2_-log10P_cleanNBclust6_flagExtreme.pdf")), 
@@ -172,13 +172,13 @@ if(TRUE){
     dev.off()
     
     # histogram for linear regression -log10P values
-    fig <- ggplot(tmp_df, aes(x = get('lrtest_-log10P'))) + 
+    fig <- ggplot(tmp_df, aes(x = get('lm_-log10P'))) + 
       geom_histogram(aes(y=..density..), fill = 'blue',color = 'black')+
-      geom_vline(xintercept= quantile(tmp_df[['lrtest_-log10P']], 0.9),
+      geom_vline(xintercept= quantile(tmp_df[['lm_-log10P']], 0.9),
                  linetype="dashed", color = 'red')+
-      labs(y = 'density', x = 'lrtest_-log10P', 
+      labs(y = 'density', x = 'lm_-log10P', 
            title = paste0(nrow(tmp_df),' cells above model_cutoff, skip ', length(common_cells) - nrow(tmp_df), ' cells'))
-    ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lrtest_-log10P_allCells.jpeg")))
+    ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lm_-log10P_allCells.jpeg")))
     
     
     
@@ -186,11 +186,11 @@ if(TRUE){
 }
 
 ####re-segmentation based on tLLRv2 score (1) flag cells, identify transcript groups ----
-## (1) flag cells based on linear regression of tLLRv2, lrtest_-log10P
-#5640 cells, 0.0292 of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > 5.0.
-flagged_cells_cleaned <- modStats_cleaned_tLLRv2_3D[['cell_ID']][which(modStats_cleaned_tLLRv2_3D[['lrtest_-log10P']] > config_dimension[['flagCell_lrtestCutoff']])]
-message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
-                length(flagged_cells_cleaned), length(flagged_cells_cleaned)/nrow(modStats_cleaned_tLLRv2_3D),config_dimension[['flagCell_lrtestCutoff']]))
+## (1) flag cells based on linear regression of tLLRv2, lm_-log10P
+#5640 cells, 0.0292 of all evaluated cells, are flagged for resegmentation with lm_-log10P > 5.0.
+flagged_cells_cleaned <- modStats_cleaned_tLLRv2_3D[['cell_ID']][which(modStats_cleaned_tLLRv2_3D[['lm_-log10P']] > config_dimension[['flagCell_lmCutoff']])]
+message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lm_-log10P > %.1f.", 
+                length(flagged_cells_cleaned), length(flagged_cells_cleaned)/nrow(modStats_cleaned_tLLRv2_3D),config_dimension[['flagCell_lmCutoff']]))
 
 
 ## (2) use SVM~hyperplane to identify the connected transcripts group based on tLLRv2 score ----
@@ -210,7 +210,7 @@ system.time(tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells_cleaned,
                                           transcript_df = flagged_transDF3d_cleaned, 
                                           cellID_coln = 'cell_ID', 
                                           transID_coln = 'transcript_id', 
-                                          score_coln = 'score_cleaned_tLLRv2_maxCellType',
+                                          score_coln = 'score_cleaned_tSum_maxCellType',
                                           spatLocs_colns = c('x','y','z'), 
                                           model_cutoff = 50, 
                                           score_cutoff = flag_tLLRv2_cutoff, 
@@ -237,14 +237,14 @@ reseg_logInfo[['flagging_cleaned_SVM']][['flagged_transID']] <- flaggedSVM_trans
 # visualize the spatial plot of score
 # choose 500 cells to plot, space across -log10P values
 tmp_df <- modStats_cleaned_tLLRv2_3D[modStats_cleaned_tLLRv2_3D[['cell_ID']] %in% flagged_cells_cleaned, ]
-tmp_df <- tmp_df[order(tmp_df[['lrtest_-log10P']]),]
+tmp_df <- tmp_df[order(tmp_df[['lm_-log10P']]),]
 cells_for_plots <- tmp_df[['cell_ID']][seq(1, length(flagged_cells_cleaned), by = round(length(flagged_cells_cleaned)/500))]
 cells_for_plots <- unique(cells_for_plots)
 
 if(TRUE){
   tmp_df <- flagged_transDF_SVM3
   
-  for(score_coln in c('score_cleaned_tLLRv2_maxCellType','DecVal')){
+  for(score_coln in c('score_cleaned_tSum_maxCellType','DecVal')){
     # visualize the flagged transcripts in chosen_cells
     if(score_coln == 'DecVal') {
       score_mid = 0
@@ -798,7 +798,7 @@ if(TRUE){
                                           model_cutoff = 50)
   
   #-log10(P)
-  tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
+  tmp_df[['lm_-log10P']] <- -log10(tmp_df[['lm_Pr']])
   alteredOnly_modStats_resegcleanSVM_leiden_tLLRv2_3D <- merge(tmp_df, 
                                                                post_reseg_results_cleanSVM_leiden$perCell_DT[, .SD, .SDcols = c('updated_cellID','updated_celltype')], 
                                                                by.x = 'cell_ID', by.y = 'updated_cellID')
@@ -809,9 +809,9 @@ if(TRUE){
   if(TRUE){
     tmp_df <- data.table::copy(alteredOnly_modStats_resegcleanSVM_leiden_tLLRv2_3D)
     colnames(tmp_df)[1] <- 'cell_ID'
-    tmp_df <- tmp_df[order(tmp_df[['lrtest_-log10P']]),]
+    tmp_df <- tmp_df[order(tmp_df[['lm_-log10P']]),]
     tmp_df[['labels']] <- paste0(tmp_df[['slide']],'_', tmp_df[['updated_celltype']], 
-                                 ', -log10P=', round(tmp_df[['lrtest_-log10P']],2))
+                                 ', -log10P=', round(tmp_df[['lm_-log10P']],2))
     chosen_cells <- c(tmp_df$cell_ID[1:9], tmp_df$cell_ID[(nrow(tmp_df)-9):nrow(tmp_df)])
     fig1 <- plotSpatialScoreMultiCells(chosen_cells = chosen_cells, 
                                        cell_labels = tmp_df[match(chosen_cells, tmp_df$cell_ID), 'labels'], 
@@ -827,13 +827,13 @@ if(TRUE){
     dev.off()
     
     # histogram for linear regression -log10P values
-    fig <- ggplot(tmp_df, aes(x = get('lrtest_-log10P'))) + 
+    fig <- ggplot(tmp_df, aes(x = get('lm_-log10P'))) + 
       geom_histogram(aes(y=..density..), fill = 'blue',color = 'black')+
-      geom_vline(xintercept= quantile(tmp_df[['lrtest_-log10P']], 0.9),
+      geom_vline(xintercept= quantile(tmp_df[['lm_-log10P']], 0.9),
                  linetype="dashed", color = 'red')+
-      labs(y = 'density', x = 'lrtest_-log10P', 
+      labs(y = 'density', x = 'lm_-log10P', 
            title = paste0(nrow(tmp_df),' cells above model_cutoff, skip ', length(tmp_cellID) - nrow(tmp_df), ' cells'))
-    ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lrtest_-log10P_resegmented_AlteredOnly_cleanNBclust6_SVMleiden.jpeg")))
+    ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lm_-log10P_resegmented_AlteredOnly_cleanNBclust6_SVMleiden.jpeg")))
     
   }
 }
@@ -866,15 +866,15 @@ if(TRUE){
   colnames(tmp2_df) <- c('slide', 'flaggedCells')
   stats_df <- merge(stats_df, tmp2_df, by = 'slide')
   
-  fig <- ggplot(tmp_df, aes(x = get('lrtest_-log10P'), group = as.factor(slide), 
+  fig <- ggplot(tmp_df, aes(x = get('lm_-log10P'), group = as.factor(slide), 
                             color = as.factor(slide), fill = as.factor(slide))) + 
     geom_histogram(position="dodge2", alpha = 0.5)+
     geom_vline(xintercept= 10,
                linetype="dashed", color = 'black')+
-    labs(x = 'lrtest_-log10P', color = "slide", fill = "slide",
+    labs(x = 'lm_-log10P', color = "slide", fill = "slide",
          title = paste0("slide ", paste0(tmp2_df$slide, collapse = ":"), "w/ flagged cell #, ", paste0(tmp2_df$flaggedCells, collapse = ":")))+
     theme_linedraw()
-  ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lrtest_-log10P_slide-comparison_cleanNBclust6_SVMleiden.jpeg")))
+  ggsave(plot = fig, filename = fs::path(sub_out_dir3, paste0(blockID,"_histogram_lm_-log10P_slide-comparison_cleanNBclust6_SVMleiden.jpeg")))
   
   
   
@@ -944,7 +944,7 @@ if(TRUE){
   tmp_df[['slide']] <- sapply(strsplit(tmp_df$cell_ID, "_"),"[[", 2)
   tmp_df[['fov']] <- sapply(strsplit(tmp_df$cell_ID, "_"),"[[", 3)
   tmp_df <- tmp_df[which(tmp_df$fov ==1), ]
-  tmp_df <- tmp_df[order(tmp_df[['lrtest_-log10P']]),]
+  tmp_df <- tmp_df[order(tmp_df[['lm_-log10P']]),]
   cells_for_plots <- tmp_df[['cell_ID']]
   
   if(length(cells_for_plots) >510){

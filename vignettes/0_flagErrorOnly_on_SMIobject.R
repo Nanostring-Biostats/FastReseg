@@ -38,6 +38,9 @@ removeUnpaired <- FALSE
 # flag to include ctrl_genes in analysis
 include_ctrlgenes <- FALSE
 
+# use either `LogLikeRatio` or `NegBinomial` method for quick cell typing and corresponding score_baseline calculation
+celltype_method <- 'LogLikeRatio'
+
 # SMI TAP output folder
 scAnalysis_dir <- "/home/rstudio/NAS_data/lwu/testRun/SpatialTest/giotto_test/melanoma/Run4104_melanoma_980plx/giotto_output/Run4104_cellpose_vs_oldDASH"
 # get config files to get path to sample annotation file
@@ -68,7 +71,8 @@ smi_inputs <- prepSMI_for_fastReseg(path_to_SMIobject = path_to_SMIobject,
                                     cellClus_to_exclude = cellClus_to_exclude, 
                                     removeUnpaired = removeUnpaired,
                                     blacklist_genes = blacklist_genes,
-                                    pixel_size = pixel_size)
+                                    pixel_size = pixel_size,
+                                    celltype_method = celltype_method)
 # write `transDF_fov_fileInfo` into csv file
 write.csv(smi_inputs[['transDF_fov_fileInfo']], 
           file = fs::path(sub_out_dir, 'transDF_fov_fileInfo.csv'))
@@ -78,8 +82,8 @@ write.csv(smi_inputs[['transDF_fov_fileInfo']],
 # # cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 # flagModel_TransNum_cutoff = 50 
 # 
-# # cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
-# flagCell_lrtest_cutoff = 5
+# # cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+# flagCell_lm_cutoff = 5
 # 
 # # cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 # svmClass_score_cutoff = -2 
@@ -130,7 +134,8 @@ reseg_outputs <- findSegmentError_allFiles(
   extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
   path_to_output = sub_out_dir, 
   combine_extra = TRUE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
-  ctrl_genes = ctrl_genes
+  ctrl_genes = ctrl_genes,
+  celltype_method = celltype_method 
   )
 
 
@@ -230,16 +235,16 @@ message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell s
 combined_modStats_ToFlagCells <- reseg_outputs$combined_modStats_ToFlagCells
 
 
-# cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile (default =5)
+# cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile (default =5)
 # lower values would flag more cells with potential segmentation error
-flagCell_lrtest_cutoff = 3
+flagCell_lm_cutoff = 3
 
 # cells with potential segmentation errors, flagged by new cutoff
-combined_flaggedCells <- combined_modStats_ToFlagCells[combined_modStats_ToFlagCells['lrtest_-log10P'] > flagCell_lrtest_cutoff, 'UMI_cellID']
-message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error based on provided `flagCell_lrtest_cutoff` = %.2f. ", 
+combined_flaggedCells <- combined_modStats_ToFlagCells[combined_modStats_ToFlagCells['lm_-log10P'] > flagCell_lm_cutoff, 'UMI_cellID']
+message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error based on provided `flagCell_lm_cutoff` = %.2f. ", 
                 length(combined_flaggedCells), 
                 length(combined_flaggedCells)/nrow(reseg_outputs$combined_modStats_ToFlagCells), 
-                flagCell_lrtest_cutoff))
+                flagCell_lm_cutoff))
 
 
 #### (6) redo identification of low goodness-of-fit transcript groups as needed ----

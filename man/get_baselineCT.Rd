@@ -4,7 +4,12 @@
 \alias{get_baselineCT}
 \title{get_baselineCT}
 \usage{
-get_baselineCT(refProfiles, counts, clust = NULL)
+get_baselineCT(
+  refProfiles,
+  counts,
+  clust = NULL,
+  celltype_method = "LogLikeRatio"
+)
 }
 \arguments{
 \item{refProfiles}{A matrix of cluster profiles, genes X clusters}
@@ -12,6 +17,8 @@ get_baselineCT(refProfiles, counts, clust = NULL)
 \item{counts}{Counts matrix, cells X genes.}
 
 \item{clust}{Vector of cluster assignments for each cell in \code{counts}, default = NULL to automatically assign the cell cluster for each cell based on maximum transcript score}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 }
 \value{
 a list

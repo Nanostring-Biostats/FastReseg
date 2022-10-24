@@ -21,7 +21,7 @@ fastReseg_internalRef(
   spatLocs_colns = c("x", "y", "z"),
   extracellular_cellID = NULL,
   flagModel_TransNum_cutoff = 50,
-  flagCell_lrtest_cutoff = 5,
+  flagCell_lm_cutoff = 5,
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   groupTranscripts_method = c("delaunay", "dbscan"),
@@ -38,7 +38,8 @@ fastReseg_internalRef(
   save_intermediates = TRUE,
   return_perCellData = TRUE,
   combine_extra = FALSE,
-  ctrl_genes = NULL
+  ctrl_genes = NULL,
+  celltype_method = "LogLikeRatio"
 )
 }
 \arguments{
@@ -73,7 +74,7 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{flagModel_TransNum_cutoff}{the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)}
 
-\item{flagCell_lrtest_cutoff}{the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
+\item{flagCell_lm_cutoff}{the cutoff of lm_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
 
 \item{svmClass_score_cutoff}{the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)}
 
@@ -107,6 +108,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 \item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
 \item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
+\item{celltype_method}{use either \code{LogLikeRatio} or \code{NegBinomial} method for quick cell typing and corresponding score_baseline calculation (default = LogLikeRatio)}
 
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
