@@ -34,12 +34,13 @@ estimate_MeanProfile <- function(counts, clust, s, bg) {
 
 # calculate the loglik of each gene in expression matrix
 #' @title scoreGenesInRef
-#' @description calculate log-likilhood score of each gene based on reference expression profiles
+#' @description calculate log-likilhood score of each gene based on reference expression profiles and return the centered score matrix
 #' @param genes a vector of gene name to score
 #' @param ref_profiles a gene X cell_type expression matrix for reference profiles
-#' @return loglik, a gene X cell_type matrix of loglik score for each gene
+#' @param flag_center flag to center the score matrix per gene before turn, default = TRUE 
+#' @return loglik, a gene X cell_type matrix of centered loglik score for each gene
 #' @export
-scoreGenesInRef <- function(genes, ref_profiles){
+scoreGenesInRef <- function(genes, ref_profiles, flag_center= TRUE){
   common_feats <- intersect(unique(genes), rownames(ref_profiles))
   if(length(common_feats) <1){
     stop("No common genes found in `genes` and `ref_profiles`. ref_profiles should be a gene x cell_type matrix.")
@@ -52,6 +53,14 @@ scoreGenesInRef <- function(genes, ref_profiles){
   libsize <- colSums(ref_profiles, na.rm = TRUE)
   norm_exprs <- Matrix::t(Matrix::t(ref_profiles)/ libsize)
   loglik <- log(norm_exprs)
+  
+  # tLLRv2 score, re-center on maximum per row/transcript
+  if(flag_center){
+    tmp_max <- apply(loglik, 1, max)
+    loglik <- sweep(loglik, 1, tmp_max, '-')
+  }
+  
+  
   return(loglik)
 }
 

@@ -175,12 +175,8 @@ fastReseg_core_externalRef <- function(refProfiles,
   
   ## get tLL score matrix 
   meanCelltype_profiles <- pmax(refProfiles, 1e-5)
-  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = meanCelltype_profiles)
-  
-  # tLLRv2 score, re-center on maximum per row/transcript
-  tmp_max <- apply(transcript_loglik, 1, max)
-  tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
-  rm(tmp_max)
+  # tLLR score, re-center on maximum per row/transcript
+  tLLRv2_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = meanCelltype_profiles)
   
   # set tLLR score for control genes, same as `svmClass_score_cutoff`
   if(!is.null(ctrl_genes)){
@@ -1633,12 +1629,7 @@ findSegmentError_allFiles <- function(counts,
   # but also combine perCell data from all FOVs to return 
   
   ## (0) get transcript score matrix for each gene based on reference profile 
-  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(refProfiles, 1e-5))
-  
-  # tLLRv2 score, re-center on maximum per row/transcript
-  tmp_max <- apply(transcript_loglik, 1, max)
-  tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
-  rm(tmp_max, transcript_loglik)
+  tLLRv2_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(refProfiles, 1e-5))
   
   # set tLLR score for control genes, same as `svmClass_score_cutoff`
   if(!is.null(ctrl_genes)){

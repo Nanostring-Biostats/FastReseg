@@ -238,12 +238,9 @@ get_baselineCT <- function(refProfiles,
   # get score matrix based on refProfiles for each gene and cell ----
   # replace zero in mean profiles with 1E-5
   refProfiles <- pmax(refProfiles, 1e-5)
-  # tLL score
-  transcript_loglik <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
   # tLLR score, re-center on maximum per row/transcript
-  tmp_max <- apply(transcript_loglik, 1, max)
-  tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
-  rm(tmp_max, transcript_loglik)
+  tLLRv2_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
+  
   
   # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
   tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix

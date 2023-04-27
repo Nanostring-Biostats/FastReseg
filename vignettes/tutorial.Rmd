@@ -1,0 +1,199 @@
+---
+title: "FastReseg to detect and correct segmentation error in spatial transcriptome data"
+author: "Lidan Wu"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{FastReseg to detect and correct segmentation error in spatial transcriptome data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  out.width = '100%'
+)
+```
+
+
+## wrapper functions for streamline processing
+For streamline processing of multiple FOVs of big dataset, one can use the wrapper functions provided in the package without going through the individual steps shown in this tutorial. Please refer to the document of each wraper for the example usage.  
+
+* `findSegmentError_allFiles`: wrapper to proprocess data and flag cell segmentation error in a list of files for per-FOV transcript data.frame. 
+
+* `fastReseg_internalRef`: wrapper for entire resegmentation pipeline which extracts reference profiles, cutoffs from data and use them to detect segmentation error and perform correction; it can process a list of files for many FOVs.
+
+* `fastReseg_core_externalRef`: core wrapper for resegmentation pipeline using external provided reference profiles and cutoffs; it does segmentation error detection and correction and can process one transcript data.frame at a time. 
+
+
+## modular functions for individual tasks 
+This tutorial below shows how to apply functions in `FastReseg` to perform segmentation error detection and correction in spatial transcriptome data. 
+
+### Input data
+
+The required inputs include:
+
+* `counts`:  a cell-by-gene counts matrix for entire dataset. 
+
+* `clust`: a vector of cluster assignments for each cell in `counts`; use `NULL` to automatically assign the cell cluster for each cell based on maximum transcript score of given the provided `refProfiles`.
+
+* `refProfiles`: a gene-by-cluster matrix of cluster-specific expression profiles; default = NULL to use external cluster assignments.
+
+* `transDF_fileInfo`: a data.frame with each row for each individual file of per-FOV transcript data.frame, columns include the file path of per FOV transcript data.frame file, annotation columns like `slide` and `fov` to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided `transcript_df` directly.
+
+There must be at least one of the `clust` and `refProfiles` provided to run the `FastReseg` pipeline. All the spatial coordinates and distance are in the units of micron for consistency. Please refer to example data coming with the package to see how it looks like. 
+
+```{r input_data}
+# load example input data from package
+library(FastReseg)
+
+# get cell-by-gene `counts`
+data("example_CellGeneExpr")
+counts <- example_CellGeneExpr
+
+# get cluster assignment `clust`
+data("example_clust")
+clust <- example_clust
+
+# get cluster-specific reference profiles `refProfiles`
+data("example_refProfiles")
+refProfiles <- example_refProfiles
+
+# get per FOV transcript data.frame
+data("mini_transcriptDF")
+transcript_df <-  mini_transcriptDF
+
+# create `transDF_fileInfo` for multiple per FOV transcript data.frame 
+# coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
+transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                             "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+                               slide = c(1, 1),
+                               fov = c(1,2),
+                               stage_X = 1000*c(5.13, -2.701),
+                               stage_Y = 1000*c(-0.452, 0.081))
+```
+Here is an example per-FOV transcript data.frame with necessary columns:  
+
+* `target` for gene name; 
+
+* `x`, `y` and optional `z` for spatial coordinates of each transcript;  
+
+* `cell_ID` for current cell segmentation and must be unique across all FOVs of the same dataset; 
+
+   + when not provided, the `fastReseg_internalRef` function would use per-FOV unique `CellId` and the provided `prefix_colns = c('slide', 'fov')` to generate `cell_ID` that would be unique across the entire dataset.  
+   
+* `transcript_id`: transcript id that is unique across the dataset; 
+
+   + By default, the `fastReseg_internalRef` function would use row index of transcript in each per-FOV transcript data.frame and `cell_ID` to create `transcript_id` that would be unique across the entire dataset.
+
+```{r, echo=FALSE, results ='asis'}
+knitr::kable(head(transcript_df))
+```
+
+### Preprocess on whole dataset 
+
+First, one needs to preprocess at whole dataset scale to get appropriate baselines and cutoffs for downstream segmentation error detection and correction at individual FOV level. 
+Assume we have a single-cell dataset that has gone through certain type of cell typing algorithm using the initial cell segmentation. One can extract the cluster-mean profiles observed in dataset with the code below
+```{r cluster_mean_profiles, eval = FALSE}
+refProfiles <- estimate_MeanProfile( counts = as.matrix(counts), 
+                                     clust = as.character(clust), 
+                                     s = Matrix::rowSums(as.matrix(counts)), 
+                                     bg = rep(0, nrow(counts)))
+```
+
+Next is to get the baseline transcript number and score of each gene under each cell type /cluster in reference profiles.
+```{r get_baselineCT}
+baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = as.character(clust))
+```
+In case of cell type/cluster assignment is not available but a `refProfiles` is provided, one can get cluster assignment for each cell while calculating the baseline. 
+```{r get_clust, eval = FALSE}
+baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL)
+clust = baselineData[['clust_used']]
+```
+
+Then, one needs to define the distance cutoffs for downstream neighborhood search during segmentation refinement. These cutoffs could be defined based on prior knowledge directly or calculated from the provided `transcript_df`. 
+
+* `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. Typically, one could use 2 times of the mean cell diameter in dataset. 
+
+* `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. One can decide this value based on the expected spot density within each cell. 
+
+Empirically, let's set 20um and 2um values for the two cutoffs, respectively, for dataset on human tissue with 100+ plex target gene in panel. 
+```{r input_cutoff}
+cellular_distance_cutoff = 20
+molecular_distance_cutoff = 2
+```
+Alternatively, one can use the `choose_distance_cutoff` function to calculate the distance cutoffs from the provided data. This function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells.
+```{r distance_cutoff, eval = FALSE}
+distCutoffs <- choose_distance_cutoff(transcript_df, 
+                                      transID_coln = 'transcript_id',
+                                      cellID_coln = 'cell_ID', 
+                                      spatLocs_colns = c('x','y'), # use 2d here since transcript is more dense in 2D, optional to use all 3D spatial coordinates 
+                                      extracellular_cellID = NULL, 
+                                      sampleSize_nROI = 10, 
+                                      sampleSize_cellNum = 2500, 
+                                      seed = 123, 
+                                      run_molecularDist = TRUE)
+molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
+cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+```
+
+Lastly, let's score genes for their goodness-of-fit under each cell type. 
+```{r score_gene}
+# when derived `refProfiles` based on `counts` and `clust`, all genes in `counts` would be used. 
+common_genes <- intersect(colnames(counts), rownames(refProfiles))
+
+# calculate log-likelihood of each gene under each cell type and center the score matrix on per gene basis
+tLLR_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(refProfiles, 1e-5))
+
+```
+
+### Processing indvidual FOV in parallel 
+> The following sections would operate on one per-FOV transcript data.frame at a time. For processing on multiple FOVs, please either refer to the provided wrapper functions or create your own wrapper around the code chucks listed below. 
+
+### Flag cell segmentation errors
+
+
+
+
+## Styles
+
+The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+
+    output: 
+      rmarkdown::html_vignette:
+        css: mystyles.css
+
+## Figures
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, fig.show='hold'}
+plot(1:10)
+plot(10:1)
+```
+
+You can enable figure captions by `fig_caption: yes` in YAML:
+
+    output:
+      rmarkdown::html_vignette:
+        fig_caption: yes
+
+Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+
+## More Examples
+
+You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))
