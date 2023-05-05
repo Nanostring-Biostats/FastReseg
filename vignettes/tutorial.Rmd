@@ -64,7 +64,6 @@ clust <- example_clust
 data("example_refProfiles")
 refProfiles <- example_refProfiles
 
-
 # create `transDF_fileInfo` for multiple per FOV transcript data.frame 
 # coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
 transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
@@ -183,15 +182,15 @@ tLLR_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(ref
 Now we are ready to evaluate each cell on their potential to have cell segmentation errors. 
 
 ```{r eval_cellSeg}
-modStats_ToFlagCells <- runSegErrorEvalaution(
+modStats_ToFlagCells <- runSegErrorEvaluation(
   score_GeneMatrix= tLLR_geneMatrix , 
   transcript_df = transcript_df, 
   cellID_coln = 'UMI_cellID', 
   transID_coln = 'UMI_transID',
   transGene_coln = 'target',
-  cellID_coln = 'UMI_cellID',
   spatLocs_colns = c('x','y','z'),
-  flagModel_TransNum_cutoff = 50) # cutoff of transcript number to do spatial modeling
+  # cutoff of transcript number to do spatial modeling
+  flagModel_TransNum_cutoff = 50) 
 
 
 head(modStats_ToFlagCells)

@@ -7,9 +7,9 @@
 fastReseg_core_externalRef(
   refProfiles,
   transcript_df,
-  transID_coln = "transcript_id",
+  transID_coln = "UMI_transID",
   transGene_coln = "target",
-  cellID_coln = "cell_ID",
+  cellID_coln = "UMI_cellID",
   spatLocs_colns = c("x", "y", "z"),
   extracellular_cellID = NULL,
   flagModel_TransNum_cutoff = 50,

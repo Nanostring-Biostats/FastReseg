@@ -969,7 +969,7 @@ groupTranscripts_dbscan <- function(chosen_transcripts = NULL,
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 #' @return a data.frame contains evaluation model statistics in columns for each cell's potential to have segmentation error
 #' @export
-runSegErrorEvalaution <- function(score_GeneMatrix, 
+runSegErrorEvaluation <- function(score_GeneMatrix, 
                                   transcript_df,
                                   cellID_coln = 'UMI_cellID', 
                                   transID_coln = 'UMI_transID',

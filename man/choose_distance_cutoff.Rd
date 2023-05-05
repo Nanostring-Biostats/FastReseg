@@ -6,8 +6,8 @@
 \usage{
 choose_distance_cutoff(
   transcript_df,
-  transID_coln = "transcript_id",
-  cellID_coln = "cell_ID",
+  transID_coln = "UMI_transID",
+  cellID_coln = "UMI_cellID",
   spatLocs_colns = c("x", "y", "z"),
   extracellular_cellID = NULL,
   sampleSize_nROI = 10,
