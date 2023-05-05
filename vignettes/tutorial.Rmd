@@ -64,9 +64,6 @@ clust <- example_clust
 data("example_refProfiles")
 refProfiles <- example_refProfiles
 
-# get per FOV transcript data.frame
-data("mini_transcriptDF")
-transcript_df <-  mini_transcriptDF
 
 # create `transDF_fileInfo` for multiple per FOV transcript data.frame 
 # coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
@@ -77,21 +74,47 @@ transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code
                                stage_X = 1000*c(5.13, -2.701),
                                stage_Y = 1000*c(-0.452, 0.081))
 ```
-Here is an example per-FOV transcript data.frame with necessary columns:  
+
+When preparing the per-FOV data.frame outside the wrapper, one can read in each per-FOV file and process it with `myFun_fov_prep_dropOrig` function to get the unique IDs for cells and transcripts as well as converting the local coordinates in pixel for each FOV to a gloable coordinate in micro for entire dataset. 
+```{r prep_FOV_file, eval = FALSE}
+#  process 1st file in the `transDF_fileInfo` entry 
+idx = 1
+rawDF <- read.csv(transDF_fileInfo[idx, 'file_path'])
+
+transcript_df_all <- myFun_fov_prep_dropOrig(each_transDF = rawDF, 
+                                             fov_centerLocs = unlist(transDF_fileInfo[idx, c('stage_X', 'stage_Y')]),
+                                             prefix_vals = unlist(transDF_fileInfo[idx, c('slide', 'fov')]), 
+                                             pixel_size = pixel_size, # micron per pixel 
+                                             zstep_size = zstep_size, # micron per z step 
+                                             transID_coln = NULL, # use row index 
+                                             transGene_coln = 'target', # gene name
+                                             cellID_coln = 'CellId', # cell label unique at FOV level 
+                                             spatLocs_colns = c('x', 'y', 'z'), # column names for spatial coordinates in pixel for each FOV
+                                             extracellular_cellID = NULL, # set this to the cell ID for extracellular transcript, use NULL if your data only contains intracellular transcripts  
+                                             drop_original = TRUE) # set to FALSE if want to have columns for original cell ID and spatial coordinates returned in the data.frame
+
+# we would focus on intracellular transcripts for downstream segmentation error detection
+transcript_df <- transcript_df_all[["intraC"]]
+```
+
+Here is an example per-FOV transcript data.frame with necessary columns for:  
 
 * `target` for gene name; 
 
 * `x`, `y` and optional `z` for spatial coordinates of each transcript;  
 
-* `cell_ID` for current cell segmentation and must be unique across all FOVs of the same dataset; 
+* `UMI_cellID` for cell ids of current cell segmentation and must be unique across all FOVs of the same dataset; 
 
-   + when not provided, the `fastReseg_internalRef` function would use per-FOV unique `CellId` and the provided `prefix_colns = c('slide', 'fov')` to generate `cell_ID` that would be unique across the entire dataset.  
+   + when not provided, the `fastReseg_internalRef` function would use per-FOV unique `CellId` and the provided `prefix_colns = c('slide', 'fov')` to generate `UMI_cellID` that would be unique across the entire dataset.
    
-* `transcript_id`: transcript id that is unique across the dataset; 
+* `UMI_transID`: transcript ids that are unique across the dataset; 
 
-   + By default, the `fastReseg_internalRef` function would use row index of transcript in each per-FOV transcript data.frame and `cell_ID` to create `transcript_id` that would be unique across the entire dataset.
+   + By default, the `fastReseg_internalRef` function would use row index of transcript in each per-FOV transcript data.frame and `cell_ID` to create `UMI_transID` that would be unique across the entire dataset.
+
 
 ```{r, echo=FALSE, results ='asis'}
+data(mini_transcriptDF)
+transcript_df <- mini_transcriptDF
 knitr::kable(head(transcript_df))
 ```
 
@@ -130,8 +153,8 @@ molecular_distance_cutoff = 2
 Alternatively, one can use the `choose_distance_cutoff` function to calculate the distance cutoffs from the provided data. This function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. When `run_molecularDist = TRUE`, the function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI`number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells.
 ```{r distance_cutoff, eval = FALSE}
 distCutoffs <- choose_distance_cutoff(transcript_df, 
-                                      transID_coln = 'transcript_id',
-                                      cellID_coln = 'cell_ID', 
+                                      transID_coln = 'UMI_transID',
+                                      cellID_coln = 'UMI_cellID', 
                                       spatLocs_colns = c('x','y'), # use 2d here since transcript is more dense in 2D, optional to use all 3D spatial coordinates 
                                       extracellular_cellID = NULL, 
                                       sampleSize_nROI = 10, 
@@ -157,8 +180,22 @@ tLLR_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = pmax(ref
 
 ### Flag cell segmentation errors
 
+Now we are ready to evaluate each cell on their potential to have cell segmentation errors. 
+
+```{r eval_cellSeg}
+modStats_ToFlagCells <- runSegErrorEvalaution(
+  score_GeneMatrix= tLLR_geneMatrix , 
+  transcript_df = transcript_df, 
+  cellID_coln = 'UMI_cellID', 
+  transID_coln = 'UMI_transID',
+  transGene_coln = 'target',
+  cellID_coln = 'UMI_cellID',
+  spatLocs_colns = c('x','y','z'),
+  flagModel_TransNum_cutoff = 50) # cutoff of transcript number to do spatial modeling
 
 
+head(modStats_ToFlagCells)
+```
 
 ## Styles
 

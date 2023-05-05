@@ -26,8 +26,8 @@
 #'
 #' @format An object of class \code{"data.frame"} with 756783 transcripts in row and 9 variables
 #' \describe{
-#'    \item{transcript_id}{unique id for transcript}
-#'    \item{cell_ID}{unique id for cell based on original cell segmentaion assignment}
+#'    \item{UMI_transID}{unique id for transcript}
+#'    \item{UMI_cellID}{unique id for cell based on original cell segmentaion assignment}
 #'    \item{x}{spatial coordinate of the transcript in x-axis of the given FOV, unit in micron}
 #'    \item{y}{spatial coordinate of the transcript in y-axis of the given FOV, unit in micron}
 #'    \item{z}{spatial coordinate of the transcript in z-axis of the given FOV, unit in micron}

@@ -59,9 +59,9 @@
 #' @export
 fastReseg_core_externalRef <- function(refProfiles, 
                                        transcript_df, 
-                                       transID_coln = "transcript_id",
+                                       transID_coln = 'UMI_transID',
                                        transGene_coln = "target",
-                                       cellID_coln = 'cell_ID', 
+                                       cellID_coln = 'UMI_cellID', 
                                        spatLocs_colns = c('x','y','z'), 
                                        extracellular_cellID = NULL, 
                                        flagModel_TransNum_cutoff = 50, 
@@ -1690,74 +1690,35 @@ findSegmentError_allFiles <- function(counts,
     }
     
     
-    ## (2) for each cell, get new cell type based on maximum score ----
-    # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-    tmp_df <- getCellType_maxScore(score_GeneMatrix = tLLRv2_geneMatrix, 
-                                   transcript_df = transcript_df[['intraC']], 
-                                   transID_coln = 'UMI_transID',
-                                   transGene_coln = 'target',
-                                   cellID_coln = 'UMI_cellID', 
-                                   return_transMatrix = FALSE)
+    # evaluate segmentation errors
+    modStats_ToFlagCells <- runSegErrorEvalaution(score_GeneMatrix= tLLRv2_geneMatrix, 
+                                      transcript_df = transcript_df[['intraC']], 
+                                      cellID_coln = 'UMI_cellID', 
+                                      transID_coln = 'UMI_transID',
+                                      transGene_coln = 'target',
+                                      cellID_coln = 'UMI_cellID',
+                                      spatLocs_colns = c('x','y','z')[1:d2_or_d3],
+                                      flagModel_TransNum_cutoff = flagModel_TransNum_cutoff,
+                                      flagCell_lrtest_cutoff = flagCell_lrtest_cutoff)
+
     
-    select_cellmeta <- tmp_df[['cellType_DF']]
-    colnames(select_cellmeta) <- c('UMI_cellID','tLLRv2_maxCellType')
-    rm(tmp_df)
-    
-    all_cells <- select_cellmeta[['UMI_cellID']]
-    
-    transcript_df[['intraC']] <- merge(transcript_df[['intraC']], select_cellmeta, by = 'UMI_cellID')
-    message(sprintf("Found %d cells and assigned cell type based on the provided `refProfiles` cluster profiles.", nrow(select_cellmeta)))
-    
-    
-    ## (3) for each transcript, calculate tLLR score based on the max cell type
-    # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
-    tmp_df <- getScoreCellType_gene(score_GeneMatrix = tLLRv2_geneMatrix, 
-                                    transcript_df = transcript_df[['intraC']], 
-                                    transID_coln = 'UMI_transID',
-                                    transGene_coln = 'target',
-                                    celltype_coln = 'tLLRv2_maxCellType')
-    transcript_df[['intraC']] <- merge(transcript_df[['intraC']], tmp_df, by = 'UMI_transID')
-    rm(tmp_df)
-    
-    
-    
-    ## (4.1) spatial modeling of tLLR score profile within each cell to identify cells with strong spatail dependency 
-    # `score_cell_segmentation_error` function returns a data.frame with cell in row and spatial modeling outcomes in columns
-    tmp_df <- score_cell_segmentation_error(chosen_cells = all_cells, 
-                                            transcript_df = transcript_df[['intraC']], 
-                                            cellID_coln = 'UMI_cellID', 
-                                            transID_coln = 'UMI_transID', 
-                                            score_coln = 'score_tLLRv2_maxCellType',
-                                            spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
-                                            model_cutoff = flagModel_TransNum_cutoff)
-    
-    if(is.null(tmp_df)){
+    if(is.null(modStats_ToFlagCells)){
       # if no cells with enough transcript per cell for model evaluation
-      modStats_ToFlagCells <- NULL
       flagged_cells <- NULL
       
     } else {
-      #-log10(P)
-      tmp_df[['lrtest_-log10P']] <- -log10(tmp_df[['lrtest_Pr']])
-      modStats_ToFlagCells <- merge(select_cellmeta, tmp_df, by.x = 'UMI_cellID', by.y = 'cell_ID')
-      rm(tmp_df)
-      
-      
-      ## (4.2) flag cells based on linear regression of tLLRv2, lrtest_-log10P
+      ##  flag cells based on linear regression of tLLR, lrtest_-log10P
       modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+      
       flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
       message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
                       length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
       
-      # write into disk
-      # add idx as file idx
       modStats_ToFlagCells[['file_idx']] <- idx
       write.csv(modStats_ToFlagCells, file = fs::path(path_to_output, paste0(idx, '_modStats_ToFlagCells.csv')), row.names = FALSE)
       
-      
     }
-    
-    
+
     
     ## (5) use SVM~hyperplane to identify the connected transcripts group based on tLLRv2 score ----
     # SVM can separate continuous low score transcript from the rest.

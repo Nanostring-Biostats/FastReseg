@@ -956,3 +956,75 @@ groupTranscripts_dbscan <- function(chosen_transcripts = NULL,
   return(transcript_df)
 }
 
+# modular wrapper to flag cell segmentation error
+#' @title runSegErrorEvaluation
+#' @description modular wrapper to flag cell segmentation error 
+#' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
+#' @param transcript_df the data.frame of transcript_ID, cell_ID, score, spatial coordinates
+#' @param cellID_coln the column name of cell_ID in transcript_df
+#' @param transID_coln the column name of transcript_ID in transcript_df
+#' @param transGene_coln the column name of target or gene name in transcript_df
+#' @param score_coln the column name of score in transcript_df
+#' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in transcript_df 
+#' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
+#' @return a data.frame contains evaluation model statistics in columns for each cell's potential to have segmentation error
+#' @export
+runSegErrorEvalaution <- function(score_GeneMatrix, 
+                                  transcript_df,
+                                  cellID_coln = 'UMI_cellID', 
+                                  transID_coln = 'UMI_transID',
+                                  transGene_coln = 'target',
+                                  spatLocs_colns = c('x','y','z'),
+                                  flagModel_TransNum_cutoff = 50){
+  
+  ## for each cell, get new cell type based on maximum score ----
+  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
+  select_cellmeta <- getCellType_maxScore(score_GeneMatrix = score_GeneMatrix, 
+                                          transcript_df = transcript_df, 
+                                          transID_coln = transID_coln,
+                                          transGene_coln = transGene_coln,
+                                          cellID_coln = cellID_coln, 
+                                          return_transMatrix = FALSE)
+  
+  select_cellmeta <- select_cellmeta[['cellType_DF']]
+  colnames(select_cellmeta) <- c(cellID_coln,'tLLR_maxCellType')
+
+  
+  all_cells <- select_cellmeta[[cellID_coln]]
+  
+  transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
+  message(sprintf("Found %d cells and assigned cell type based on the provided `refProfiles` cluster profiles.", nrow(select_cellmeta)))
+  
+  
+  ##  for each transcript, calculate tLLR score based on the max cell type
+  # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
+  tmp_df <- getScoreCellType_gene(score_GeneMatrix = score_GeneMatrix, 
+                                  transcript_df = transcript_df, 
+                                  transID_coln = transID_coln,
+                                  transGene_coln = transGene_coln,
+                                  celltype_coln = 'tLLR_maxCellType')
+  transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
+  rm(tmp_df)
+  
+  
+  
+  ## spatial modeling of tLLR score profile within each cell to identify cells with strong spatial dependency 
+  # `score_cell_segmentation_error` function returns a data.frame with cell in row and spatial modeling outcomes in columns
+  modStats_ToFlagCells <- score_cell_segmentation_error(
+    chosen_cells = all_cells, 
+    transcript_df = transcript_df, 
+    cellID_coln = cellID_coln, 
+    transID_coln = transID_coln, 
+    score_coln = 'score_tLLR_maxCellType',
+    spatLocs_colns = spatLocs_colns, 
+    model_cutoff = flagModel_TransNum_cutoff)
+  
+  if(!is.null(modStats_ToFlagCells)){
+    #-log10(P)
+    modStats_ToFlagCells[['lrtest_-log10P']] <- -log10(modStats_ToFlagCells[['lrtest_Pr']])
+    modStats_ToFlagCells <- merge(select_cellmeta, modStats_ToFlagCells, by.x = cellID_coln, by.y = 'cell_ID')
+    
+  }
+  
+  return(modStats_ToFlagCells)
+}
