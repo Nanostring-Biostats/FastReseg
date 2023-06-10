@@ -10,10 +10,10 @@ choose_distance_cutoff(
   cellID_coln = "UMI_cellID",
   spatLocs_colns = c("x", "y", "z"),
   extracellular_cellID = NULL,
+  run_molecularDist = TRUE,
   sampleSize_nROI = 10,
   sampleSize_cellNum = 2500,
-  seed = 123,
-  run_molecularDist = TRUE
+  seed = 123
 )
 }
 \arguments{
@@ -27,13 +27,13 @@ choose_distance_cutoff(
 
 \item{extracellular_cellID}{a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)}
 
+\item{run_molecularDist}{flag to run molecular distant cutoff estimation, default = TRUE}
+
 \item{sampleSize_nROI}{number of ROIs randomly picked from data for molecular distance cutoff estimation}
 
 \item{sampleSize_cellNum}{maximum number of cells from the picked ROIs for molecular distance cutoff estimation}
 
 \item{seed}{a random seed for sub-sampling cells from whole dataset for molecular distance cutoff estimation}
-
-\item{run_molecularDist}{flag to run molecular distant cutoff estimation, default = TRUE}
 }
 \value{
 a list

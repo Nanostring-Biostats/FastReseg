@@ -5,10 +5,10 @@
 #' @param cellID_coln the column name of cell_ID in `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
+#' @param run_molecularDist flag to run molecular distant cutoff estimation, default = TRUE 
 #' @param sampleSize_nROI number of ROIs randomly picked from data for molecular distance cutoff estimation
 #' @param sampleSize_cellNum maximum number of cells from the picked ROIs for molecular distance cutoff estimation
 #' @param seed a random seed for sub-sampling cells from whole dataset for molecular distance cutoff estimation
-#' @param run_molecularDist flag to run molecular distant cutoff estimation, default = TRUE 
 #' @return a list
 #' \describe{
 #'    \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. }
@@ -31,10 +31,10 @@ choose_distance_cutoff <- function(transcript_df,
                                    cellID_coln = 'UMI_cellID', 
                                    spatLocs_colns = c('x','y','z'), 
                                    extracellular_cellID = NULL, 
+                                   run_molecularDist = TRUE,
                                    sampleSize_nROI = 10, 
                                    sampleSize_cellNum = 2500, 
-                                   seed = 123, 
-                                   run_molecularDist = TRUE){
+                                   seed = 123){
   
   #### check inputs ----
   # check format of transcript_df
@@ -239,19 +239,19 @@ get_baselineCT <- function(refProfiles,
   # replace zero in mean profiles with 1E-5
   refProfiles <- pmax(refProfiles, 1e-5)
   # tLLR score, re-center on maximum per row/transcript
-  tLLRv2_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
+  tLLR_geneMatrix <- scoreGenesInRef(genes = common_genes, ref_profiles = refProfiles)
   
   
   # get cell x cell-cluster score matrix = counts (cell x gene) %*% tLLR_score (gene x cell-cluster)
-  tLLRv2_cellMatrix <- counts %*% tLLRv2_geneMatrix
+  tLLR_cellMatrix <- counts %*% tLLR_geneMatrix
   
   # assign cell type for each cell if not provided ----
   if(is.null(clust)){
     message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
 
     # assign cell type based on max values
-    max_idx_1st <- max.col(tLLRv2_cellMatrix, ties.method="first")
-    clust <- colnames(tLLRv2_cellMatrix)[max_idx_1st]
+    max_idx_1st <- max.col(tLLR_cellMatrix, ties.method="first")
+    clust <- colnames(tLLR_cellMatrix)[max_idx_1st]
 
     common_celltypes <- unique(clust)
     rm(max_idx_1st)
@@ -266,23 +266,23 @@ get_baselineCT <- function(refProfiles,
   
   # get transcript score quantile profile ----
   # loop over each cell type to get score based on assigned clusters
-  all_tLLRv2 <- rep(NA, length(clust))
+  all_tLLR <- rep(NA, length(clust))
   for (each_celltype in common_celltypes){
     rowidx <- which(clust == each_celltype)
-    all_tLLRv2[rowidx] <- tLLRv2_cellMatrix[rowidx, each_celltype]
+    all_tLLR[rowidx] <- tLLR_cellMatrix[rowidx, each_celltype]
   }
   # normalized by transcript number to get per molecule transcript score for each cell
-  all_tLLRv2 <- all_tLLRv2/all_transNum
-  span_tLLRv2_CellType <- tapply(all_tLLRv2, 
+  all_tLLR <- all_tLLR/all_transNum
+  span_tLLR_CellType <- tapply(all_tLLR, 
                                  clust, 
                                  function(x) quantile(x, probs = seq(0, 1, 0.25)))
-  span_tLLRv2_CellType <- do.call(rbind, span_tLLRv2_CellType)
+  span_tLLR_CellType <- do.call(rbind, span_tLLR_CellType)
   
   # return final results ---
   names(clust) <- rownames(counts)
-  final_res <- list(span_score = span_tLLRv2_CellType, 
+  final_res <- list(span_score = span_tLLR_CellType, 
                     span_transNum = span_transNum_CellType, 
-                    score_baseline = span_tLLRv2_CellType[, "25%"],
+                    score_baseline = span_tLLR_CellType[, "25%"],
                     lowerCutoff_transNum = span_transNum_CellType[, "25%"], 
                     higherCutoff_transNum = span_transNum_CellType[, "50%"], 
                     clust_used = clust)

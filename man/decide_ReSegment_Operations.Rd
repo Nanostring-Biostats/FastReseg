@@ -15,7 +15,16 @@ decide_ReSegment_Operations(
   neighborScore_coln = "score_under_neighbor",
   score_baseline = NULL,
   lowerCutoff_transNum = NULL,
-  higherCutoff_transNum = NULL
+  higherCutoff_transNum = NULL,
+  transcript_df,
+  cellID_coln = "CellId",
+  transID_coln = "transcript_id",
+  transSpatLocs_coln = c("x", "y", "z"),
+  spatialMergeCheck_method = c("leidenCut", "geometryDiff"),
+  cutoff_spatialMerge = 0.5,
+  leiden_config = list(objective_function = c("CPM", "modularity"),
+    resolution_parameter = 1, beta = 0.01, n_iterations = 200),
+  config_spatNW_transcript = NULL
 )
 }
 \arguments{
@@ -35,11 +44,29 @@ decide_ReSegment_Operations(
 
 \item{neighborScore_coln}{the column name of average transcript score under neighbor cell in neighborhood_df}
 
-\item{score_baseline}{a named vector of score baseline for all cell type listed in neighborhood_df}
+\item{score_baseline}{a named vector of score baseline for all cell type listed in neighborhood_df such that per cell transcript score higher than the baseline is required to call a cell type of high enough confidence}
 
 \item{lowerCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that higher than the cutoff is required to keep query cell as it is}
 
 \item{higherCutoff_transNum}{a named vector of transcript number cutoff under each cell type such that lower than the cutoff is required to keep query cell as it is when there is neighbor cell of consistent cell type.}
+
+\item{transcript_df}{the data.frame with transcript_id, target/geneName, x, y and cell_id}
+
+\item{cellID_coln}{the column name of cell_ID in transcript_df}
+
+\item{transID_coln}{the column name of transcript_ID in transcript_df}
+
+\item{transSpatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
+
+\item{spatialMergeCheck_method}{use either "leidenCut" (in 2D or 3D) or "geometryDiff" (in 2D only) method to determine whether a cell pair merging event is allowed in space (default = "leidenCut")}
+
+\item{cutoff_spatialMerge}{spatial constraint on a valid merging event between two source transcript groups, default = 0.5 for 50\% cutoff, set to 0 to skip spatial constraint evaluation for merging.
+For \code{spatialMergeCheck_method = "leidenCut"}, this is the minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event.
+For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percentage of white space change upon merging of query cell and neighbor cell for a valid merging event.}
+
+\item{leiden_config}{(leidenCut) a list of configuration to pass to reticulate and \code{igraph::cluster_leiden} function, including objective_function, resolution_parameter, beta, n_iterations.}
+
+\item{config_spatNW_transcript}{(leidenCut) configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config}
 }
 \value{
 a list
@@ -51,8 +78,17 @@ a list
 }
 }
 \description{
-Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.
+Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. Use either leiden clustering or geometry statistics to determine whether a merge event is allowed.
 }
 \details{
-Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations.1) merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum; 2) keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum; 3) discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score. Use network component analysis to resolve any conflic due to merging multiple query cells into one.
+Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations like the following:
+\itemize{
+\item merge query to neighbor if consist cell type and fewer than average transcript number cutoff, higherCutoff_transNum;
+\item keep query as new cell id if no consist neighbor cell type, but high self score and higher than minimal transcript number, lowerCutoff_transNum;
+\item discard the rest of query cells that have no consistent neighbor cell type, fewer transcript number based on lowerCutoff_transNum, and/or low self score.
+The function uses network component analysis to resolve any conflict due to merging multiple query cells into one.
+When \code{cutoff_spatialMerge > 0}, the function applies additional spatial constraint on a valid merging event of query cell into neighbor cell.
+\item In case of \code{spatialMergeCheck_method = "leidenCut"}, the function builds spatial network at transcript level, does leiden clustering  on the spatial network, and then decides whether the merge should be allowed based on the observed shared leiden membership of the two source transcript groups for a putative merging event; the provided \code{cutoff_spatialMerge} gives the minimal values of shared leiden memberhsip for a valid merging event.
+\item In case of \code{spatialMergeCheck_method = "geometryDiff"}, the function would first calculate white space, i.e. the area difference between convex and concave hulls, respectively, for query cell, neighbor cell, and the corresponding merged cell; and then calculate the white space difference between the merged cell and two separate cells and normalize that value with respect to the concave area of query and neighbor cells, respectively; lastly, allow a valid merging when the normalized white space difference upon merging for both query and neighbor cells are smaller than the provided \code{cutoff_spatialMerge}.
+}
 }

@@ -87,7 +87,7 @@ update_transDF_ResegActions <- function(transcript_df,
   tmp_idx <- which(transcript_df[['updated_cellID']] %in% unique(cells_to_update))
   transcript_df[['updated_celltype']][tmp_idx] <- newCellTypes[transcript_df[['updated_cellID']][tmp_idx]]
   
-  outputs <- list(updated_transDF = transcript_df)
+  outputs <- list(updated_transDF = as.data.frame(transcript_df))
   
   # get per cell data frame
   if(return_perCellDF){

@@ -98,7 +98,7 @@ sink(logHandle)
 sink(logHandle, type = "message")
 
 ## run resegmentation
-# # `findSegmentError_allFiles` function returns a list of 
+# # `fastReseg_flag_all_errors` function returns a list of 
 # refProfiles: a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline.
 # baselineData: a list of two matrice in cluster * percentile format for the cluster-specific percentile distribution of per cell value; `span_score` is for the average per molecule transcript tLLR score of each cell, `span_transNum` is for the transcript number of each cell.
 # ctrl_genes: a vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not NULL.
@@ -112,7 +112,7 @@ if(include_ctrlgenes){
   ctrl_genes <- NULL
 }
 
-reseg_outputs <- findSegmentError_allFiles(
+reseg_outputs <- fastReseg_flag_all_errors(
   counts = smi_inputs[['counts']],
   clust = NULL,
   refProfiles = smi_inputs[['refProfiles']],

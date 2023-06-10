@@ -1,13 +1,35 @@
 #' @title createSpatialDelaunayNW_from_spatLocs
-#' @description generate delaunay network based on provided config and spatial location using Giotto functions
+#' @description generate delaunay network based on provided config and spatial location using `Giotto` functions
 #' @param config_spatNW configuration list 
 #' @param spatLocs_df data.frame for spatial location of each entry for cell or transcript
-#' @param ID_column column name for entry ID in spatLocs_df
-#' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in spatLocs_df 
+#' @param ID_column column name for entry ID in `spatLocs_df`
+#' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in `spatLocs_df` 
 #' @importFrom data.table as.data.table
-#' @return delaunay_network_Obj, a spatial network object created by Giotto function
+#' @return delaunay_network_Obj, a spatial network object created by `Giotto` functions
+#' @details This function leverages `Giotto` package to create spatial networks from spatial coordinates. An example `config_spatNW` list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for `Giotto::createSpatialNetwork`. 
+#'#' ' \describe{
+#'    \item{name}{spatial network name; default = 'spatial_network'}
+#'    \item{dimensions}{a vector for which spatial dimensions to use, default = 'all' to use all dimentions}
+#'    \item{method}{method name for creating a spatial network, default = 'Delaunay'}
+#'    \item{minimum_k}{minimum number of nearest neighbors if maximum_distance != NULL}
+#'    \item{delaunay_method}{Delaunay method to use, choose from c("delaunayn_geometry", "deldir", "RTriangle"), default = "delaunayn_geometry"}
+#'    \item{maximum_distance_delaunay}{distance cuttoff for nearest neighbors to consider for Delaunay network, default = "auto"}
+#'    \item{options}{(geometry) String containing extra control options for the underlying Qhull command; see the Qhull documentation (../doc/qhull/html/qdelaun.html) for the available options; default = `Pp`, do not report precision problems)}
+#'    \item{Y}{(RTriangle) If TRUE prohibits the insertion of Steiner points on the mesh boundary}
+#'    \item{j}{(RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.}
+#'    \item{S}{(RTriangle) Specifies the maximum number of added Steiner points.}
+#' }
 #' @export
-createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW, 
+createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 'spatial_network',
+                                                                       dimensions = "all",
+                                                                       method = 'Delaunay',
+                                                                       minimum_k = 0,
+                                                                       delaunay_method = "delaunayn_geometry",
+                                                                       maximum_distance_delaunay = "auto",
+                                                                       options = "Pp",
+                                                                       Y = TRUE,
+                                                                       j = TRUE,
+                                                                       S = 0), 
                                                   spatLocs_df, 
                                                   ID_column = 'cell_ID',
                                                   spatLocs_column = c("sdimx","sdimy","sdimz")){
@@ -175,8 +197,6 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW,
 #' checkTypeLengthValue(config, "length2character", 
 #'                      expect_type = "character", expect_len = 2,
 #'                      expect_range = "within", expect_value = c("a","b"))
-#' @export
-#' 
 checkTypeLengthValue <- function(config, name, 
                                  expect_type, 
                                  expect_len = NULL,
@@ -280,6 +300,7 @@ check_config_spatialNW <- function(config, spat_locs){
     config$method <- 'Delaunay'
     message("Create Delanay network when config$method is NULL.")
   }
+  # allow only 'Delaunay'
   config$method <- match.arg(config$method, c("Delaunay"))
   msg <- character()
   
@@ -329,7 +350,7 @@ check_config_spatialNW <- function(config, spat_locs){
       msg <- c(msg, checkTypeLengthValue(config, "delaunay_method", 
                                                  expect_type = "character", 
                                                  expect_len = 1, expect_range = "within",
-                                                 expect_value = c("deldir", "delaunayn_geometry", "RTriangle")))
+                                                 expect_value = c("delaunayn_geometry", "deldir", "RTriangle")))
     } else {
       config$delaunay_method <- "delaunayn_geometry" # only method works for 3D
     }
