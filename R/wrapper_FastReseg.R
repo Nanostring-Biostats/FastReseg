@@ -18,7 +18,7 @@
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lrtest_cutoff the cutoff of `lrtest_-log10P` to identify putative wrongly segmented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
@@ -37,7 +37,7 @@
 #' For each transcript data.frame, the function would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, and identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile. 
 #' The function would save the each per FOV output as individual file in `path_to_output` directory; `flagged_transDF`, `modStats_ToFlagCells` and `classDF_ToFlagTrans` would be saved as csv file, respectively. 
 #' \describe{
-#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs for transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`}
+#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`}
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function}
 #'    \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flagTranscripts_SVM` functions}
 #' }
@@ -1079,7 +1079,7 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when `save_intermediates` = TRUE}
 #'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flagTranscripts_SVM` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when `save_intermediates` = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat` function, save when `save_intermediates` = TRUE}
-#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, save when `save_intermediates` = TRUE}
+#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations` function, save when `save_intermediates` = TRUE}
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
@@ -1213,7 +1213,7 @@ fastReseg_full_pipeline <- function(counts,
                                     score_baseline = NULL, 
                                     lowerCutoff_transNum = NULL, 
                                     higherCutoff_transNum= NULL, 
-                                    imputeFlag_missingCTs = FALSE,
+                                    imputeFlag_missingCTs = TRUE,
                                     groupTranscripts_method = c("dbscan", "delaunay"),
                                     spatialMergeCheck_method = c("leidenCut", "geometryDiff"), 
                                     cutoff_spatialMerge = 0.5, 

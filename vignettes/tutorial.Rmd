@@ -518,7 +518,7 @@ table(updated_perCellDT[['reSeg_action']])
 
 ```{r description_runSegRefinement, echo=FALSE, results ='asis'}
 df2 <- data.frame(variable = c("`updated_transDF`", "`neighborhoodDF_ToReseg`", "`reseg_actions`", "", "`updated_perCellDT`", "`updated_perCellExprs`"),
-                  description = c("the updated transcript_df with `updated_cellID` and `updated_celltype` columns reflecting the new segmentation outcomes`", 
+                  description = c("the updated transcript_df with `updated_cellID` and `updated_celltype` columns reflecting the new segmentation outcomes", 
                                   "data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat()` function, return when `return_intermediates = TRUE`", 
                                   "*list of 4 elements describing how the resegmenation would be performed on `reseg_transcript_df` by the group assignment of transcripts listed in `reseg_cellID_coln`, return when `return_intermediates = TRUE`*", 
                                   "* `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation.\n
@@ -594,11 +594,11 @@ print(fig)
 
 ## Example usage of pipeline wrapper functions
 
-While the modular functions used above offer flexibility in usage, `FastReseg` package provides 3 different pipeline wrappers for streamline processing as listed below. For more example usages and description, please refer to the manuals of those wrapper functions. 
+While the modular functions used above offer flexibility in usage, `FastReseg` package provides 3 different pipeline wrappers for streamline processing in most use cases as listed below. For more example usages and description, please refer to the manuals of those wrapper functions. 
 
 ### Core wrapper for perFOV processing 
 
-The core wrapper function, `fastReseg_perFOV_full_process()`could process a `transcript_df` through the full pipeline as listed above. One can pick one representative FOV and process it with this wrapper function to evaluate and correct the segmentation errors in the data quickly before launching the processing of entire dataset which might take longer time when there are many FOVs. 
+The core wrapper function, `fastReseg_perFOV_full_process()`could process a `transcript_df` through the full pipeline as listed in [Processing indvidual FOV in parallel] section. One can focus on one representative FOV first and process it quickly with this core wrapper function to evaluate and correct the segmentation errors, and check on impact of various cutoffs before launching the processing of entire dataset with a large number of FOVs. 
 
 ```{r perFOV_wrapper, eval = FALSE}
 data(mini_transcriptDF)
@@ -630,10 +630,95 @@ res1 <- fastReseg_perFOV_full_process(score_GeneMatrix = score_GeneMatrix,
 
 ``` 
 
-### Cell-level segmentation detection across multi-FOV dataset
+### Pipeline wraper for cell-level segmentation detection across multi-FOV dataset
+
+A common use case of `FastReseg` is to evaluate the current cell segmentation of entire multi-FOV dataset and then identify the transcripts with poor goodness-of-fit to current cell and thus likely arsing from potential neighborhood contamination. And this could be done with `fastReseg_flag_all_errors()` function.
+
+```{r flagAll_wrapper, eval = FALSE}
+res2 <- fastReseg_flag_all_errors(counts = counts,
+                                  clust = clust,
+                                  refProfiles = NULL,
+                                  
+                                  # Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`
+                                  
+                                  transcript_df = NULL,
+                                  transDF_fileInfo = transDF_fileInfo,
+                                  filepath_coln = 'file_path',
+                                  prefix_colns = c('slide','fov'),
+                                  fovOffset_colns = c('stage_Y','stage_X'), # match XY axes between stage and each FOV
+                                  pixel_size = 0.18, 
+                                  zstep_size = 0.8,
+                                  transID_coln = NULL, # row index as transcript_id
+                                  transGene_coln = "target",
+                                  cellID_coln = "CellId",
+                                  spatLocs_colns = c("x","y","z"),
+                                  extracellular_cellID = c(0), 
+                                  
+                                  flagCell_lrtest_cutoff = 5, # cutoff for flagging wrongly segmented cells
+                                  svmClass_score_cutoff = -2, # cutoff for low vs. high transcript score
+                                  path_to_output = "res2f_multiFiles" # path to output folder
+                                  ctrl_genes = NULL)
+``` 
+
+`fastReseg_flag_all_errors()` function takes similar input arguments as `prepare_perFOV_transDF()` and `runPreprocess()` functions and it also does dataset preprocessing before segmentation error detection. The function returns a list of outputs including `combined_modStats_ToFlagCells`, which is a data.frame for spatial modeling statistics of cell-level segmentation evaluation, and `combined_flaggedCells`, which contains cell IDs for all cells flagged with potential cell segmentation errors in the dataset. `fastReseg_flag_all_errors()` function also exports the per-FOV outputs as 3 individual files per FOV under `path_to_output` directory.
+
+```{r description_flagAll, echo=FALSE, results ='asis'}
+df3 <- data.frame(variable = c("`flagged_transDF`", "`modStats_ToFlagCells`", "`classDF_ToFlagTrans`"),
+                  description = c("a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SVM_class`", 
+                                  "a data.frame for spatial modeling statistics of each cell, output of `runSegErrorEvaluation()` function", 
+                                  "data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flagTranscripts_SVM()` function"))
+
+pander::pander(df3, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+```
+
+One can simply trim off the transcripts with low goodness-of-fit to current segmentation from the `flagged_transDF` by removing the transcripts with `SVM_class = 0`.
 
 ### Full pipeline segmentation detection and refinement across multi-FOV dataset
 
+To perform full pipeline on the entire dataset with more complex segmentation refinment, one can use `fastReseg_full_pipeline()` pipeline wrapper. 
+
+```{r fullAll_wrapper, eval = FALSE}
+res3 <- fastReseg_full_pipeline(counts = counts,
+                                clust = clust,
+                                refProfiles = NULL,
+                                
+                                # Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`
+                                
+                                transcript_df = NULL,
+                                transDF_fileInfo = transDF_fileInfo,
+                                filepath_coln = 'file_path',
+                                prefix_colns = c('slide','fov'),
+                                fovOffset_colns = c('stage_Y','stage_X'),
+                                pixel_size = 0.18,
+                                zstep_size = 0.8,
+                                transID_coln = NULL,
+                                transGene_coln = "target",
+                                cellID_coln = "CellId",
+                                spatLocs_colns = c("x","y","z"),
+                                extracellular_cellID = c(0),
+                                
+                                # Similar to `runPreprocess()`, one can set various cutoffs to NULL for automatic calculation from input data
+                                molecular_distance_cutoff = 2.7,
+                                cellular_distance_cutoff = NULL,
+                                score_baseline = NULL,
+                                lowerCutoff_transNum = NULL,
+                                higherCutoff_transNum= NULL,
+                                imputeFlag_missingCTs = TRUE,
+                                
+                                # Settings for error detection and correction, refer to `runSegRefinement()` for more details
+                                flagCell_lrtest_cutoff = 5,
+                                svmClass_score_cutoff = -2,
+                                groupTranscripts_method = "dbscan",
+                                spatialMergeCheck_method = "leidenCut", 
+                                cutoff_spatialMerge = 0.5, 
+                                
+                                path_to_output = "res3_multiFiles",
+                                save_intermediates = TRUE, # flag to return and write intermediate results to disk
+                                return_perCellData = TRUE # flag to return per cell level outputs from
+                                )
+``` 
+
+`fastReseg_full_pipeline()` returns the new cell expression count matrix `updated_perCellExprs` and spatial coordinate data.frame `updated_perCellDT` when `return_perCellData = TRUE`. It also writes the transcript data.frame updated with new cell segmentation outcomes into individual `updated_transDF.csv` files at FOV level under `path_to_output` directory. Intermediate results, including `modStats_ToFlagCells` and `groupDF_ToFlagTrans` for cell-level and transcript-level segmentation evaluation, are also saved into individual `each_segRes.RData` object at FOV level when `save_intermediates = TRUE`. For more details, please refer to the manuals of `fastReseg_full_pipeline()`.
 
 
 ## Session Info

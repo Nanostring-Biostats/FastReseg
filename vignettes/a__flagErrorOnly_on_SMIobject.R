@@ -116,18 +116,21 @@ reseg_outputs <- fastReseg_flag_all_errors(
   counts = smi_inputs[['counts']],
   clust = NULL,
   refProfiles = smi_inputs[['refProfiles']],
+  
+  transcript_df = NULL,
   transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
   filepath_coln = 'file_path',
   prefix_colns = c('slide','fov'),
   fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
   pixel_size = pixel_size, 
   zstep_size = zStep_size, 
-  transcript_df = NULL,
+  
   transID_coln = NULL, # row index as transcript_id
   transGene_coln = "target",
   cellID_coln = "CellId",
   spatLocs_colns = c("x","y","z"),
   extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
+  
   path_to_output = sub_out_dir, 
   combine_extra = TRUE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
   ctrl_genes = ctrl_genes

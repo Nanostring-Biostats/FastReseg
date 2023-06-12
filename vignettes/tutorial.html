@@ -12,7 +12,7 @@
 
 <meta name="author" content="Lidan Wu" />
 
-<meta name="date" content="2023-06-10" />
+<meta name="date" content="2023-06-12" />
 
 <title>FastReseg to detect and correct segmentation error in spatial transcriptome data</title>
 
@@ -141,7 +141,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 <h1 class="title toc-ignore">FastReseg to detect and correct segmentation error in spatial transcriptome data</h1>
 <h4 class="author">Lidan Wu</h4>
-<h4 class="date">2023-06-10</h4>
+<h4 class="date">2023-06-12</h4>
 
 
 <div id="TOC">
@@ -162,7 +162,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li><a href="#example-usage-of-pipeline-wrapper-functions">Example usage of pipeline wrapper functions</a>
 <ul>
 <li><a href="#core-wrapper-for-perfov-processing">Core wrapper for perFOV processing</a></li>
-<li><a href="#cell-level-segmentation-detection-across-multi-fov-dataset">Cell-level segmentation detection across multi-FOV dataset</a></li>
+<li><a href="#pipeline-wraper-for-cell-level-segmentation-detection-across-multi-fov-dataset">Pipeline wraper for cell-level segmentation detection across multi-FOV dataset</a></li>
 <li><a href="#full-pipeline-segmentation-detection-and-refinement-across-multi-fov-dataset">Full pipeline segmentation detection and refinement across multi-FOV dataset</a></li>
 </ul></li>
 <li><a href="#session-info">Session Info</a></li>
@@ -860,7 +860,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <tbody>
 <tr class="odd">
 <td><code>updated_transDF</code></td>
-<td>the updated transcript_df with <code>updated_cellID</code> and <code>updated_celltype</code> columns reflecting the new segmentation outcomes`</td>
+<td>the updated transcript_df with <code>updated_cellID</code> and <code>updated_celltype</code> columns reflecting the new segmentation outcomes</td>
 </tr>
 <tr class="even">
 <td><code>neighborhoodDF_ToReseg</code></td>
@@ -1005,10 +1005,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 </div>
 <div id="example-usage-of-pipeline-wrapper-functions" class="section level2">
 <h2>Example usage of pipeline wrapper functions</h2>
-<p>While the modular functions used above offer flexibility in usage, <code>FastReseg</code> package provides 3 different pipeline wrappers for streamline processing as listed below. For more example usages and description, please refer to the manuals of those wrapper functions.</p>
+<p>While the modular functions used above offer flexibility in usage, <code>FastReseg</code> package provides 3 different pipeline wrappers for streamline processing in most use cases as listed below. For more example usages and description, please refer to the manuals of those wrapper functions.</p>
 <div id="core-wrapper-for-perfov-processing" class="section level3">
 <h3>Core wrapper for perFOV processing</h3>
-<p>The core wrapper function, <code>fastReseg_perFOV_full_process()</code>could process a <code>transcript_df</code> through the full pipeline as listed above. One can pick one representative FOV and process it with this wrapper function to evaluate and correct the segmentation errors in the data quickly before launching the processing of entire dataset which might take longer time when there are many FOVs.</p>
+<p>The core wrapper function, <code>fastReseg_perFOV_full_process()</code>could process a <code>transcript_df</code> through the full pipeline as listed in <a href="#processing-indvidual-fov-in-parallel">Processing indvidual FOV in parallel</a> section. One can focus on one representative FOV first and process it quickly with this core wrapper function to evaluate and correct the segmentation errors, and check on impact of various cutoffs before launching the processing of entire dataset with a large number of FOVs.</p>
 <div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(mini_transcriptDF)</span>
 <span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>extracellular_cellID <span class="ot">&lt;-</span> mini_transcriptDF[<span class="fu">which</span>(mini_transcriptDF<span class="sc">$</span>CellId <span class="sc">==</span><span class="dv">0</span>), <span class="st">&#39;cell_ID&#39;</span>]</span>
 <span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -1036,63 +1036,157 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">return_perCellData =</span> <span class="cn">TRUE</span>, </span>
 <span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a>                                      <span class="at">includeAllRefGenes =</span> <span class="cn">TRUE</span>)</span></code></pre></div>
 </div>
-<div id="cell-level-segmentation-detection-across-multi-fov-dataset" class="section level3">
-<h3>Cell-level segmentation detection across multi-FOV dataset</h3>
+<div id="pipeline-wraper-for-cell-level-segmentation-detection-across-multi-fov-dataset" class="section level3">
+<h3>Pipeline wraper for cell-level segmentation detection across multi-FOV dataset</h3>
+<p>A common use case of <code>FastReseg</code> is to evaluate the current cell segmentation of entire multi-FOV dataset and then identify the transcripts with poor goodness-of-fit to current cell and thus likely arsing from potential neighborhood contamination. And this could be done with <code>fastReseg_flag_all_errors()</code> function.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>res2 <span class="ot">&lt;-</span> <span class="fu">fastReseg_flag_all_errors</span>(<span class="at">counts =</span> counts,</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">clust =</span> clust,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">refProfiles =</span> <span class="cn">NULL</span>,</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>                                  </span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>                                  <span class="co"># Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>                                  </span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">transcript_df =</span> <span class="cn">NULL</span>,</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">transDF_fileInfo =</span> transDF_fileInfo,</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">filepath_coln =</span> <span class="st">&#39;file_path&#39;</span>,</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">prefix_colns =</span> <span class="fu">c</span>(<span class="st">&#39;slide&#39;</span>,<span class="st">&#39;fov&#39;</span>),</span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">fovOffset_colns =</span> <span class="fu">c</span>(<span class="st">&#39;stage_Y&#39;</span>,<span class="st">&#39;stage_X&#39;</span>), <span class="co"># match XY axes between stage and each FOV</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">pixel_size =</span> <span class="fl">0.18</span>, </span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">zstep_size =</span> <span class="fl">0.8</span>,</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">transID_coln =</span> <span class="cn">NULL</span>, <span class="co"># row index as transcript_id</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">transGene_coln =</span> <span class="st">&quot;target&quot;</span>,</span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">cellID_coln =</span> <span class="st">&quot;CellId&quot;</span>,</span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">spatLocs_colns =</span> <span class="fu">c</span>(<span class="st">&quot;x&quot;</span>,<span class="st">&quot;y&quot;</span>,<span class="st">&quot;z&quot;</span>),</span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">extracellular_cellID =</span> <span class="fu">c</span>(<span class="dv">0</span>), </span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a>                                  </span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">flagCell_lrtest_cutoff =</span> <span class="dv">5</span>, <span class="co"># cutoff for flagging wrongly segmented cells</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">svmClass_score_cutoff =</span> <span class="sc">-</span><span class="dv">2</span>, <span class="co"># cutoff for low vs. high transcript score</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">path_to_output =</span> <span class="st">&quot;res2f_multiFiles&quot;</span> <span class="co"># path to output folder</span></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">ctrl_genes =</span> <span class="cn">NULL</span>)</span></code></pre></div>
+<p><code>fastReseg_flag_all_errors()</code> function takes similar input arguments as <code>prepare_perFOV_transDF()</code> and <code>runPreprocess()</code> functions and it also does dataset preprocessing before segmentation error detection. The function returns a list of outputs including <code>combined_modStats_ToFlagCells</code>, which is a data.frame for spatial modeling statistics of cell-level segmentation evaluation, and <code>combined_flaggedCells</code>, which contains cell IDs for all cells flagged with potential cell segmentation errors in the dataset. <code>fastReseg_flag_all_errors()</code> function also exports the per-FOV outputs as 3 individual files per FOV under <code>path_to_output</code> directory.</p>
+<table>
+<colgroup>
+<col width="32%" />
+<col width="67%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>variable</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>flagged_transDF</code></td>
+<td>a transcript data.frame for each FOV, with columns for unique IDs of transcripts <code>UMI_transID</code> and cells <code>UMI_cellID</code>, for global coordiante system <code>x</code>, <code>y</code>, <code>z</code>, and for the goodness-of-fit in original cell segment <code>SVM_class</code></td>
+</tr>
+<tr class="even">
+<td><code>modStats_ToFlagCells</code></td>
+<td>a data.frame for spatial modeling statistics of each cell, output of <code>runSegErrorEvaluation()</code> function</td>
+</tr>
+<tr class="odd">
+<td><code>classDF_ToFlagTrans</code></td>
+<td>data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of <code>flagTranscripts_SVM()</code> function</td>
+</tr>
+</tbody>
+</table>
+<p>One can simply trim off the transcripts with low goodness-of-fit to current segmentation from the <code>flagged_transDF</code> by removing the transcripts with <code>SVM_class = 0</code>.</p>
 </div>
 <div id="full-pipeline-segmentation-detection-and-refinement-across-multi-fov-dataset" class="section level3">
 <h3>Full pipeline segmentation detection and refinement across multi-FOV dataset</h3>
+<p>To perform full pipeline on the entire dataset with more complex segmentation refinment, one can use <code>fastReseg_full_pipeline()</code> pipeline wrapper.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>res3 <span class="ot">&lt;-</span> <span class="fu">fastReseg_full_pipeline</span>(<span class="at">counts =</span> counts,</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>                                <span class="at">clust =</span> clust,</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>                                <span class="at">refProfiles =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>                                <span class="co"># Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`</span></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>                                <span class="at">transcript_df =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>                                <span class="at">transDF_fileInfo =</span> transDF_fileInfo,</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>                                <span class="at">filepath_coln =</span> <span class="st">&#39;file_path&#39;</span>,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>                                <span class="at">prefix_colns =</span> <span class="fu">c</span>(<span class="st">&#39;slide&#39;</span>,<span class="st">&#39;fov&#39;</span>),</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>                                <span class="at">fovOffset_colns =</span> <span class="fu">c</span>(<span class="st">&#39;stage_Y&#39;</span>,<span class="st">&#39;stage_X&#39;</span>),</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>                                <span class="at">pixel_size =</span> <span class="fl">0.18</span>,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>                                <span class="at">zstep_size =</span> <span class="fl">0.8</span>,</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>                                <span class="at">transID_coln =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>                                <span class="at">transGene_coln =</span> <span class="st">&quot;target&quot;</span>,</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a>                                <span class="at">cellID_coln =</span> <span class="st">&quot;CellId&quot;</span>,</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>                                <span class="at">spatLocs_colns =</span> <span class="fu">c</span>(<span class="st">&quot;x&quot;</span>,<span class="st">&quot;y&quot;</span>,<span class="st">&quot;z&quot;</span>),</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>                                <span class="at">extracellular_cellID =</span> <span class="fu">c</span>(<span class="dv">0</span>),</span>
+<span id="cb19-19"><a href="#cb19-19" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-20"><a href="#cb19-20" aria-hidden="true" tabindex="-1"></a>                                <span class="co"># Similar to `runPreprocess()`, one can set various cutoffs to NULL for automatic calculation from input data</span></span>
+<span id="cb19-21"><a href="#cb19-21" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-22"><a href="#cb19-22" aria-hidden="true" tabindex="-1"></a>                                <span class="at">molecular_distance_cutoff =</span> <span class="fl">2.7</span>,</span>
+<span id="cb19-23"><a href="#cb19-23" aria-hidden="true" tabindex="-1"></a>                                <span class="at">cellular_distance_cutoff =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-24"><a href="#cb19-24" aria-hidden="true" tabindex="-1"></a>                                <span class="at">score_baseline =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-25"><a href="#cb19-25" aria-hidden="true" tabindex="-1"></a>                                <span class="at">lowerCutoff_transNum =</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-26"><a href="#cb19-26" aria-hidden="true" tabindex="-1"></a>                                <span class="at">higherCutoff_transNum=</span> <span class="cn">NULL</span>,</span>
+<span id="cb19-27"><a href="#cb19-27" aria-hidden="true" tabindex="-1"></a>                                <span class="at">imputeFlag_missingCTs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb19-28"><a href="#cb19-28" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-29"><a href="#cb19-29" aria-hidden="true" tabindex="-1"></a>                                <span class="co"># settings for error detection and correction, refer to `runSegRefinement()` for more details</span></span>
+<span id="cb19-30"><a href="#cb19-30" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-31"><a href="#cb19-31" aria-hidden="true" tabindex="-1"></a>                                <span class="at">flagCell_lrtest_cutoff =</span> <span class="dv">5</span>,</span>
+<span id="cb19-32"><a href="#cb19-32" aria-hidden="true" tabindex="-1"></a>                                <span class="at">svmClass_score_cutoff =</span> <span class="sc">-</span><span class="dv">2</span>,</span>
+<span id="cb19-33"><a href="#cb19-33" aria-hidden="true" tabindex="-1"></a>                                <span class="at">groupTranscripts_method =</span> <span class="st">&quot;dbscan&quot;</span>,</span>
+<span id="cb19-34"><a href="#cb19-34" aria-hidden="true" tabindex="-1"></a>                                <span class="at">spatialMergeCheck_method =</span> <span class="st">&quot;leidenCut&quot;</span>, </span>
+<span id="cb19-35"><a href="#cb19-35" aria-hidden="true" tabindex="-1"></a>                                <span class="at">cutoff_spatialMerge =</span> <span class="fl">0.5</span>, </span>
+<span id="cb19-36"><a href="#cb19-36" aria-hidden="true" tabindex="-1"></a>                                </span>
+<span id="cb19-37"><a href="#cb19-37" aria-hidden="true" tabindex="-1"></a>                                <span class="at">path_to_output =</span> <span class="st">&quot;res3_multiFiles&quot;</span>,</span>
+<span id="cb19-38"><a href="#cb19-38" aria-hidden="true" tabindex="-1"></a>                                <span class="at">save_intermediates =</span> <span class="cn">TRUE</span>, <span class="co"># flag to return and write intermediate results to disk</span></span>
+<span id="cb19-39"><a href="#cb19-39" aria-hidden="true" tabindex="-1"></a>                                <span class="at">return_perCellData =</span> <span class="cn">TRUE</span> <span class="co"># flag to return per cell level outputs from</span></span>
+<span id="cb19-40"><a href="#cb19-40" aria-hidden="true" tabindex="-1"></a>                                )</span></code></pre></div>
+<p><code>fastReseg_full_pipeline()</code> returns the new cell expression count matrix <code>updated_perCellExprs</code> and spatial coordinate data.frame <code>updated_perCellDT</code> when <code>return_perCellData = TRUE</code>. It also writes the transcript data.frame updated with new cell segmentation outcomes into individual <code>updated_transDF.csv</code> files at FOV level under <code>path_to_output</code> directory. Intermediate results, including <code>modStats_ToFlagCells</code> and <code>groupDF_ToFlagTrans</code> for cell-level and transcript-level segmentation evaluation, are also saved into individual <code>each_segRes.RData</code> object at FOV level when <code>save_intermediates = TRUE</code>. For more details, please refer to the manuals of <code>fastReseg_full_pipeline()</code>.</p>
 </div>
 </div>
 <div id="session-info" class="section level2">
 <h2>Session Info</h2>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; R version 4.1.2 (2021-11-01)</span></span>
-<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
-<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Running under: Ubuntu 20.04.3 LTS</span></span>
-<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Matrix products: default</span></span>
-<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so</span></span>
-<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; locale:</span></span>
-<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              </span></span>
-<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    </span></span>
-<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=C             </span></span>
-<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 </span></span>
-<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [9] LC_ADDRESS=C               LC_TELEPHONE=C            </span></span>
-<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       </span></span>
-<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; attached base packages:</span></span>
-<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
-<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
-<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] FastReseg_0.1.0</span></span>
-<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
-<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] Rcpp_1.0.9           lattice_0.20-45      deldir_1.0-6        </span></span>
-<span id="cb18-25"><a href="#cb18-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [4] class_7.3-19         zoo_1.8-9            assertthat_0.2.1    </span></span>
-<span id="cb18-26"><a href="#cb18-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [7] digest_0.6.28        lmtest_0.9-39        utf8_1.2.2          </span></span>
-<span id="cb18-27"><a href="#cb18-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [10] plyr_1.8.6           R6_2.5.1             magic_1.5-9         </span></span>
-<span id="cb18-28"><a href="#cb18-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [13] evaluate_0.14        e1071_1.7-9          ggplot2_3.4.0       </span></span>
-<span id="cb18-29"><a href="#cb18-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [16] highr_0.9            pillar_1.6.4         rlang_1.0.6         </span></span>
-<span id="cb18-30"><a href="#cb18-30" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [19] rstudioapi_0.13      data.table_1.14.2    jquerylib_0.1.4     </span></span>
-<span id="cb18-31"><a href="#cb18-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [22] Matrix_1.5-1         rmarkdown_2.11       labeling_0.4.2      </span></span>
-<span id="cb18-32"><a href="#cb18-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [25] stringr_1.4.0        pander_0.6.4         igraph_1.2.8        </span></span>
-<span id="cb18-33"><a href="#cb18-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [28] polyclip_1.10-0      munsell_0.5.0        proxy_0.4-26        </span></span>
-<span id="cb18-34"><a href="#cb18-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [31] spatstat.data_3.0-0  compiler_4.1.2       xfun_0.28           </span></span>
-<span id="cb18-35"><a href="#cb18-35" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [34] pkgconfig_2.0.3      htmltools_0.5.2      tidyselect_1.1.1    </span></span>
-<span id="cb18-36"><a href="#cb18-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [37] tibble_3.1.6         fansi_0.5.0          crayon_1.4.2        </span></span>
-<span id="cb18-37"><a href="#cb18-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [40] dplyr_1.0.7          withr_2.5.0          grid_4.1.2          </span></span>
-<span id="cb18-38"><a href="#cb18-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [43] jsonlite_1.7.2       gtable_0.3.1         lifecycle_1.0.3     </span></span>
-<span id="cb18-39"><a href="#cb18-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [46] DBI_1.1.1            magrittr_2.0.1       concaveman_1.1.0    </span></span>
-<span id="cb18-40"><a href="#cb18-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [49] scales_1.2.1         cli_3.4.1            stringi_1.7.5       </span></span>
-<span id="cb18-41"><a href="#cb18-41" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [52] reshape2_1.4.4       farver_2.1.0         dbscan_1.1-8        </span></span>
-<span id="cb18-42"><a href="#cb18-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [55] fs_1.5.0             geometry_0.4.5       bslib_0.3.1         </span></span>
-<span id="cb18-43"><a href="#cb18-43" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [58] ellipsis_0.3.2       generics_0.1.1       vctrs_0.5.1         </span></span>
-<span id="cb18-44"><a href="#cb18-44" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [61] spatstat.utils_3.0-1 Giotto_2.0.0.9021    RColorBrewer_1.1-2  </span></span>
-<span id="cb18-45"><a href="#cb18-45" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [64] tools_4.1.2          glue_1.5.0           purrr_0.3.4         </span></span>
-<span id="cb18-46"><a href="#cb18-46" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [67] abind_1.4-5          fastmap_1.1.0        yaml_2.2.1          </span></span>
-<span id="cb18-47"><a href="#cb18-47" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [70] colorspace_2.0-3     spatstat.geom_3.0-3  knitr_1.36          </span></span>
-<span id="cb18-48"><a href="#cb18-48" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [73] sass_0.4.0</span></span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sessionInfo</span>()</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; R version 4.1.2 (2021-11-01)</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Platform: x86_64-pc-linux-gnu (64-bit)</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Running under: Ubuntu 20.04.3 LTS</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; Matrix products: default</span></span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so</span></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; locale:</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              </span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    </span></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=C             </span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 </span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [9] LC_ADDRESS=C               LC_TELEPHONE=C            </span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       </span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; attached base packages:</span></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [1] FastReseg_0.1.0</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [1] Rcpp_1.0.9           lattice_0.20-45      deldir_1.0-6        </span></span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [4] class_7.3-19         zoo_1.8-9            assertthat_0.2.1    </span></span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;  [7] digest_0.6.28        lmtest_0.9-39        utf8_1.2.2          </span></span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [10] plyr_1.8.6           R6_2.5.1             magic_1.5-9         </span></span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [13] evaluate_0.14        e1071_1.7-9          ggplot2_3.4.0       </span></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [16] highr_0.9            pillar_1.6.4         rlang_1.0.6         </span></span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [19] rstudioapi_0.13      data.table_1.14.2    jquerylib_0.1.4     </span></span>
+<span id="cb20-31"><a href="#cb20-31" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [22] Matrix_1.5-1         rmarkdown_2.11       labeling_0.4.2      </span></span>
+<span id="cb20-32"><a href="#cb20-32" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [25] stringr_1.4.0        pander_0.6.4         igraph_1.2.8        </span></span>
+<span id="cb20-33"><a href="#cb20-33" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [28] polyclip_1.10-0      munsell_0.5.0        proxy_0.4-26        </span></span>
+<span id="cb20-34"><a href="#cb20-34" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [31] spatstat.data_3.0-0  compiler_4.1.2       xfun_0.28           </span></span>
+<span id="cb20-35"><a href="#cb20-35" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [34] pkgconfig_2.0.3      htmltools_0.5.2      tidyselect_1.1.1    </span></span>
+<span id="cb20-36"><a href="#cb20-36" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [37] tibble_3.1.6         fansi_0.5.0          crayon_1.4.2        </span></span>
+<span id="cb20-37"><a href="#cb20-37" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [40] dplyr_1.0.7          withr_2.5.0          grid_4.1.2          </span></span>
+<span id="cb20-38"><a href="#cb20-38" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [43] jsonlite_1.7.2       gtable_0.3.1         lifecycle_1.0.3     </span></span>
+<span id="cb20-39"><a href="#cb20-39" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [46] DBI_1.1.1            magrittr_2.0.1       concaveman_1.1.0    </span></span>
+<span id="cb20-40"><a href="#cb20-40" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [49] scales_1.2.1         cli_3.4.1            stringi_1.7.5       </span></span>
+<span id="cb20-41"><a href="#cb20-41" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [52] reshape2_1.4.4       farver_2.1.0         dbscan_1.1-8        </span></span>
+<span id="cb20-42"><a href="#cb20-42" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [55] fs_1.5.0             geometry_0.4.5       bslib_0.3.1         </span></span>
+<span id="cb20-43"><a href="#cb20-43" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [58] ellipsis_0.3.2       generics_0.1.1       vctrs_0.5.1         </span></span>
+<span id="cb20-44"><a href="#cb20-44" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [61] spatstat.utils_3.0-1 Giotto_2.0.0.9021    RColorBrewer_1.1-2  </span></span>
+<span id="cb20-45"><a href="#cb20-45" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [64] tools_4.1.2          glue_1.5.0           purrr_0.3.4         </span></span>
+<span id="cb20-46"><a href="#cb20-46" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [67] abind_1.4-5          fastmap_1.1.0        yaml_2.2.1          </span></span>
+<span id="cb20-47"><a href="#cb20-47" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [70] colorspace_2.0-3     spatstat.geom_3.0-3  knitr_1.36          </span></span>
+<span id="cb20-48"><a href="#cb20-48" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; [73] sass_0.4.0</span></span></code></pre></div>
 </div>
 
 

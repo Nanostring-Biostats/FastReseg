@@ -61,7 +61,7 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{flagModel_TransNum_cutoff}{the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)}
 
-\item{flagCell_lrtest_cutoff}{the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
+\item{flagCell_lrtest_cutoff}{the cutoff of \code{lrtest_-log10P} to identify putative wrongly segmented cells with strong spatial dependency in transcript score profile}
 
 \item{svmClass_score_cutoff}{the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)}
 
@@ -94,7 +94,7 @@ And then, the function would use the estimated cluster-specific profile as refer
 For each transcript data.frame, the function would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, and identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile.
 The function would save the each per FOV output as individual file in \code{path_to_output} directory; \code{flagged_transDF}, \code{modStats_ToFlagCells} and \code{classDF_ToFlagTrans} would be saved as csv file, respectively.
 \describe{
-\item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs for transcripts \code{UMI_transID} and cells \code{UMI_cellID}, for global coordiante system \code{x}, \code{y}, \code{z}, and for the goodness-of-fit in original cell segment \code{SMI_class}; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, \code{CellId}, \code{pixel_x}, \code{pixel_y}, \code{idx_z}}
+\item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts \code{UMI_transID} and cells \code{UMI_cellID}, for global coordiante system \code{x}, \code{y}, \code{z}, and for the goodness-of-fit in original cell segment \code{SMI_class}; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, \code{CellId}, \code{pixel_x}, \code{pixel_y}, \code{idx_z}}
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function}
 \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of \code{flagTranscripts_SVM} functions}
 }

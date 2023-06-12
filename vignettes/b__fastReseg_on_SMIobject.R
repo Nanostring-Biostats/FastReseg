@@ -125,29 +125,34 @@ if(include_ctrlgenes){
 }
 
 
-reseg_outputs <- fastReseg_internalRef(
+reseg_outputs <- fastReseg_full_pipeline(
   counts = smi_inputs[['counts']],
   clust = NULL,
   refProfiles = smi_inputs[['refProfiles']],
+  
+  transcript_df = NULL,
   transDF_fileInfo = smi_inputs[['transDF_fov_fileInfo']],
   filepath_coln = 'file_path',
   prefix_colns = c('slide','fov'),
   fovOffset_colns = c('offset_x', 'offset_y'), # match XY axes between stage and each FOV
   pixel_size = pixel_size, 
   zstep_size = zStep_size, 
-  transcript_df = NULL,
+
   transID_coln = NULL, # row index as transcript_id
   transGene_coln = "target",
   cellID_coln = "CellId",
   spatLocs_colns = c("x","y","z"),
   extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
-  groupTranscripts_method = 'delaunay', # use 'delaunay' network to group low-score transcripts in space, option to use 'dbscan' instead
+  
   molecular_distance_cutoff = 2.7, # recommend to use footprint of fiducials as cutoff in SMI dataset; if NULL, automatic calculation based on 1st FOV
   cellular_distance_cutoff = smi_inputs[['cellular_distance_cutoff']], # if NULL, automatic calculation based on 1st FOV
   score_baseline = smi_inputs[['score_baseline']],
   lowerCutoff_transNum = smi_inputs[['lowerCutoff_transNum']],
   higherCutoff_transNum= smi_inputs[['higherCutoff_transNum']],
   imputeFlag_missingCTs = TRUE,
+  
+  groupTranscripts_method = 'delaunay', # use 'delaunay' network to group low-score transcripts in space, option to use 'dbscan' instead
+  
   path_to_output = sub_out_dir, 
   combine_extra = FALSE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
   ctrl_genes = ctrl_genes
