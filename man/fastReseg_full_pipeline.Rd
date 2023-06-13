@@ -40,7 +40,8 @@ fastReseg_full_pipeline(
   save_intermediates = TRUE,
   return_perCellData = TRUE,
   combine_extra = FALSE,
-  ctrl_genes = NULL
+  ctrl_genes = NULL,
+  seed_process = NULL
 )
 }
 \arguments{
@@ -115,6 +116,8 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 \item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
 \item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not in \code{refProfiles} and expect no cell type dependency, e.g. negative control probes; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
+\item{seed_process}{seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed}
 
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }

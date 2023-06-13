@@ -26,7 +26,8 @@ fastReseg_flag_all_errors(
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   path_to_output = "reSeg_res",
   combine_extra = FALSE,
-  ctrl_genes = NULL
+  ctrl_genes = NULL,
+  seed_transError = NULL
 )
 }
 \arguments{
@@ -72,6 +73,8 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 \item{combine_extra}{flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)}
 
 \item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
+
+\item{seed_transError}{seed for transcript error detection step, default = NULL to skip the seed}
 
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }

@@ -29,7 +29,8 @@ fastReseg_perFOV_full_process(
   config_spatNW_transcript = NULL,
   return_intermediates = TRUE,
   return_perCellData = TRUE,
-  includeAllRefGenes = FALSE
+  includeAllRefGenes = FALSE,
+  seed_process = NULL
 )
 }
 \arguments{
@@ -83,6 +84,8 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 \item{return_perCellData}{flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
 
 \item{includeAllRefGenes}{flag to include all genes in \code{score_GeneMatrix} in the returned \code{updated_perCellExprs} with missing genes of value 0 (default = FALSE)}
+
+\item{seed_process}{seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed}
 }
 \value{
 a list

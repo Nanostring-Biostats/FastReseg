@@ -520,6 +520,7 @@ runSegErrorEvaluation <- function(score_GeneMatrix,
 #' @param groupTranscripts_method use either "dbscan" or "delaunay method" to group transcripts in space (default = "dbscan")
 #' @param distance_cutoff maximum molecule-to-molecule distance within same transcript group (default = "auto")
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config
+#' @param seed_transError seed for transcript error detection step, default = NULL to skip the seed   
 #' @return data frame for transcripts in `chosen_cells` only, containing information for transcript score classifications and spatial group assignments as well as new cell/group ID for downstream resegmentation.
 #' @export
 #' 
@@ -534,11 +535,12 @@ runTranscriptErrorDetection <- function(chosen_cells,
                                         model_cutoff = 50, 
                                         score_cutoff = -2, 
                                         svm_args = list(kernel = "radial", 
-                                                        scale = TRUE, 
-                                                        gamma = 0.1),
+                                                        scale = FALSE, 
+                                                        gamma = 0.4),
                                         groupTranscripts_method = c("dbscan", "delaunay"),
                                         distance_cutoff = 'auto',
-                                        config_spatNW_transcript = NULL){
+                                        config_spatNW_transcript = NULL, 
+                                        seed_transError = NULL){
   
   groupTranscripts_method <- match.arg(groupTranscripts_method, c("dbscan", "delaunay"))
   if(groupTranscripts_method == 'delaunay'){
@@ -552,6 +554,10 @@ runTranscriptErrorDetection <- function(chosen_cells,
   
   if(nrow(classDF_ToFlagTrans)<1) {
     stop("Error: No transcripts within `chosen_cells`.")
+  }
+  
+  if(!is.null(seed_transError)){
+    set.seed(seed_transError)
   }
   
   # `flagTranscripts_SVM` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
@@ -667,6 +673,7 @@ runTranscriptErrorDetection <- function(chosen_cells,
 #' @param return_intermediates flag to return intermediate outputs, including `neighborhoodDF_ToReseg` data.frame for neighborhood evaluation, `reseg_actions` list of resegmentation actions  
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param includeAllRefGenes flag to include all genes in `score_GeneMatrix` in the returned `updated_perCellExprs` with missing genes of value 0 (default = FALSE)
+#' @param seed_segRefine seed for transcript error correction step, default = NULL to skip the seed     
 #' @return a list 
 #' \describe{
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
@@ -699,7 +706,11 @@ runSegRefinement <- function(score_GeneMatrix,
                              config_spatNW_transcript = NULL,
                              return_intermediates = TRUE,
                              return_perCellData = TRUE,
-                             includeAllRefGenes = FALSE){
+                             includeAllRefGenes = FALSE, 
+                             seed_segRefine = NULL){
+  if(!is.null(seed_segRefine)){
+    set.seed(seed_segRefine)
+    }
   
   if(cutoff_spatialMerge <0 | cutoff_spatialMerge >1){
     stop(sprintf("The providied `cutoff_spatialMerge = %.3f`, must be within [0, 1].", cutoff_spatialMerge))

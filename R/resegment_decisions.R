@@ -242,7 +242,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
             # check if how many transcripts in query cell shared same clusterID as neighbor cell
             ident_clusters_DF[['init_cluster']] <- init_membership[ident_clusters_DF[['transcript_id']]]
             
-            # use orignal input for total transcript since some transcripts would be missing in spatial network
+            # use original input for total transcript since some transcripts would be missing in spatial network
             n_query <- sum(df_subset[[cellID_coln]] == query_cellID)
             lc_in_neighbor <- unique(ident_clusters_DF[['clusterID']][which(ident_clusters_DF[['init_cluster']] ==1)])
             n_sharedLC <- sum(ident_clusters_DF[['clusterID']][which(ident_clusters_DF[['init_cluster']] ==2)] %in% lc_in_neighbor)

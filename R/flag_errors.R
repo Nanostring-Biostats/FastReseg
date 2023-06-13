@@ -653,7 +653,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
     group_converter <- tmp_group[['transcript_group']] 
     names(group_converter) <- tmp_group[[transID_coln]]
     tmp_idx <- which(transcript_df[[transID_coln]] %in% tmp_group[[transID_coln]])
-    transcript_df[['transcript_group']][tmp_idx] <- group_converter[transcript_df[[transID_coln]][tmp_idx]]
+    transcript_df[['transcript_group']][tmp_idx] <- group_converter[as.character(transcript_df[[transID_coln]][tmp_idx])]
   }
   
   # (5) assign group for multiple flagged transcript cases using delaunay network analysis
@@ -772,8 +772,8 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
           
           # update dfCoord_subset with solo_transcripts
           solo_converter <- solo_transcripts[['transcript_group']]
-          names(solo_converter) <- solo_transcripts[['tmp_transID']]
-          dfCoord_subset[['transcript_group']][is.na(dfCoord_subset[['transcript_group']])] <- solo_converter[dfCoord_subset[['tmp_transID']][is.na(dfCoord_subset[['transcript_group']])]]
+          names(solo_converter) <- as.character(solo_transcripts[['tmp_transID']])
+          dfCoord_subset[['transcript_group']][is.na(dfCoord_subset[['transcript_group']])] <- solo_converter[as.character(dfCoord_subset[['tmp_transID']][is.na(dfCoord_subset[['transcript_group']])])]
         }
         
       }else{
@@ -804,7 +804,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
     group_converter <- tmp_group[['transcript_group']] 
     names(group_converter) <- tmp_group[[transID_coln]]
     tmp_idx <- which(transcript_df[[transID_coln]] %in% tmp_group[[transID_coln]])
-    transcript_df[['transcript_group']][tmp_idx] <- group_converter[transcript_df[[transID_coln]][tmp_idx]]
+    transcript_df[['transcript_group']][tmp_idx] <- group_converter[as.character(transcript_df[[transID_coln]][tmp_idx])]
   }
   
   return(transcript_df)

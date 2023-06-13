@@ -15,10 +15,11 @@ runTranscriptErrorDetection(
   spatLocs_colns = c("x", "y", "z"),
   model_cutoff = 50,
   score_cutoff = -2,
-  svm_args = list(kernel = "radial", scale = TRUE, gamma = 0.1),
+  svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   groupTranscripts_method = c("dbscan", "delaunay"),
   distance_cutoff = "auto",
-  config_spatNW_transcript = NULL
+  config_spatNW_transcript = NULL,
+  seed_transError = NULL
 )
 }
 \arguments{
@@ -47,6 +48,8 @@ runTranscriptErrorDetection(
 \item{distance_cutoff}{maximum molecule-to-molecule distance within same transcript group (default = "auto")}
 
 \item{config_spatNW_transcript}{configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config}
+
+\item{seed_transError}{seed for transcript error detection step, default = NULL to skip the seed}
 
 \item{spatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
 }

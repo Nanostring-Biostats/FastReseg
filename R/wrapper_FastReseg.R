@@ -24,6 +24,7 @@
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
 #' @param combine_extra flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param seed_transError seed for transcript error detection step, default = NULL to skip the seed   
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes * clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -125,7 +126,8 @@ fastReseg_flag_all_errors <- function(counts,
                                                       gamma = 0.4),
                                       path_to_output = "reSeg_res", 
                                       combine_extra = FALSE, 
-                                      ctrl_genes = NULL){
+                                      ctrl_genes = NULL,
+                                      seed_transError = NULL){
   
   # create output directory 
   if(!file.exists(path_to_output)) dir.create(path_to_output)
@@ -193,6 +195,7 @@ fastReseg_flag_all_errors <- function(counts,
   
   # function for processing each FOV 
   # return `modStats_ToFlagCells` when complete, save results to disk
+  # reset seed before transcript error detection for every FOV
   myFun_flag_eachFOV <- function(idx){
     
     ## (1) load and prep each FOV data 
@@ -270,6 +273,9 @@ fastReseg_flag_all_errors <- function(counts,
     if(length(flagged_cells)>0){
       classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
       
+      if(!is.null(seed_transError)){
+        set.seed(seed_transError)
+      }
       # `flagTranscripts_SVM` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
       tmp_df <- flagTranscripts_SVM(chosen_cells = flagged_cells,
                                     score_GeneMatrix = tLLR_geneMatrix,
@@ -751,6 +757,7 @@ makeDummyOuts_perFOV <- function(all_genes,
 #' @param return_intermediates flag to return intermediate outputs, including data.frame for spatial modeling statistics of each cell  
 #' @param return_perCellData flag to return gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param includeAllRefGenes flag to include all genes in `score_GeneMatrix` in the returned `updated_perCellExprs` with missing genes of value 0 (default = FALSE)
+#' @param seed_process seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed  
 #' @return a list 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, return when `return_intermediates` = TRUE}
@@ -840,7 +847,9 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
                                           config_spatNW_transcript = NULL, 
                                           return_intermediates = TRUE,
                                           return_perCellData = TRUE, 
-                                          includeAllRefGenes = FALSE){
+                                          includeAllRefGenes = FALSE,
+                                          seed_process = NULL){
+
   all_celltypes <- colnames(score_GeneMatrix)
   all_genes <- rownames(score_GeneMatrix)
   
@@ -955,7 +964,8 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
                                                      groupTranscripts_method = groupTranscripts_method, 
                                                      # use the external provided `molecular_distance_cutoff` instead of `auto` which is recalculated based on `transcript_df`
                                                      distance_cutoff = molecular_distance_cutoff,
-                                                     config_spatNW_transcript = config_spatNW_transcript)
+                                                     config_spatNW_transcript = config_spatNW_transcript,
+                                                     seed_transError = seed_process)
 
   if(return_intermediates){
     final_res[['groupDF_ToFlagTrans']] <- groupDF_ToFlagTrans
@@ -1003,7 +1013,8 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
                            config_spatNW_transcript = config_spatNW_transcript,
                            return_intermediates = return_intermediates, 
                            return_perCellData = return_perCellData,  
-                           includeAllRefGenes = includeAllRefGenes)
+                           includeAllRefGenes = includeAllRefGenes,
+                           seed_segRefine = seed_process)
   final_res <- c(final_res, outs)
   rm(outs)
   
@@ -1054,6 +1065,7 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
 #' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not in `refProfiles` and expect no cell type dependency, e.g. negative control probes; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param seed_process seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed  
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -1226,7 +1238,8 @@ fastReseg_full_pipeline <- function(counts,
                                     save_intermediates = TRUE,
                                     return_perCellData = TRUE, 
                                     combine_extra = FALSE, 
-                                    ctrl_genes = NULL){
+                                    ctrl_genes = NULL,
+                                    seed_process = NULL){
   
   # create output directory 
   if(!file.exists(path_to_output)) dir.create(path_to_output)
@@ -1412,7 +1425,8 @@ fastReseg_full_pipeline <- function(counts,
                                                  config_spatNW_transcript = config_spatNW_transcript,
                                                  return_intermediates = save_intermediates,
                                                  return_perCellData = return_perCellData, 
-                                                 includeAllRefGenes = TRUE)
+                                                 includeAllRefGenes = TRUE,
+                                                 seed_process = seed_process)
     
     # intracellular in original and updated segmentation
     each_segRes[['updated_transDF']][['transComp']] <- 'intraC' 

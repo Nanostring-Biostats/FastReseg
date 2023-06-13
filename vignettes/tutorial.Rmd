@@ -656,7 +656,7 @@ res2 <- fastReseg_flag_all_errors(counts = counts,
                                   
                                   flagCell_lrtest_cutoff = 5, # cutoff for flagging wrongly segmented cells
                                   svmClass_score_cutoff = -2, # cutoff for low vs. high transcript score
-                                  path_to_output = "res2f_multiFiles" # path to output folder
+                                  path_to_output = "res2f_multiFiles", # path to output folder
                                   ctrl_genes = NULL)
 ``` 
 
