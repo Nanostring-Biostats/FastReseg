@@ -5,15 +5,18 @@
 `FastReseg` package processes spatial transcriptome data through 5 different modules: 
 
 * Preprocess on whole dataset
-  1. `runPreprocess()` to get the baseline and cutoffs for transcript score and spatial local density from the whole dataset.
+
+  1) `runPreprocess()` to get the baseline and cutoffs for transcript score and spatial local density from the whole dataset.
 
 * Parallel processing on individual FOV: core wrapper `fastReseg_perFOV_full_process()` contains all the 3 modules in this step. 
-  2. `runSegErrorEvaluation()` to detect cells with cell segmentation error based on spatial dependency of transcript score in a given transcript data.frame.
-  3. `runTranscriptErrorDetection()` to identify transcript groups with poor fit to current cell segments. 
-  4. `runSegRefinement()` to re-segment the low-fit transcript groups given their neighborhood.
+
+  2) `runSegErrorEvaluation()` to detect cells with cell segmentation error based on spatial dependency of transcript score in a given transcript data.frame.
+  3) `runTranscriptErrorDetection()` to identify transcript groups with poor fit to current cell segments. 
+  4) `runSegRefinement()` to re-segment the low-fit transcript groups given their neighborhood.
 
 * Combine outcomes from multiple FOVs into one
-  5. Pipeline wrappers would combine resegmentation outputs from individual FOVs into one.
+
+  5) Pipeline wrappers would combine resegmentation outputs from individual FOVs into one.
 
 For continence, two pipeline wrapper functions are included for streamline processing of multi-FOV dataset to different exit points.
 
