@@ -1,10 +1,27 @@
 # FastReseg
  An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
  
-### dev notes 
-- `fastReseg_flag_all_errors()` function flags segmentation error in transcript data.frame for all the input file path.
-- `fastReseg_perFOV_full_process()` function performs error detection and segmentation refinement on 1 input transcript data.frame.
-- `fastReseg_full_pipeline()` function first extracts reference profiles based on input `counts` and `clust` of the whole dataset and then process individual FOVs for segmentation error detection and correction for all files provided. 
+### Dev notes 
+`FastReseg` package processes spatial transcriptome data through 5 different modules: 
+
+* Preprocess on whole dataset
+
+  1. `runPreprocess()` to get the baseline and cutoffs for transcript score and spatial local density from the whole dataset.
+
+* Parallel processing on individual FOV: core wrapper `fastReseg_perFOV_full_process()` contains all the 3 modules in this step. 
+
+  2. `runSegErrorEvaluation()` to detect cells with cell segmentation error based on spatial dependency of transcript score in a given transcript data.frame.
+  3. `runTranscriptErrorDetection()` to identify transcript groups with poor fit to current cell segments. 
+  4. `runSegRefinement()` to re-segment the low-fit transcript groups given their neighborhood.
+
+* Combine outcomes from multiple FOVs into one
+
+  5. Pipeline wrappers would combine resegmentation outputs from individual FOVs into one.
+
+For continence, two pipeline wrapper functions are included for streamline processing of multi-FOV dataset to different exit points.
+
+- `fastReseg_flag_all_errors()`: performs preprocess and then evaluates and flags segmentation error in all input files, optional to return the gene expression matrix where all putative contaminating transcripts are trimmed from current cell segments.
+- `fastReseg_full_pipeline()`: performs preprocess, detect and correct cell segmentation errors by trimming, splitting and merging given the local neighborhood of poor-fit transcript groups, can process multiple input files in parallel.   
 
 ### System requirements
 - R (>= 3.5.0)
