@@ -1,6 +1,6 @@
 #' @title decide_ReSegment_Operations
 #' @description Evaluate neighborhood information against score and transcript number cutoff to decide the resegmetation operations. Use either leiden clustering or geometry statistics to determine whether a merge event is allowed.
-#' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of neighborhood_for_resegment function.
+#' @param neighborhood_df the data.frame containing neighborhood information for each query cells, expected to be output of get_neighborhood_content function.
 #' @param selfcellID_coln the column name of cell_ID of query cell in neighborhood_df 
 #' @param transNum_coln the column name of transcript number of query cell in neighborhood_df
 #' @param selfCellType_coln the column name of cell_type under query cell in neighborhood_df 

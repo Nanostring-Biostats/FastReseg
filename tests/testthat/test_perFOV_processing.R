@@ -167,24 +167,16 @@ rm(tmp_idx, groupDF_ToFlagTrans2)
 
 ## get ready to seg refinement
 # update the transcript_df with flagged transcript_group
-reseg_transcript_df <- merge(outs[['transcript_df']], 
-                             groupDF_ToFlagTrans[, c("UMI_transID", 'connect_group','tmp_cellID','group_maxCellType')], 
-                             by = "UMI_transID", all.x = TRUE)
-# fill in the missing values for unflagged cells
-tmp_idx <- which(is.na(reseg_transcript_df[['connect_group']]))
-reseg_transcript_df[['connect_group']][tmp_idx] <- rep(0, length(tmp_idx))
-reseg_transcript_df[['tmp_cellID']][tmp_idx] <- reseg_transcript_df[["UMI_cellID"]][tmp_idx]
-reseg_transcript_df[['group_maxCellType']][tmp_idx] <- reseg_transcript_df[['tLLR_maxCellType']][tmp_idx]
-rm(tmp_idx)
-
-# cells or group IDs for neighborhood evaluation 
-groups_to_reseg <- unique(groupDF_ToFlagTrans[which(groupDF_ToFlagTrans[['connect_group']]!=0),][['tmp_cellID']])
+reSeg_ready_res <- prepResegDF(transcript_df = outs[['transcript_df']], 
+                               groupDF_ToFlagTrans = groupDF_ToFlagTrans,
+                               cellID_coln = "UMI_cellID",
+                               transID_coln = "UMI_transID")
 
 ## run segmentation refinement
 finalRes <- runSegRefinement(
   score_GeneMatrix = score_GeneMatrix,  
-  chosen_cells = groups_to_reseg, 
-  reseg_transcript_df = reseg_transcript_df, 
+  chosen_cells = reSeg_ready_res[["groups_to_reseg"]], 
+  reseg_transcript_df = reSeg_ready_res[["reseg_transcript_df"]], 
   reseg_cellID_coln = "tmp_cellID", 
   reseg_celltype_coln = "group_maxCellType", 
   transID_coln = "UMI_transID",
@@ -235,5 +227,5 @@ test_that("runSegRefinement() returns the expected outupts", {
                         res1$updated_transDF[, c("UMI_transID", "UMI_cellID", "updated_cellID", "updated_celltype")]))
 })
 
-rm(res1, outs, modStats_ToFlagCells, groupDF_ToFlagTrans, reseg_transcript_df, groups_to_reseg, finalRes)
+rm(res1, outs, modStats_ToFlagCells, groupDF_ToFlagTrans, reSeg_ready_res, finalRes)
 

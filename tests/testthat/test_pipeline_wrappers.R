@@ -43,7 +43,8 @@ errorFlagRes1 <- fastReseg_flag_all_errors(counts = example_CellGeneExpr,
                                            
                                            flagCell_lrtest_cutoff = flagCell_lrtest_cutoff, 
                                            svmClass_score_cutoff = svmClass_score_cutoff, 
-                                           path_to_output = outDir1)
+                                           path_to_output = outDir1,
+                                           return_trimmed_perCell = TRUE)
 
 outFiles <- list.files(path = outDir1)
 flagged_transDF <- read.csv(fs::path(outDir1, "1_flagged_transDF.csv"))
@@ -54,12 +55,14 @@ test_that("fastReseg_flag_all_errors() returns the expected output", {
   expect_true("baselineData" %in% names(errorFlagRes1))
   expect_true("combined_modStats_ToFlagCells" %in% names(errorFlagRes1))
   expect_true("combined_flaggedCells" %in% names(errorFlagRes1))
+  expect_true("trimmed_perCellExprs" %in% names(errorFlagRes1))
   
   # Test the class and structure of the matrices, data frames, and vectors
   expect_true(is.matrix(errorFlagRes1$refProfiles))
   expect_type(errorFlagRes1$baselineData, "list")
   expect_true(is.data.frame(errorFlagRes1$combined_modStats_ToFlagCells))
   expect_type(errorFlagRes1$combined_flaggedCells, "list")
+  expect_true("dgCMatrix" %in% class(errorFlagRes1$trimmed_perCellExprs))
 
   # Test the presence of specific elements within the errorFlagRes1
   expect_true(all(c("span_score", "span_transNum")  %in%  names(errorFlagRes1$baselineData)))
@@ -116,7 +119,8 @@ res2 <- fastReseg_full_pipeline(counts = example_CellGeneExpr,
                                 
                                 path_to_output = outDir2,
                                 save_intermediates = TRUE, 
-                                return_perCellData = TRUE)
+                                return_perCellData = TRUE,
+                                combine_extra = TRUE)
 outFiles <- list.files(path = outDir2)
 updated_transDF <- read.csv(fs::path(outDir2, "1_updated_transDF.csv"))
 
@@ -154,6 +158,7 @@ test_that("fastReseg_full_pipeline() returns the expected output", {
   
   # check on 1st transDF
   expect_true(all(c('UMI_transID', 'UMI_cellID', 'target', 'x', 'y', 'z', 'updated_cellID', 'updated_celltype') %in% colnames(updated_transDF)))
+  expect_true(all(c('intraC','trimmed', 'extraC') %in% unique(updated_transDF[["transComp"]])))
 
 })
 

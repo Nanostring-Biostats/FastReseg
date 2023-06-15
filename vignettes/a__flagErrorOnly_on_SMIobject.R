@@ -319,7 +319,7 @@ myFun_flagTranscriptsSVM <- function(eachTransDF_path){
   classDF_ToFlagTrans[['SVM_class']] <- NULL
   
   # perform SVM on flagged cells to identified transcript groups of low score
-  tmp_df <- flagTranscripts_SVM(chosen_cells = combined_flaggedCells,
+  tmp_df <- flag_bad_transcripts(chosen_cells = combined_flaggedCells,
                                 score_GeneMatrix = tLLRv2_geneMatrix,
                                 transcript_df = classDF_ToFlagTrans, 
                                 cellID_coln = 'UMI_cellID', 

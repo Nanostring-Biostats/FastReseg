@@ -1,5 +1,4 @@
-
-#' @title neighborhood_for_resegment_spatstat
+#' @title get_neighborhood_content
 #' @description find neighbor cells with transcripts that are direct neighbor of chosen_cell, check tLLRv2 score under neighbor cell type, return neighborhood information
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
 #' @param score_GeneMatrix the gene x cell-type matrix of log-like score of gene in each cell type
@@ -27,17 +26,17 @@
 #' }
 #' @details Locate neighbor cells of each query cell firstly via cell-to-cell distance in 2D plane within neighbor_distance_xy, then via molecule-to-molecule 3D distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
 #' @export
-neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL, 
-                                                score_GeneMatrix,  
-                                                score_baseline = NULL, 
-                                                neighbor_distance_xy = NULL,
-                                                distance_cutoff = 2.7,
-                                                transcript_df, 
-                                                cellID_coln = "CellId", 
-                                                celltype_coln = "cell_type", 
-                                                transID_coln = "transcript_id",
-                                                transGene_coln = "target", 
-                                                transSpatLocs_coln = c('x','y','z')){
+get_neighborhood_content <- function(chosen_cells = NULL, 
+                                     score_GeneMatrix,  
+                                     score_baseline = NULL, 
+                                     neighbor_distance_xy = NULL,
+                                     distance_cutoff = 2.7,
+                                     transcript_df, 
+                                     cellID_coln = "CellId", 
+                                     celltype_coln = "cell_type", 
+                                     transID_coln = "transcript_id",
+                                     transGene_coln = "target", 
+                                     transSpatLocs_coln = c('x','y','z')){
   
   if(is.null(chosen_cells)){
     stop("Must define chosen_cells to start resegmentation evaluation in neighborhood of each chosen cell.")
@@ -435,7 +434,7 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 
 
 #' get neighborhood transcript data frame for visualization
-#' @title getNeighbors_transDF_spatstat
+#' @title getNeighbors_transDF
 #' @description find neighbor cells of chosen_cells and return the relevant transcript data.frame for both query 
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
 #' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average cell diameter.
@@ -453,12 +452,12 @@ neighborhood_for_resegment_spatstat <- function(chosen_cells = NULL,
 #' }
 #' @details Locate neighbor cells of each query cell in 1st and 2nd dimension via cell-to-cell distance within neighbor_distance_xy. If no neighbor cells found for query cell, return query cell information only. Do not consider extracellular transcripts.
 #' @export
-getNeighbors_transDF_spatstat <- function(chosen_cells = NULL, 
-                                          neighbor_distance_xy = NULL,
-                                          transcript_df, 
-                                          cellID_coln = "CellId", 
-                                          transID_coln = "transcript_id",
-                                          transSpatLocs_coln = c('x','y','z')){
+getNeighbors_transDF <- function(chosen_cells = NULL, 
+                                 neighbor_distance_xy = NULL,
+                                 transcript_df, 
+                                 cellID_coln = "CellId", 
+                                 transID_coln = "transcript_id",
+                                 transSpatLocs_coln = c('x','y','z')){
   
   if(is.null(chosen_cells)){
     stop("Must define chosen_cells to start resegmentation evaluation in neighborhood of each chosen cell.")

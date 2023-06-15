@@ -20,7 +20,7 @@ See the "vignettes" folder.
 
 
 #### workflow:
-![image](https://user-images.githubusercontent.com/62775692/234708514-991badac-a6d4-41cc-9c53-0b2bc92cc56d.png)
+![image](vignettes/FastReseg_diagram.png)
 
 
 ### Installation
