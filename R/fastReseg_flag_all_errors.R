@@ -22,6 +22,7 @@
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param path_to_output the file path to output folder; directory would be created by function if not exists; `flagged_transDF`, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by` SVM_class = 0`, and `modStats_ToFlagCells`, the per cell evaluation output of segmentation error, and `classDF_ToFlagTrans`, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.
+#' @param transDF_export_option option on how to export updated transcript_df, 0 for no export, 1 for write to `path_to_output` in disk as csv for each FOV, 2 for return to function as list (default = 1)
 #' @param return_trimmed_perCell flag to return a gene x cell count sparse matrix where all putative contaminating transcripts are trimmed (default = FALSE)
 #' @param combine_extra flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
@@ -34,13 +35,14 @@
 #'    \item{combined_modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell for all cells in the data set, output of `score_cell_segmentation_error` function}
 #'    \item{combined_flaggedCells}{a list with each element to be a vector of `UMI_cellID` for cells flagged for potential cell segmentation errors within each FOV}
 #'    \item{trimmed_perCellExprs}{a gene x cell count sparse matrix where all putative contaminating transcripts are trimmed, return when `return_trimmed_perCell` = TRUE}
+#'    \item{flagged_transDF_list}{a list of per-FOV transcript data.frame with flagging information in `SVM_class` column, return when `transDF_export_option = 2`}
 #' }
 #' @details The function would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set. 
 #' And then, the function would use the estimated cluster-specific profile as reference profiles when not provided. 
 #' For each transcript data.frame, the function would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, and identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile. 
 #' The function would save the each per FOV output as individual file in `path_to_output` directory; `flagged_transDF`, `modStats_ToFlagCells` and `classDF_ToFlagTrans` would be saved as csv file, respectively. 
 #' \describe{
-#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`}
+#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`, write to disk when `transDF_export_option =1`}
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function}
 #'    \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flag_bad_transcripts` functions}
 #' }
@@ -127,12 +129,24 @@ fastReseg_flag_all_errors <- function(counts,
                                                       scale = FALSE, 
                                                       gamma = 0.4),
                                       path_to_output = "reSeg_res", 
+                                      transDF_export_option = c(1, 2, 0),
                                       return_trimmed_perCell = FALSE, 
                                       combine_extra = FALSE, 
                                       ctrl_genes = NULL,
                                       seed_transError = NULL){
+  transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
+  if(transDF_export_option ==0){
+    message("No transcript data.frame would be exported with `transDF_export_option = 0`.")
+  } else if (transDF_export_option ==1){
+    message(sprintf("Per-FOV transcript data.frame with flagging information would be exported to disk at `path_to_output = '%s'`.", 
+                    path_to_output))
+  } else if (transDF_export_option ==2){
+    message("Per-FOV transcript data.frame with flagging information would be returned to function in list `flagged_transDF_list`.")
+  } else {
+    stop("Must specify how to export transcript data.frame in `transDF_export_option`.")
+  }
   
-  # create output directory 
+  # create output directory, for per-FOV outputs beyond flagged_transDF
   if(!file.exists(path_to_output)) dir.create(path_to_output)
   
   # spatial dimension
@@ -367,9 +381,12 @@ fastReseg_flag_all_errors <- function(counts,
     }
     
     # save `flagged_transDF` into csv file for each FOV 
-    write.csv(transcript_df, 
-              file = fs::path(path_to_output, paste0(idx, "_flagged_transDF.csv")), 
-              row.names = FALSE)
+    if(transDF_export_option ==1){
+      write.csv(transcript_df, 
+                file = fs::path(path_to_output, paste0(idx, "_flagged_transDF.csv")), 
+                row.names = FALSE)
+    }
+    
     
     
     # return only idx, perCell data, flagged_cells and optional per cell expression after trimming as a list
@@ -377,6 +394,10 @@ fastReseg_flag_all_errors <- function(counts,
                             flagged_cells = flagged_cells, 
                             modStats_ToFlagCells = modStats_ToFlagCells),
                        res_to_return)
+    
+    if(transDF_export_option ==2){
+      res_to_return[["flagged_transDF"]] <- transcript_df
+    }
 
 
     return(res_to_return)
@@ -398,6 +419,9 @@ fastReseg_flag_all_errors <- function(counts,
   trimmed_perCellExprs <- do.call(cbind, trimmed_perCellExprs)
   all_segRes[['trimmed_perCellExprs']] <- trimmed_perCellExprs
   
+  if(transDF_export_option ==2){
+    all_segRes[['flagged_transDF_list']] <- lapply(process_outputs, '[[', 'flagged_transDF')
+  }
   
   rm(process_outputs)
   

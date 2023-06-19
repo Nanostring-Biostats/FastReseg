@@ -36,6 +36,7 @@
 #' @param leiden_config (leidenCut) a list of configuration to pass to reticulate and `igraph::cluster_leiden` function, including objective_function, resolution_parameter, beta, n_iterations.  
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config (default = NULL)
 #' @param path_to_output the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame `updated_transDF` is saved as individual csv files for each FOV, while cell data of all FOVs, `updated_perCellDT` and `updated_perCellExprs`, are combined to save as .RData object.
+#' @param transDF_export_option option on how to export updated transcript_df, 0 for no export, 1 for write to `path_to_output` in disk as csv for each FOV, 2 for return to function as list (default = 1)
 #' @param save_intermediates flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,  
 #' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
@@ -50,6 +51,7 @@
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations` function, return when `save_intermediates` = TRUE}
+#'    \item{updated_transDF_list}{a list of per-FOV transcript data.frame with updated cell segmenation in `updated_cellID` and `updated_celltype` columns, return when `transDF_export_option = 2`}
 #' }
 #' @details The pipeline would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set. 
 #' And then, the pipeline would use the estimated cluster-specific profile as reference profiles and calculate suitable cutoff for distance search, transcript number and score in first provided per FOV transcript data frame when those cutoffs are not provided. 
@@ -67,7 +69,7 @@
 #'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flag_bad_transcripts` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when `save_intermediates` = TRUE}
 #'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `get_neighborhood_content` function, save when `save_intermediates` = TRUE}
 #'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations` function, save when `save_intermediates` = TRUE}
-#'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
+#'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter, write to disk when `transDF_export_option =1`}
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
@@ -210,13 +212,25 @@ fastReseg_full_pipeline <- function(counts,
                                                          n_iterations = 200),
                                     config_spatNW_transcript = NULL,
                                     path_to_output = "reSeg_res", 
+                                    transDF_export_option = c(1, 2, 0),
                                     save_intermediates = TRUE,
                                     return_perCellData = TRUE, 
                                     combine_extra = FALSE, 
                                     ctrl_genes = NULL,
                                     seed_process = NULL){
+  transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
+  if(transDF_export_option ==0){
+    message("No transcript data.frame would be exported with `transDF_export_option = 0`.")
+  } else if (transDF_export_option ==1){
+    message(sprintf("Per-FOV transcript data.frame with updated cell segmentation would be exported to disk at `path_to_output = '%s'`.", 
+                    path_to_output))
+  } else if (transDF_export_option ==2){
+    message("Per-FOV transcript data.frame with updated cell segmentation would be returned to function in list `updated_transDF_list`.")
+  } else {
+    stop("Must specify how to export transcript data.frame in `transDF_export_option`.")
+  }
   
-  # create output directory 
+  # create output directory, for per-FOV outputs beyond updated_transDF 
   if(!file.exists(path_to_output)) dir.create(path_to_output)
   
   # spatial dimension
@@ -381,9 +395,12 @@ fastReseg_full_pipeline <- function(counts,
     rm(transcript_df)
     
     # save `updated_transDF` into csv file for each FOV 
-    write.csv(each_segRes[['updated_transDF']], 
-              file = fs::path(path_to_output, paste0(idx, "_updated_transDF.csv")), 
-              row.names = FALSE)
+    if(transDF_export_option ==1){
+      write.csv(each_segRes[['updated_transDF']], 
+                file = fs::path(path_to_output, paste0(idx, "_updated_transDF.csv")), 
+                row.names = FALSE)
+    }
+    
     
     # return only idx, perCell data and reseg_actions as a list
     res_to_return <- list(idx = idx)
@@ -402,7 +419,12 @@ fastReseg_full_pipeline <- function(counts,
       
     }
     
+    if(transDF_export_option ==2){
+      res_to_return[['updated_transDF']] <- each_segRes[['updated_transDF']]
+    }
+    
     rm(each_segRes)
+    gc()
     
     return(res_to_return)
   }
@@ -447,7 +469,12 @@ fastReseg_full_pipeline <- function(counts,
     rm(cells_to_discard, cells_to_update, cells_to_keep, reseg_full_converter)
   }
   
+  if(transDF_export_option ==2){
+    all_segRes[['updated_transDF_list']] <- lapply(process_outputs, '[[', 'updated_transDF')
+  }
+  
   rm(process_outputs)
+  gc()
   
   return(all_segRes)
   

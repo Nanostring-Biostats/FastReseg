@@ -25,6 +25,7 @@ fastReseg_flag_all_errors(
   svmClass_score_cutoff = -2,
   svm_args = list(kernel = "radial", scale = FALSE, gamma = 0.4),
   path_to_output = "reSeg_res",
+  transDF_export_option = c(1, 2, 0),
   return_trimmed_perCell = FALSE,
   combine_extra = FALSE,
   ctrl_genes = NULL,
@@ -71,6 +72,8 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{path_to_output}{the file path to output folder; directory would be created by function if not exists; \code{flagged_transDF}, the reformatted transcript data.frame with transcripts of low goodness-of-fit flagged by\code{ SVM_class = 0}, and \code{modStats_ToFlagCells}, the per cell evaluation output of segmentation error, and \code{classDF_ToFlagTrans}, the class assignment of transcripts within each flagged cells are saved as individual csv files for each FOV, respectively.}
 
+\item{transDF_export_option}{option on how to export updated transcript_df, 0 for no export, 1 for write to \code{path_to_output} in disk as csv for each FOV, 2 for return to function as list (default = 1)}
+
 \item{return_trimmed_perCell}{flag to return a gene x cell count sparse matrix where all putative contaminating transcripts are trimmed (default = FALSE)}
 
 \item{combine_extra}{flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)}
@@ -90,6 +93,7 @@ a list
 \item{combined_modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell for all cells in the data set, output of \code{score_cell_segmentation_error} function}
 \item{combined_flaggedCells}{a list with each element to be a vector of \code{UMI_cellID} for cells flagged for potential cell segmentation errors within each FOV}
 \item{trimmed_perCellExprs}{a gene x cell count sparse matrix where all putative contaminating transcripts are trimmed, return when \code{return_trimmed_perCell} = TRUE}
+\item{flagged_transDF_list}{a list of per-FOV transcript data.frame with flagging information in \code{SVM_class} column, return when \code{transDF_export_option = 2}}
 }
 }
 \description{
@@ -101,7 +105,7 @@ And then, the function would use the estimated cluster-specific profile as refer
 For each transcript data.frame, the function would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, and identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile.
 The function would save the each per FOV output as individual file in \code{path_to_output} directory; \code{flagged_transDF}, \code{modStats_ToFlagCells} and \code{classDF_ToFlagTrans} would be saved as csv file, respectively.
 \describe{
-\item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts \code{UMI_transID} and cells \code{UMI_cellID}, for global coordiante system \code{x}, \code{y}, \code{z}, and for the goodness-of-fit in original cell segment \code{SMI_class}; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, \code{CellId}, \code{pixel_x}, \code{pixel_y}, \code{idx_z}}
+\item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts \code{UMI_transID} and cells \code{UMI_cellID}, for global coordiante system \code{x}, \code{y}, \code{z}, and for the goodness-of-fit in original cell segment \code{SMI_class}; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, \code{CellId}, \code{pixel_x}, \code{pixel_y}, \code{idx_z}, write to disk when \code{transDF_export_option =1}}
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function}
 \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of \code{flag_bad_transcripts} functions}
 }

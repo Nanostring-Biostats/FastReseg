@@ -37,6 +37,7 @@ fastReseg_full_pipeline(
     0.01, n_iterations = 200),
   config_spatNW_transcript = NULL,
   path_to_output = "reSeg_res",
+  transDF_export_option = c(1, 2, 0),
   save_intermediates = TRUE,
   return_perCellData = TRUE,
   combine_extra = FALSE,
@@ -109,6 +110,8 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 
 \item{path_to_output}{the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame \code{updated_transDF} is saved as individual csv files for each FOV, while cell data of all FOVs, \code{updated_perCellDT} and \code{updated_perCellExprs}, are combined to save as .RData object.}
 
+\item{transDF_export_option}{option on how to export updated transcript_df, 0 for no export, 1 for write to \code{path_to_output} in disk as csv for each FOV, 2 for return to function as list (default = 1)}
+
 \item{save_intermediates}{flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,}
 
 \item{return_perCellData}{flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
@@ -131,6 +134,7 @@ a list
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations} function, return when \code{save_intermediates} = TRUE}
+\item{updated_transDF_list}{a list of per-FOV transcript data.frame with updated cell segmenation in \code{updated_cellID} and \code{updated_celltype} columns, return when \code{transDF_export_option = 2}}
 }
 }
 \description{
@@ -153,7 +157,7 @@ When save_intermediates = TRUE, all intermediate files and resegmenation outputs
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flag_bad_transcripts} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when \code{save_intermediates} = TRUE}
 \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{get_neighborhood_content} function, save when \code{save_intermediates} = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations} function, save when \code{save_intermediates} = TRUE}
-\item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
+\item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter, write to disk when \code{transDF_export_option =1}}
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 }
