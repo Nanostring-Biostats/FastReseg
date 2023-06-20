@@ -11,7 +11,10 @@ plotSpatialScoreMultiCells(
   cellID_coln = "CellId",
   transID_coln = "transcript_id",
   score_coln = "score",
-  spatLocs_colns = c("x", "y")
+  spatLocs_colns = c("x", "y"),
+  point_size = 0.1,
+  plot_discrete = FALSE,
+  title = NULL
 )
 }
 \arguments{
@@ -28,6 +31,12 @@ plotSpatialScoreMultiCells(
 \item{score_coln}{the column name of score in transcript_df}
 
 \item{spatLocs_colns}{column names for 1st, 2nd dimension of spatial coordinates in transcript_df}
+
+\item{point_size}{marker size for transcript spot in fig (default = 0.1)}
+
+\item{plot_discrete}{flag to plot transcript score in discrete color}
+
+\item{title}{the text title for plot}
 }
 \value{
 ggplot

@@ -1,0 +1,750 @@
+---
+title: "FastReseg to detect and correct segmentation error in spatial transcriptome data"
+author: "Lidan Wu"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 4
+vignette: >
+  %\VignetteIndexEntry{FastReseg to detect and correct segmentation error in spatial transcriptome data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  out.width = '100%',
+  fig.width=10, 
+  fig.height=10
+)
+```
+
+This tutorial below shows how to apply functions in `FastReseg` to perform segmentation error detection and correction in spatial transcriptome data. 
+
+## FastReseg workflow diagram 
+
+`FastReseg` package processes spatial transcriptome data through 5 different modules and provides 3 wrapper functions for streamline processing of multi-FOV dataset to different exit points.
+
+```{r diagram, echo=FALSE, out.width = '100%'}
+knitr::include_graphics(paste0(rprojroot::find_rstudio_root_file(), "/vignettes/FastReseg_diagram.png"))
+```
+
+## Input data
+
+The required inputs include:
+
+* `counts`:  a cell-by-gene counts matrix for entire dataset. 
+
+* `clust`: a vector of cluster assignments for each cell in `counts`; use `NULL` to automatically assign the cell cluster for each cell based on maximum transcript score of given the provided `refProfiles`.
+
+* `refProfiles`: a gene-by-cluster matrix of cluster-specific expression profiles; default = `NULL` to use external cluster assignments.
+
+* `transDF_fileInfo`: a data.frame with each row for each individual file of per-FOV transcript data.frame, columns include the file path of per FOV transcript data.frame file, annotation columns like `slide` and `fov` to be used as prefix when creating unique cell_ID across entire dataset.
+   + when `NULL`, use the transcript data.frame `transcript_df` directly.
+
+There must be at least one of the `clust` and `refProfiles` provided to run the `FastReseg` pipeline. All the spatial coordinates and distance are in the units of micron for consistency. Please refer to example data coming with the package to see how it looks like. 
+
+```{r input_data}
+# load example input data from package
+library(FastReseg)
+
+# get cell-by-gene `counts`
+data("example_CellGeneExpr")
+counts <- example_CellGeneExpr
+
+# get cluster assignment `clust`
+data("example_clust")
+clust <- example_clust
+
+# get cluster-specific reference profiles `refProfiles`
+data("example_refProfiles")
+refProfiles <- example_refProfiles
+
+# create `transDF_fileInfo` for multiple per FOV transcript data.frame 
+# coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
+transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                             "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+                               slide = c(1, 1),
+                               fov = c(1,2),
+                               stage_X = 1000*c(5.13, -2.701),
+                               stage_Y = 1000*c(-0.452, 0.081))
+```
+
+Here is an example of per-FOV transcript data.frame with necessary columns for:  
+
+* `target` for gene name; 
+
+* `x`, `y` and optional `z` for spatial coordinates of each transcript;  
+
+* `UMI_cellID` for cell ids of current cell segmentation and must be unique across all FOVs of the same dataset; 
+
+   + When not available, `prepare_perFOV_transDF()` function would use per-FOV unique `CellId` and the provided `prefix_colns = c('slide', 'fov')` to generate `UMI_cellID` that would be unique across the entire dataset. Pipeline wrappers, `fastReseg_flag_all_errors()` and `fastReseg_full_pipeline()`, would also generate unique cell ids in same manner for the multiple files listed in `transDF_fileInfo`. 
+   
+* `UMI_transID`: transcript ids that are unique across the dataset; 
+
+   + By default, the `prepare_perFOV_transDF()` function and the 2 pipeline wrappers would use row index of transcript in each per-FOV transcript data.frame and `UMI_cellID` to create `UMI_transID` that would be unique across the entire dataset.
+
+```{r, echo=FALSE, results ='asis'}
+data(mini_transcriptDF)
+transcript_df <- mini_transcriptDF
+knitr::kable(head(transcript_df))
+```
+
+As mentioned above, `FastReseg` package provides 2 pipeline wrappers for streamline multi-FOV processing and those wrapper would go through each per-FOV transcript data.frame listed in `transDF_fileInfo` and stitch all FOVs together to get data with coordinates in the global system as well as transcript and cell IDs unique across the entire dataset. When preparing the per-FOV data.frame outside the pipeline wrappers, one can read in each per-FOV file and process it with `prepare_perFOV_transDF()` function to get the unique IDs for cells and transcripts as well as converting the local coordinates in pixel for each FOV to a global coordinate in micron for entire dataset. 
+
+```{r prep_FOV_file, eval = TRUE}
+#  process 1st file in the `transDF_fileInfo` entry 
+idx = 1
+rawDF <- read.csv(transDF_fileInfo[idx, 'file_path'])
+
+head(rawDF, n = 3L)
+
+transcript_df_all <- prepare_perFOV_transDF(each_transDF = rawDF, 
+                                            fov_centerLocs = unlist(transDF_fileInfo[idx, c('stage_X', 'stage_Y')]),
+                                            prefix_vals = unlist(transDF_fileInfo[idx, c('slide', 'fov')]), 
+                                            pixel_size = 0.12, # micron per pixel 
+                                            zstep_size = 0.8, # micron per z step 
+                                            transID_coln = NULL, # use row index 
+                                            transGene_coln = 'target', # gene name
+                                            cellID_coln = 'CellId', # cell label unique at FOV level 
+                                            spatLocs_colns = c('x', 'y', 'z'), # column names for spatial coordinates in pixel for each FOV
+                                            extracellular_cellID = 0, # set this to the cell ID for extracellular transcript, use NULL if your data only contains intracellular transcripts 
+                                            drop_original = TRUE) # set to FALSE if want to have columns for original cell ID and spatial coordinates returned in the data.frame
+
+str(transcript_df_all)
+
+## we would focus on intracellular transcripts for downstream segmentation error detection
+transcript_df <- transcript_df_all[["intraC"]]
+```
+
+## Pipeline wrapper functions for streamline processing
+
+For streamline processing of big dataset with multiple FOVs, one can use the pipeline wrapper functions provided in the `FastReseg` package without going through the individual steps that are discussed in later part of this tutorial. Those pipeline wrappers would preprocess at whole dataset level first to get appropriate cutoffs, and then perform segmentation evaluation and optional correction on each FOV, followed by combining per FOV data into one. Please refer to the manual of each pipeline wrapper for more details and to section [Processing each FOV outside of core wrapper] for excerpts of example outputs.  
+
+### Pipeline wraper for cell-level segmentation detection across multi-FOV dataset
+
+A common use case of `FastReseg` is to evaluate the current cell segmentation of entire multi-FOV dataset and then identify the transcripts with poor goodness-of-fit to current cell and thus likely arsing from potential neighborhood contamination. And this could be done with `fastReseg_flag_all_errors()` function.
+
+```{r flagAll_wrapper, eval = TRUE, message=FALSE, warning=FALSE}
+flagAll_res <- fastReseg_flag_all_errors(
+  counts = counts,
+  clust = clust,
+  refProfiles = NULL,
+  
+  # Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`
+  
+  transcript_df = NULL,
+  transDF_fileInfo = transDF_fileInfo,
+  filepath_coln = 'file_path',
+  prefix_colns = c('slide','fov'),
+  fovOffset_colns = c('stage_Y','stage_X'), # match XY axes between stage and each FOV
+  pixel_size = 0.18, 
+  zstep_size = 0.8,
+  transID_coln = NULL, # row index as transcript_id
+  transGene_coln = "target",
+  cellID_coln = "CellId",
+  spatLocs_colns = c("x","y","z"),
+  extracellular_cellID = c(0), 
+  
+  flagCell_lrtest_cutoff = 5, # cutoff for flagging wrongly segmented cells
+  svmClass_score_cutoff = -2, # cutoff for low vs. high transcript score
+  path_to_output = "res1f_multiFiles", # path to output folder
+  return_trimmed_perCell = TRUE, # flag to return per cell expression matrix after trimming all flagged transcripts 
+  ctrl_genes = NULL # name for control probes in transcript data.frame, e.g. negative control probes
+  )
+
+str(flagAll_res)
+
+# outputs in output folder
+list.files("res1f_multiFiles")
+``` 
+
+`fastReseg_flag_all_errors()` function takes similar input arguments as `prepare_perFOV_transDF()` and `runPreprocess()` (discussed in section [Preprocess on whole dataset]). It does dataset preprocessing before segmentation error detection. The function returns a list of outputs including `combined_modStats_ToFlagCells`, which is a data.frame for spatial modeling statistics of cell-level segmentation evaluation (see section [Flag cells with putative segmentation errors] for an excerpt), and `combined_flaggedCells`, which contains cell IDs for all cells flagged with potential cell segmentation errors in the dataset. `fastReseg_flag_all_errors()` function also exports the per-FOV outputs as 3 individual files per FOV under `path_to_output` directory.
+
+```{r description_flagAll, echo=FALSE, results ='asis'}
+df3 <- data.frame(variable = c("`flagged_transDF`", "`modStats_ToFlagCells`", "`classDF_ToFlagTrans`"),
+                  description = c("a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SVM_class`", 
+                                  "a data.frame for spatial modeling statistics of each cell, output of `runSegErrorEvaluation()` function", 
+                                  "data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flag_bad_transcripts()` function"))
+
+pander::pander(df3, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+```
+
+One can simply trim off the transcripts with low goodness-of-fit to current segmentation from the `flagged_transDF` by removing the transcripts with `SVM_class = 0`. Conveniently, `fastReseg_flag_all_errors()` would also return `trimmed_perCellExprs`, the gene x cell count matrix where all putative contaminating transcripts are trimmed, when `return_trimmed_perCell = TRUE`.
+
+### Full pipeline segmentation detection and refinement across multi-FOV dataset
+
+To perform full pipeline on the entire dataset with more complex segmentation refinement actions, like splitting, merging and trimming, one can use `fastReseg_full_pipeline()` pipeline wrapper. 
+
+```{r fullAll_wrapper, eval = TRUE, message=FALSE, warning=FALSE}
+refineAll_res <- fastReseg_full_pipeline(
+  counts = counts,
+  clust = clust,
+  refProfiles = NULL,
+  
+  # Similar to `runPreprocess()`, one can use `clust = NULL` if providing `refProfiles`
+  
+  transcript_df = NULL,
+  transDF_fileInfo = transDF_fileInfo,
+  filepath_coln = 'file_path',
+  prefix_colns = c('slide','fov'),
+  fovOffset_colns = c('stage_Y','stage_X'),
+  pixel_size = 0.18,
+  zstep_size = 0.8,
+  transID_coln = NULL,
+  transGene_coln = "target",
+  cellID_coln = "CellId",
+  spatLocs_colns = c("x","y","z"),
+  extracellular_cellID = c(0),
+  
+  # Similar to `runPreprocess()`, one can set various cutoffs to NULL for automatic calculation from input data
+  
+  # distance cutoff for neighborhood searching at molecular and cellular levels, respectively
+  molecular_distance_cutoff = 2.7, 
+  cellular_distance_cutoff = NULL, 
+  
+  # cutoffs for transcript scores and number for cells under each cell type
+  score_baseline = NULL,
+  lowerCutoff_transNum = NULL,
+  higherCutoff_transNum= NULL,
+  imputeFlag_missingCTs = TRUE,
+  
+  # Settings for error detection and correction, refer to `runSegRefinement()` for more details
+  flagCell_lrtest_cutoff = 5, # cutoff to flag for cells with strong spatial dependcy in transcript score profiles
+  svmClass_score_cutoff = -2,   # cutoff of transcript score to separate between high and low score classes
+  groupTranscripts_method = "dbscan",
+  spatialMergeCheck_method = "leidenCut", 
+  cutoff_spatialMerge = 0.5, # spatial constraint cutoff for a valid merge event
+  
+  path_to_output = "res2_multiFiles",
+  save_intermediates = TRUE, # flag to return and write intermediate results to disk
+  return_perCellData = TRUE, # flag to return per cell level outputs from updated segmentation 
+  combine_extra = FALSE # flag to include trimmed and extracellular transcripts in the exported `updated_transDF.csv` files 
+)
+
+str(refineAll_res)
+
+# outputs in output folder
+list.files("res2_multiFiles")
+``` 
+
+`fastReseg_full_pipeline()` returns the new cell expression count matrix `updated_perCellExprs` and spatial coordinate data.frame `updated_perCellDT` when `return_perCellData = TRUE`. It also writes the transcript data.frame updated with new cell segmentation outcomes into individual `updated_transDF.csv` files at FOV level under `path_to_output` directory. Intermediate results, including `modStats_ToFlagCells` and `groupDF_ToFlagTrans` for cell-level and transcript-level segmentation evaluation, are also saved into individual `each_segRes.RData` object at FOV level when `save_intermediates = TRUE`. For more details, please refer to the manuals of `fastReseg_full_pipeline()` and see section [Processing each FOV outside of core wrapper] for excerpts of example outputs.
+
+## Modular functions for individual tasks
+
+While the above 2 pipeline wrappers provide streamline processing of multi-FOV dataset, it's sometimes desired to focus on a representative subset of the data first and check out the impact of various cutoffs on re-segmentation performance quickly. To do so, one can rely on `runPreprocess()` and `fastReseg_perFOV_full_process()` as shown in this section. 
+
+### Preprocess on whole dataset 
+
+First, one needs to preprocess at whole dataset scale to get appropriate baselines and cutoffs for downstream segmentation error detection and correction at individual FOV level. This could be done using `runPreprocess()` function.
+
+```{r preprocess, eval=FALSE}
+prep_res <- runPreprocess(
+  counts = counts, 
+  
+  ## when certain cell typing has been done on the dataset with initial cell segmentation,  
+  # set `refProfiles` to NULL, but use the cell typing assignment in `clust`
+  clust = clust, 
+  refProfiles = NULL,
+  
+  ## if celll typing has NOT been done on the dataset with initial cell segmentation, 
+  # set `clust` to NULL, but use cluster-specific profiles in `refProfiles` instead
+  
+  ## of note, when `refProfiles is not NULL, genes unique to `counts` but missing in `refProfiles` would be omitted from downstream analysis.  
+  
+  # cutoffs for transcript scores and number for cells under each cell type
+  # if NULL, calculate those cutoffs from `counts`, `clust` and/or `refProfiles` across the entire dataset
+  score_baseline = NULL, 
+  lowerCutoff_transNum = NULL, 
+  higherCutoff_transNum= NULL, 
+  imputeFlag_missingCTs = FALSE, # flag to impute transcript score and number cutoffs for cell types in `refProfiles` but missing in `clust`
+  
+  # genes in `counts` but not in `refProfiles` and expect no cell type dependency, e.g. negative control probes
+  ctrl_genes = NULL,
+  # cutoff of transcript score to separate between high and low score transcript classes, used as the score values for `ctrl_genes` 
+  svmClass_score_cutoff = -2,
+  
+  # distance cutoff for neighborhood searching at molecular and cellular levels, respectively
+  # if NULL, calculate those distance cutoffs from the first transcript data.frame provided (slow process)
+  # if values provided in input, no distance calculation would be done 
+  molecular_distance_cutoff = 2.7,
+  cellular_distance_cutoff = 20,
+  
+  transcript_df = NULL, # take a transcript data.frame as input directly when `transDF_fileInfo = NULL`
+  transDF_fileInfo = transDF_fileInfo, # data.frame info for multiple perFOV transcript data.frame files
+  filepath_coln = 'file_path', 
+  prefix_colns = c('slide','fov'), 
+  fovOffset_colns = c('stage_X','stage_Y'), 
+  
+  pixel_size = 0.18, # in micron per pixel
+  zstep_size = 0.8, # in micron per z step
+  transID_coln = NULL,
+  transGene_coln = "target",
+  
+  # cell ID column in the provided transcript data.frame, which is the 1st file in `transDF_fileInfo` in this example
+  cellID_coln = 'CellId', 
+  spatLocs_colns = c('x','y','z'), 
+  extracellular_cellID = 0 # cell ID for extracellular transcript 
+)
+
+
+## variables passing to the downstream pipeline
+# gene x cell type matrix of transcript score 
+score_GeneMatrix <- prep_res[['score_GeneMatrix']]
+
+# per cell transcript score baseline for each cell type
+score_baseline <- prep_res[['cutoffs_list']][['score_baseline']]
+
+# upper and lower limit of per cell transcript number for each cell type
+lowerCutoff_transNum <- prep_res[['cutoffs_list']][['lowerCutoff_transNum']]
+higherCutoff_transNum <- prep_res[['cutoffs_list']][['higherCutoff_transNum']]
+
+# distance cutoffs for neighborhood at cellular and molecular levels
+cellular_distance_cutoff <- prep_res[['cutoffs_list']][['cellular_distance_cutoff']]
+molecular_distance_cutoff <- prep_res[['cutoffs_list']][['molecular_distance_cutoff']]
+```
+
+`runPreprocess()` function returns a list of outputs among which `score_GeneMatrix` and `cutoffs_list` would be passed to downstream resegmentation pipeline. 
+
+```{r description_runPreprocess, echo=FALSE, results ='asis'}
+df1 <- data.frame(variable = c("`clust`", "`refProfiles`", "`baselineData`", "`cutoffs_list`","", "`ctrl_genes`", "`score_GeneMatrix`", "`processed_1st_transDF`"),
+                  description = c("vector of cluster assignments used in caculating `baselineData`", 
+                                  "gene X cluster matrix of cluster-specific reference profiles to use in resegmenation pipeline", 
+                                  "list of two matrice in cluster X percentile format for the cluster-specific percentile distribution of per cell value in terms of transcript score and number, respectively", 
+                                  "*list of cutoffs to use in resegmentation pipeline:*", 
+                                  "* `score_baseline`: named vector of per cell type minimal score required to call certain cell type of high enough confidence.\n
+                                  * `lowerCutoff_transNum`: named vector of per cell type minimal transcript number per cell to keep query cell as it is.\n
+                                  * `higherCutoff_transNum`: named vector of per cell type maxmium transcript number per cell to keep query cell as it is without merging to neighbor cell of consistent cell type.\n
+                                  * `cellular_distance_cutoff`: maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron.\n
+                                  * `molecular_distance_cutoff`: maximum molecule-to-molecule distance within connected transcript group, unit in micron.", 
+                                  "vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not `NULL`.", 
+                                  "gene x cell-type score matrix to use in resegmenation pipeline, the scores for `ctrl_genes` are set to be the same as `svmClass_score_cutoff`", 
+                                  "list of 2 elements for the intracellular and extracellular transcript data.frame of the processed outcomes of 1st transcrip file"))
+
+pander::pander(df1, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+```
+
+##### initial cell typing and control genes
+
+The above example of `runPreprocess()` is using `clust` as input, assuming the single-cell dataset that has gone through certain type of cell typing algorithm using the initial cell segmentation. In case of no cell typing has been done on the input dataset, one could set `clust` to `NULL`, but provide cluster-specific profiles in `refProfiles` as input. The `runPreprocess()` function would do quick supervised cell typing on the input dataset given the initial cell segmentation. 
+Of note, when `refProfiles` is provided to `runPreprocess()` , genes unique to `counts` but missing in `refProfiles` would be omitted from downstream analysis. To include all genes in `counts`, one could set those unique genes as `ctrl_genes` whose expression profiles are expected to either show no strong cell type dependency or be a very small fraction of the total per cell expression. Alternatively, one can do a quick cell typing using the `get_baselineCT()` function as the following before feeding the `clust` to `runPreprocess()` with `refProfiles` set to `NULL`.
+
+```{r get_initial_clust, eval = FALSE}
+baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL)
+clust <- baselineData[['clust_used']]
+```
+
+##### distance cutoffs defining neighborhood
+
+During the pre-processing step, one would also need to define the distance cutoffs for downstream neighborhood search during segmentation refinement. These cutoffs could be defined based on prior knowledge directly or calculated from the provided `transcript_df` using either `runPreprocess()` or `choose_distance_cutoff()` function. 
+
+* `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. 
+
+   + When set to `NULL` in the input of `runPreprocess()` function, the function calculates average 2D cell diameter from the input transcript data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`.
+
+* `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. One can decide this value based on the expected spot density within each cell. 
+
+   + When set to `NULL` in the input of `runPreprocess()` function, the function would first randomly choose `sampleSize_cellNum = 2500` number of cells from `sampleSize_nROI = 10` number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells.
+   
+Below is an example to calculate distance cutoff from the input transcript data.frame outside the `runPreprocess()` function using `choose_distance_cutoff()`, which offers more control on the distance cutoff calculation setup and may allow faster calculation than doing it within the `runPreprocess()` function.
+
+```{r distance_cutoff, eval = TRUE}
+## for demonstration purpose, use the example `mini_transcriptDF`
+data(mini_transcriptDF)
+transcript_df <- mini_transcriptDF
+
+
+## get distance cutoffs
+distCutoffs <- choose_distance_cutoff(
+  # allow to choose any transcript data.frame that is representative to entire dataset
+  # while `runPreprocess()` uses the first provided transcript data.frame in the file list
+  transcript_df, 
+  
+  # allow to use 2D spatial coordinates here since transcript is more dense in 2D, 
+  # 2D calculation of distance cutoff would be faster than 3D calculation used in `runPreprocess()` 
+  spatLocs_colns = c('x','y'), 
+  
+  transID_coln = 'UMI_transID',
+  cellID_coln = 'UMI_cellID', 
+  extracellular_cellID = NULL, 
+  
+  # flag to calculate `molecular_distance_cutoff` from input data, slower process
+  run_molecularDist = TRUE,
+  # configs on random sampling of cells
+  sampleSize_nROI = 10, 
+  sampleSize_cellNum = 2500, 
+  seed = 123 )
+
+molecular_distance_cutoff <- distCutoffs[['molecular_distance_cutoff']]
+cellular_distance_cutoff <- distCutoffs[['cellular_distance_cutoff']]
+```
+
+Empirically, let's set 20um and 2um values for the two cutoffs, respectively, for dataset on human tissue with 100+ plex target gene in panel. 
+
+```{r input_cutoff}
+cellular_distance_cutoff = 20
+molecular_distance_cutoff = 2
+```
+
+```{r input_cutoffs, echo=TRUE}
+## for demonstration purpose, use the saved baseline values paired with example `mini_transcriptDF`
+data("example_baselineCT")
+
+score_baseline = example_baselineCT[["span_score"]][, "25%"]
+lowerCutoff_transNum = example_baselineCT[["span_transNum"]][, "25%"]
+higherCutoff_transNum = example_baselineCT[["span_transNum"]][, "50%"]
+
+# calculate log-likelihood of each gene under each cell type and center the score matrix on per gene basis
+score_GeneMatrix <- scoreGenesInRef(genes = intersect(colnames(counts), rownames(refProfiles)), 
+                                    ref_profiles = pmax(refProfiles, 1e-5))
+```
+
+
+> The following sections would operate on one per-FOV transcript data.frame at a time. For processing on multiple FOVs, please either refer to the provided pipeline wrapper functions or create your own wrapper around the code chucks listed below. 
+
+### Core wrapper for perFOV processing 
+
+With the appropriate cutoffs identified in preprocess step, one could push a single FOV `transcript_df` through the full pipeline using a core wrapper function, `fastReseg_perFOV_full_process()`. 
+
+```{r perFOV_wrapper, eval = FALSE}
+data(mini_transcriptDF)
+extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID']
+
+finalRes_perFOV <- fastReseg_perFOV_full_process(
+  score_GeneMatrix = score_GeneMatrix, 
+  transcript_df = mini_transcriptDF, 
+  transID_coln = 'UMI_transID',
+  transGene_coln = "target",
+  cellID_coln = 'UMI_cellID', 
+  spatLocs_colns = c('x','y','z'), 
+  extracellular_cellID = extracellular_cellID, 
+  flagModel_TransNum_cutoff = 50, 
+  flagCell_lrtest_cutoff = flagCell_lrtest_cutoff,
+  svmClass_score_cutoff = svmClass_score_cutoff, 
+  molecular_distance_cutoff = molecular_distance_cutoff,
+  cellular_distance_cutoff = cellular_distance_cutoff,
+  score_baseline = score_baseline, 
+  lowerCutoff_transNum = lowerCutoff_transNum, 
+  higherCutoff_transNum = higherCutoff_transNum,
+  
+  # default to "dbscan" for spatial grouping of transcripts, alternative to use "delaunay"
+  groupTranscripts_method = "dbscan",
+  
+  # default to "leidenCut" for decision based on Leiden clustering of transcript coordinates, alternative to use "geometryDiff" for geometric analysis
+  spatialMergeCheck_method = "leidenCut", 
+  
+  cutoff_spatialMerge = 0.5,
+  return_intermediates = TRUE,
+  return_perCellData = TRUE, 
+  includeAllRefGenes = TRUE
+  )
+
+``` 
+
+### Processing each FOV outside of core wrapper 
+
+As illustrated in the [FastReseg workflow diagram], `fastReseg_perFOV_full_process()` would process a single-FOV transcript data through a series of modules. This section provides a breakdown on what each module does and explains on their results with example dataset and figures. One can play with the input cutoffs and see how it affects each step. 
+
+#### Flag cells with putative segmentation errors
+
+After pre-processing, we are ready to evaluate each cell on their potential to have cell segmentation errors. 
+
+```{r eval_cellSeg, fig.show='hold', fig.width=8, fig.height=4}
+outs <- runSegErrorEvaluation(
+  score_GeneMatrix= score_GeneMatrix, 
+  transcript_df = transcript_df, 
+  cellID_coln = 'UMI_cellID', 
+  transID_coln = 'UMI_transID',
+  transGene_coln = 'target',
+  spatLocs_colns = c('x','y','z'),
+  # cutoff of transcript number to do spatial modeling
+  flagModel_TransNum_cutoff = 50) 
+
+modStats_ToFlagCells <- outs [['modStats_ToFlagCells']]
+transcript_df <- outs[['transcript_df']]
+rm(outs)
+
+
+# transcript data.frame with additional columns for cell types and transcript scores under current cell segmentation 
+head(transcript_df, n = 3L)
+
+# model statistics
+head(modStats_ToFlagCells)
+
+# histogram for spatial dependency in all cells
+hist(modStats_ToFlagCells$`lrtest_-log10P`, breaks = "FD", 
+     main = paste0("Histogram of spatial dependency, mean = ", 
+                   round(mean(modStats_ToFlagCells$`lrtest_-log10P`), 2)))
+abline(v = mean(modStats_ToFlagCells$`lrtest_-log10P`), col="red", lwd=3, lty=2)
+
+```
+
+The function above returns the statistics for evaluating each cell for spatial dependent model against null model. Based on the P value, `lrtest_Pr` or the negative log10 value `lrtest_-log10P`, one can select for cells with strong spatial dependency in transcript score profile. Those cells are likely to contain contaminating transcripts for neighbor cells. 
+
+```{r flag_cells}
+# cutoff to flag for cells with strong spatial dependcy in transcript score profiles
+flagCell_lrtest_cutoff  = 5
+
+modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
+
+message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
+                 length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
+```
+```{r fig_flagCells, fig.show='hold'}
+# spatial plot some flagged cells with various degrees of spatial dependency in transcript profiles
+rownames(modStats_ToFlagCells) <- modStats_ToFlagCells$UMI_cellID
+cells_to_plot <- modStats_ToFlagCells[flagged_cells, 'lrtest_-log10P']
+names(cells_to_plot) <- flagged_cells
+cells_to_plot <- cells_to_plot[order(cells_to_plot, decreasing = T)]
+cells_to_plot <- cells_to_plot[seq(1, length(cells_to_plot), by = 25)]
+
+plotSpatialScoreMultiCells(chosen_cells = names(cells_to_plot), 
+                           cell_labels = round(cells_to_plot, 2), 
+                           transcript_df = transcript_df, 
+                           cellID_coln = "UMI_cellID", 
+                           transID_coln = "UMI_transID",
+                           score_coln = "score_tLLR_maxCellType", 
+                           spatLocs_colns = c("x","y"),
+                           point_size = 0.5)
+```
+
+#### Identify wrongly segmented transcript groups
+
+Under the assumption that the contamination from neighbor cells would result in patches of low-score transcript groups in space, we first separate the transcripts within each flagged cells into high and low score groups and then divide the transcripts of low score into different spatially connected groups assuming they might arise from different source cells in neighborhood. 
+
+```{r flag_transcripts}
+# cutoff of transcript score to separate between high and low score transcripts 
+svmClass_score_cutoff = -2 
+
+# a list of arguments to pass to `e1071::svm` function to define the strength of spatial connectivity 
+svm_args = list(kernel = "radial", 
+                scale = FALSE, 
+                gamma = 0.4)
+
+groupDF_ToFlagTrans <- runTranscriptErrorDetection(chosen_cells = flagged_cells,
+                                                   score_GeneMatrix = score_GeneMatrix, 
+                                                   transcript_df = transcript_df, # include column for transcript score under current cell segmentation
+                                                   cellID_coln = "UMI_cellID", 
+                                                   transID_coln = "UMI_transID", 
+                                                   # column for transcript score in current cell segment
+                                                   score_coln = 'score_tLLR_maxCellType',
+                                                   spatLocs_colns = c("x","y","z"),
+                                                   model_cutoff = 50, 
+                                                   score_cutoff = svmClass_score_cutoff, 
+                                                   svm_args = svm_args,
+                                                   # maximum molecule-to-molecule distance within same transcript group 
+                                                   distance_cutoff = molecular_distance_cutoff, 
+                                                   # use "dbscan" method for spatial grouping of transcripts, alternative to use "delaunay"
+                                                   groupTranscripts_method = "dbscan")
+
+head(groupDF_ToFlagTrans)
+  
+```   
+
+The function above returns a transcript data.frame for the flagged cells with results in spatial-dependent score classification and spatial group ID assignment. 
+
+* `SVM_class` shows the transcript score classification,  `0` for low score below cutoff, `1` for high score above cutoff; the corresponding decision values of svm model output are listed in `DecVal`. 
+
+   + One can use `SVM_class` to select all low-score transcript groups and then remove them from the original transcript data.frame all together. This approach effectively trims off the putative contaminating transcripts from current cell segmentation without more complex refinement.
+
+* `connect_group` shows the spatial group ID assigned to each transcripts, while the corresponding cell types with maximum transcript scores under the given transcript groups are listed in `group_maxCellType`. `0` for transcript group with high score under the putative cell type of current cell segmentation.
+
+* `tmp_cellID` is the column for new cell IDs with which each identified low-score transcript group is assigned with a unique new name to separate from its original cell. Transcript groups with high score would keep the same cell ID as the corresponding original cells.
+
+```{r fig_flagTranscripts, fig.show='hold'}
+# spatial plot for `SVM_class`, the high vs. low score classification of transcript groups in flagged cells
+plotSpatialScoreMultiCells(chosen_cells = names(cells_to_plot),
+                           cell_labels = round(cells_to_plot, 2),
+                           transcript_df = groupDF_ToFlagTrans,
+                           cellID_coln = "UMI_cellID",
+                           transID_coln = "UMI_transID",
+                           score_coln = "SVM_class",
+                           spatLocs_colns = c("x","y"),
+                           point_size = 0.5, 
+                           plot_discrete = T, 
+                           title = "transcript score classification")
+
+# spatial plot for `connect_group`, the spatial group ID for transcripts within each cell
+plotSpatialScoreMultiCells(chosen_cells = names(cells_to_plot),
+                           cell_labels = round(cells_to_plot, 2),
+                           transcript_df = groupDF_ToFlagTrans,
+                           cellID_coln = "UMI_cellID",
+                           transID_coln = "UMI_transID",
+                           score_coln = "connect_group",
+                           spatLocs_colns = c("x","y"),
+                           point_size = 0.5, 
+                           plot_discrete = T, 
+                           title = "spatial connected transcript groups")
+
+# spatial plot for `group_maxCellType`, the cell type with maximum score for each transcript group
+plotSpatialScoreMultiCells(chosen_cells = names(cells_to_plot),
+                           cell_labels = round(cells_to_plot, 2),
+                           transcript_df = groupDF_ToFlagTrans,
+                           cellID_coln = "UMI_cellID",
+                           transID_coln = "UMI_transID",
+                           score_coln = "group_maxCellType",
+                           spatLocs_colns = c("x","y"),
+                           point_size = 0.5, 
+                           plot_discrete = T,
+                           title = "putative cell type for each transcript group")
+```
+
+#### Get ready for segmentation refinement  
+
+If one would like to perform more sophisticated cell segmentation refinement than simple trimming for all low-score transcript groups, one should update the original transcript data.frame with the new cell IDs and maximum cell types from the output of `runTranscriptErrorDetection()` function to keep those identified low-score transcript groups separated from their original cell segment assignment before further segmentation refinement. 
+   
+```{r prep_resegDF}
+# update the transcript_df with flagged transcript_group
+reSeg_ready_res <- prepResegDF(transcript_df = transcript_df, 
+                               groupDF_ToFlagTrans = groupDF_ToFlagTrans,
+                               cellID_coln = "UMI_cellID",
+                               transID_coln = "UMI_transID")
+
+# `tmp_cellID` and `group_maxCellType` now contains info for all cells including the identified transcript groups 
+head(reSeg_ready_res[["reseg_transcript_df"]], n = 3L)
+
+# cells or group IDs for neighborhood evaluation 
+head(reSeg_ready_res[["groups_to_reseg"]])
+
+```     
+
+#### Perform segmentation refinement
+
+For more sophisticated cell segmentation refinement, we first evaluate the neighborhood environment of each low-score transcript groups in terms of their goodness of fit to nearby potential source cells, and then determine the corresponding resegmentation operation by comparing the neighborhood analysis results with the baseline data for each cell type derived from the original dataset. Lastly, we apply those resegmentation operations to the original transcript data.frame to get the refined segmentation outcomes. Each identified low-score transcript group may experience the following refinement operation: trimming (removing to extracellular space), splitting (keeping as new cell ID by itself), or merging (assigning same cell ID as that of neighboring cells/transcript groups of same cell type).
+
+```{r segment_refinement}
+finalRes <- runSegRefinement(
+  score_GeneMatrix = score_GeneMatrix,  
+  chosen_cells = reSeg_ready_res[["groups_to_reseg"]], 
+  reseg_transcript_df = reSeg_ready_res[["reseg_transcript_df"]], 
+  reseg_cellID_coln = "tmp_cellID", 
+  reseg_celltype_coln = "group_maxCellType", 
+  transID_coln = "UMI_transID",
+  transGene_coln = "target", 
+  transSpatLocs_coln = c('x','y','z'),
+  score_baseline = score_baseline, 
+  lowerCutoff_transNum = lowerCutoff_transNum, 
+  higherCutoff_transNum= higherCutoff_transNum, 
+  neighbor_distance_xy = cellular_distance_cutoff,
+  distance_cutoff = molecular_distance_cutoff,
+  
+  # apply spatial constraint on cell merging vs. splitting 
+  # default to "leidenCut" for decision based on Leiden clustering of transcript coordinates, alternative use "geometryDiff" for geometric analysis 
+  spatialMergeCheck_method = "leidenCut", 
+  # list of leiden clustering configuration to pass to `igraph::cluster_leiden()` function
+  leiden_config = list(objective_function = "CPM",
+                       resolution_parameter = 1,
+                       beta = 0.01,
+                       n_iterations = 200), 
+  # minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event
+  cutoff_spatialMerge = 0.5,
+  
+  return_intermediates = TRUE, # flag to return intermediate outputs for neighborhood evaluation and resegmentation actions
+  return_perCellData = TRUE,  # flag to return additional per cell data.frame and expression matrix
+  includeAllRefGenes = FALSE # flag to include all genes in `score_GeneMatrix` in the returned `updated_perCellExprs` with missing genes of value 
+)
+
+
+# updated transcript data.frame with `updated_cellID` column reflecting the new transcript assignment to cells after refinement
+# only includes transcripts that are intracellular in original segmentation and are genes in `score_GeneMatrix` 
+updated_transDF <- finalRes[["updated_transDF"]]
+head(updated_transDF, n = 3L)
+
+# updated per cell data.table after refinement, with resegmentation operation recorded in `reSeg_action`
+updated_perCellDT <- finalRes[['updated_perCellDT']]
+head(updated_perCellDT)
+
+
+table(updated_perCellDT[['reSeg_action']])
+
+```  
+
+`runSegRefinement()` function returns a list of outputs with updated cell segmentation that could be used in further single cell analysis.  
+
+```{r description_runSegRefinement, echo=FALSE, results ='asis'}
+df2 <- data.frame(variable = c("`updated_transDF`", "`neighborhoodDF_ToReseg`", "`reseg_actions`", "", "`updated_perCellDT`", "`updated_perCellExprs`"),
+                  description = c("the updated transcript_df with `updated_cellID` and `updated_celltype` columns reflecting the new segmentation outcomes", 
+                                  "data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat()` function, return when `return_intermediates = TRUE`", 
+                                  "*list of 4 elements describing how the resegmenation would be performed on `reseg_transcript_df` by the group assignment of transcripts listed in `reseg_cellID_coln`, return when `return_intermediates = TRUE`*", 
+                                  "* `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation.\n
+                                  * `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with new cell_ID in value.\n
+                                  * `cells_to_keep`: a vector of cell ID that should be kept as it is.\n
+                                  * `reseg_full_converter`: a single named vector of cell ID to update the original cell ID, assign `NA` for `cells_to_discard`.\n", 
+                                  "per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData = TRUE`", 
+                                  "gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData = TRUE`"))
+
+pander::pander(df2, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+```
+
+##### Visualize example resegmentation outcomes 
+
+Let's check on a few cells which got changed by the segmentation refinement process. 
+
+```{r fig_newSeg, fig.show='hold'}
+# choose example cells got segmentation refinement operations of various kinds
+trimmed_cells_to_plot <- updated_perCellDT[reSeg_action == "trim" & updated_cellID %in% names(cells_to_plot), updated_cellID]
+changes_to_plot <- updated_perCellDT[!reSeg_action %in% c("none", "trim") | updated_cellID %in% trimmed_cells_to_plot , .SD, .SDcols = c('updated_cellID', 'reSeg_action')]
+
+changes_to_plot <- merge(changes_to_plot, 
+                         unique(updated_transDF[updated_transDF[['updated_cellID']] %in% changes_to_plot[['updated_cellID']], c('UMI_cellID', 'updated_cellID')]))
+changes_to_plot[, oriCellNum_in_newCell := .N, by = updated_cellID ]
+changes_to_plot[, newCellNum_from_oriCell := .N, by = UMI_cellID]
+
+## segmentation changes for the selected cells with original cell_ID in `UMI_cellID` column
+print(changes_to_plot[order(reSeg_action, - newCellNum_from_oriCell), ])
+
+
+# get all transcript in the source cells for plotting
+transDF_to_plot <- merge(
+  reSeg_ready_res[["reseg_transcript_df"]][reSeg_ready_res[["reseg_transcript_df"]][["UMI_cellID"]] %in% changes_to_plot[['UMI_cellID']], ], 
+  updated_transDF[updated_transDF[["UMI_cellID"]] %in% changes_to_plot[['UMI_cellID']], ], 
+  all.x = T)
+
+# label changed with respect to original cell segmentation
+trim_idx <- which(is.na(transDF_to_plot[['updated_cellID']]))
+alter_idx <- which(transDF_to_plot[['updated_cellID']] != transDF_to_plot[['UMI_cellID']])
+
+transDF_to_plot[['changed']] <- 'none'
+transDF_to_plot[['changed']][alter_idx] <- 'move_to_others'
+transDF_to_plot[['changed']][trim_idx] <- 'trim'
+
+# spatial plot for modification on original source cells
+cells_to_plot2 <- unique(changes_to_plot[['UMI_cellID']])
+plotSpatialScoreMultiCells(chosen_cells = cells_to_plot2,
+                           cell_labels = round(modStats_ToFlagCells[cells_to_plot2, 'lrtest_-log10P'], 2),
+                           transcript_df = transDF_to_plot,
+                           cellID_coln = "UMI_cellID",
+                           transID_coln = "UMI_transID",
+                           score_coln = "changed",
+                           spatLocs_colns = c("x","y"),
+                           point_size = 0.5, 
+                           plot_discrete = T,
+                           title = "examples of orignal cells got trimmed or split")
+
+```
+```{r fig_merge, fig.show='hold',   fig.width=8, fig.height=4}
+# spatial plot for new cells merged from multiple original cells
+cells_to_plot2 <- changes_to_plot[oriCellNum_in_newCell >1,]
+fig <- plotSpatialScoreMultiCells(chosen_cells = cells_to_plot2[['updated_cellID']],
+                                  cell_labels = cells_to_plot2[['reSeg_action']],
+                                  transcript_df = transDF_to_plot,
+                                  cellID_coln = "updated_cellID",
+                                  transID_coln = "UMI_transID",
+                                  score_coln = "UMI_cellID",
+                                  spatLocs_colns = c("x","y"),
+                                  point_size = 1, 
+                                  plot_discrete = T,
+                                  title = "examples of new cells merged from multiple orignal cells")	
+fig <- fig + ggplot2::scale_color_brewer(palette = "Dark2")
+print(fig)
+``` 
+
+## Session Info
+
+```{r sessioninfo}
+sessionInfo()
+```
