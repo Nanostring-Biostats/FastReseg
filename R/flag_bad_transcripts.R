@@ -163,7 +163,7 @@ flag_bad_transcripts <- function(chosen_cells,
   cellType_DT[['SVM_cell_type']] <- colnames(tmp_score)[max_idx_1st]
   
   # merge cell type to original transcript_df
-  transcript_df <- merge(transcript_df, cellType_DT, by = c(cellID_coln, 'SVM_class'))
+  transcript_df <- as.data.frame(merge(transcript_df, cellType_DT, by = c(cellID_coln, 'SVM_class')))
   
   return(transcript_df)
 }
@@ -348,7 +348,7 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
   cellType_DT[['LDA_cell_type']] <- colnames(tmp_score)[max_idx_1st]
   
   # merge cell type to original transcript_df
-  transcript_df <- merge(transcript_df, cellType_DT, by = c(cellID_coln, 'LDA_class'))
+  transcript_df <- as.data.frame(merge(transcript_df, cellType_DT, by = c(cellID_coln, 'LDA_class')))
   
   return(transcript_df)
 }
