@@ -1,6 +1,6 @@
 Package: FastReseg
 Title: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut", "cre")),
              person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut")))
@@ -11,6 +11,23 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
+Imports:
+    lmtest,
+    MASS,
+    Matrix,
+    stats,
+    e1071,
+    igraph,
+    spatstat.geom,
+    dbscan,
+    dplyr,
+    concaveman,
+    data.table,
+    reshape2,
+    ggplot2,
+    fs,
+    stringr, 
+    Giotto
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
