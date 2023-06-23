@@ -250,6 +250,7 @@ get_baselineCT <- function(refProfiles,
     message('Perform cluster assignment based on maximum transcript score given the provided `refProfiles`.')
 
     # assign cell type based on max values
+    # cells with zero counts would get 1st cell type in refProfiles, will be skipped in baseline calculation 
     max_idx_1st <- max.col(tLLR_cellMatrix, ties.method="first")
     clust <- colnames(tLLR_cellMatrix)[max_idx_1st]
 
@@ -259,8 +260,8 @@ get_baselineCT <- function(refProfiles,
   
   # get transcript number quantile profile ---
   all_transNum <- rowSums(counts)
-  span_transNum_CellType <- tapply(all_transNum, 
-                                   clust, 
+  span_transNum_CellType <- tapply(all_transNum[all_transNum>0], 
+                                   clust[all_transNum>0], 
                                    function(x) quantile(x, probs = seq(0, 1, 0.25)))
   span_transNum_CellType <- do.call(rbind, span_transNum_CellType)
   
@@ -273,9 +274,9 @@ get_baselineCT <- function(refProfiles,
   }
   # normalized by transcript number to get per molecule transcript score for each cell
   all_tLLR <- all_tLLR/all_transNum
-  span_tLLR_CellType <- tapply(all_tLLR, 
-                                 clust, 
-                                 function(x) quantile(x, probs = seq(0, 1, 0.25)))
+  span_tLLR_CellType <- tapply(all_tLLR[all_transNum>0], 
+                               clust[all_transNum>0], 
+                               function(x) quantile(x, probs = seq(0, 1, 0.25)))
   span_tLLR_CellType <- do.call(rbind, span_tLLR_CellType)
   
   # return final results ---
