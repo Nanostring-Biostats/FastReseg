@@ -237,6 +237,25 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
                                                      distance_cutoff = molecular_distance_cutoff,
                                                      config_spatNW_transcript = config_spatNW_transcript,
                                                      seed_transError = seed_process)
+  if(is.null(groupDF_ToFlagTrans)){
+    message("No putative contaminating transcript groups detected, no further operation is performed on this dataset.")
+    
+    # create dummy outputs for all except 'modStats_ToFlagCells'
+    outs <- makeDummyOuts_perFOV(all_genes = all_genes, 
+                                 transcript_df = transcript_df, 
+                                 transID_coln = transID_coln,
+                                 transGene_coln = transGene_coln,
+                                 cellID_coln = cellID_coln, 
+                                 spatLocs_colns = spatLocs_colns, 
+                                 return_intermediates = return_intermediates,
+                                 return_perCellData = return_perCellData, 
+                                 includeAllRefGenes = includeAllRefGenes)
+    final_res <- c(final_res, outs)
+    rm(outs)
+    
+    return(final_res)
+    
+  }
   
   if(return_intermediates){
     final_res[['groupDF_ToFlagTrans']] <- groupDF_ToFlagTrans

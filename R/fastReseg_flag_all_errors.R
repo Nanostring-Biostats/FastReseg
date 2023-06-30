@@ -298,24 +298,30 @@ fastReseg_flag_all_errors <- function(counts,
                                     model_cutoff = flagModel_TransNum_cutoff, 
                                     score_cutoff = svmClass_score_cutoff, 
                                     svm_args = svm_args)
+      if(!is.null(tmp_df)){
+        # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
+        classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
+                                     as.data.frame(tmp_df)[, c('UMI_transID','DecVal','SVM_class','SVM_cell_type')], 
+                                     by = 'UMI_transID')
+        
+        message(sprintf("Remove %d cells with raw transcript score all in same class based on cutoff %.2f when running spatial SVM model.", 
+                        length(flagged_cells) - length(unique(classDF_ToFlagTrans[['UMI_cellID']])), svmClass_score_cutoff))
+        rm(tmp_df)
+        
+        # write into disk
+        write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
+        
+        
+        # flagged transcript ID, character vector
+        flaggedSVM_transID <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
+        # assign SVM_class =0 for transcripts with low goodness-of-fit
+        transcript_df[['intraC']][['SVM_class']] <- 1- as.numeric(transcript_df[['intraC']][['UMI_transID']] %in% flaggedSVM_transID)
+      } else {
+        # no cell above transcript number cutoff and have 
+        transcript_df[['intraC']][['SVM_class']] <- 1
+      }
       
-      # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
-      classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
-                                   as.data.frame(tmp_df)[, c('UMI_transID','DecVal','SVM_class','SVM_cell_type')], 
-                                   by = 'UMI_transID')
       
-      message(sprintf("Remove %d cells with raw transcript score all in same class based on cutoff %.2f when running spatial SVM model.", 
-                      length(flagged_cells) - length(unique(classDF_ToFlagTrans[['UMI_cellID']])), svmClass_score_cutoff))
-      rm(tmp_df)
-      
-      # write into disk
-      write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
-      
-      
-      # flagged transcript ID, character vector
-      flaggedSVM_transID <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
-      # assign SVM_class =0 for transcripts with low goodness-of-fit
-      transcript_df[['intraC']][['SVM_class']] <- 1- as.numeric(transcript_df[['intraC']][['UMI_transID']] %in% flaggedSVM_transID)
     } else {
       # no cells flaggged for resegmentation
       message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")

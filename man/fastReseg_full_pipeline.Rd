@@ -33,8 +33,8 @@ fastReseg_full_pipeline(
   groupTranscripts_method = c("dbscan", "delaunay"),
   spatialMergeCheck_method = c("leidenCut", "geometryDiff"),
   cutoff_spatialMerge = 0.5,
-  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta =
-    0.01, n_iterations = 200),
+  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta = 0.01,
+    n_iterations = 200),
   config_spatNW_transcript = NULL,
   path_to_output = "reSeg_res",
   transDF_export_option = c(1, 2, 0),

@@ -85,6 +85,12 @@ flag_bad_transcripts <- function(chosen_cells,
   warning(sprintf("Below model_cutoff = %s, skip %d cells with fewer transcripts. Move forward with remaining %d cells.", 
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
+  
+  if(nrow(transcript_df)<1){
+    message("No single transcript left for the evaluation.")
+    return(NULL)
+  }
+  
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
   
@@ -115,6 +121,12 @@ flag_bad_transcripts <- function(chosen_cells,
   warning(sprintf("Skip %d cells with all transcripts in same class given `score_cutoff = %s`. Move forward with remaining %d cells.", 
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
+  
+  if(nrow(transcript_df)<1){
+    message("No single transcript left for the evaluation.")
+    return(NULL)
+  }
+  
   coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
   
   # (3) perform svm by group, not working for near-zero variance predictors
@@ -135,7 +147,6 @@ flag_bad_transcripts <- function(chosen_cells,
   
   model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
   model_stats <- do.call(rbind, model_stats)
-  # model_stats[['cell_ID']] <- sapply(strsplit(rownames(model_stats), split = "[.]"),"[[", 1)
   
   # merge SVM_class and DecVal value to original transcript_df, by cell ID first, then transcript ID
   transcript_df <- merge(transcript_df, model_stats, by.x = transID_coln, by.y = 'transcript_id', all.x = TRUE)
@@ -164,6 +175,7 @@ flag_bad_transcripts <- function(chosen_cells,
   
   # merge cell type to original transcript_df
   transcript_df <- as.data.frame(merge(transcript_df, cellType_DT, by = c(cellID_coln, 'SVM_class')))
+  
   
   return(transcript_df)
 }
@@ -254,6 +266,10 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
   warning(sprintf("Below model_cutoff = %s, skip %d cells with fewer transcripts. Move forward with remaining %d cells.", 
                   as.character(model_cutoff), length(chosen_cells) - length(chosen_cells2), length(chosen_cells2)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells2), ]
+  if(nrow(transcript_df)<1){
+    message("No single transcript left for the evaluation.")
+    return(NULL)
+  }
   # order by cell_ID before moving forward to keep same index
   data.table::setkeyv(transcript_df, c(cellID_coln, transID_coln))
   
@@ -284,6 +300,10 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
   warning(sprintf("Skip %d cells with all transcripts in same class given `score_cutoff = %s`. Move forward with remaining %d cells.", 
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
+  if(nrow(transcript_df)<1){
+    message("No single transcript left for the evaluation.")
+    return(NULL)
+  }
   coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
   
   # new spatial coordinate colns
@@ -320,7 +340,6 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
   
   model_stats <- by(coord_df, coord_df$cell_ID, my_fun)
   model_stats <- do.call(rbind, model_stats)
-  # model_stats[['cell_ID']] <- sapply(strsplit(rownames(model_stats), split = "[.]"),"[[", 1)
   
   # merge LDA_class and LD1 value to original transcript_df, by cell ID first, then transcript ID
   transcript_df <- merge(transcript_df, model_stats, by.x = transID_coln, by.y = 'transcript_id', all.x = TRUE)

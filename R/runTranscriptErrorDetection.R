@@ -57,17 +57,19 @@ runTranscriptErrorDetection <- function(chosen_cells,
   
   # `flag_bad_transcripts` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
   flagged_transDF_SVM <- flag_bad_transcripts(chosen_cells = chosen_cells,
-                                             score_GeneMatrix = score_GeneMatrix,
-                                             transcript_df = classDF_ToFlagTrans, 
-                                             cellID_coln = cellID_coln, 
-                                             transID_coln = transID_coln, 
-                                             transGene_coln = transGene_coln,
-                                             score_coln =  score_coln,
-                                             spatLocs_colns = c("x", "y", "z"), 
-                                             model_cutoff = model_cutoff, 
-                                             score_cutoff = score_cutoff, 
-                                             svm_args = svm_args)
-  
+                                              score_GeneMatrix = score_GeneMatrix,
+                                              transcript_df = classDF_ToFlagTrans, 
+                                              cellID_coln = cellID_coln, 
+                                              transID_coln = transID_coln, 
+                                              transGene_coln = transGene_coln,
+                                              score_coln =  score_coln,
+                                              spatLocs_colns = c("x", "y", "z"), 
+                                              model_cutoff = model_cutoff, 
+                                              score_cutoff = score_cutoff, 
+                                              svm_args = svm_args)
+  if(is.null(flagged_transDF_SVM)){
+    return(NULL)
+  }
   
   # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
   flagged_transDF_SVM <- merge(classDF_ToFlagTrans, 
@@ -130,7 +132,7 @@ runTranscriptErrorDetection <- function(chosen_cells,
   flagged_transDF_SVM[['group_maxCellType']] <- celltype_cellVector[flagged_transDF_SVM[['tmp_cellID']]]
   flagged_transDF_SVM <- as.data.frame(flagged_transDF_SVM)
   rm(celltype_cellVector)
-
+  
   return(flagged_transDF_SVM)
 }
 
