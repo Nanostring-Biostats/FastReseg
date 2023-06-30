@@ -176,9 +176,9 @@ runPreprocess <- function(counts,
     if(is.null(refProfiles)){
       # ignore background, use total count per cell as scaling factor
       # `estimate_MeanProfile` function returns a matrix of cluster profiles, genes X clusters
-      refProfiles <- estimate_MeanProfile( counts = as.matrix(counts), 
+      refProfiles <- estimate_MeanProfile( counts = counts, 
                                            clust = as.character(clust), 
-                                           s = Matrix::rowSums(as.matrix(counts)), 
+                                           s = Matrix::rowSums(counts), 
                                            bg = rep(0, nrow(counts)))
     }
     

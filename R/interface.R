@@ -183,10 +183,10 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
   
   # A matrix of cluster profiles, genes X clusters
   # ignore background, use total count per cell as scaling factor
-  refProfiles <- estimate_MeanProfile( counts = as.matrix(counts), 
-                                       clust = as.character(clust), 
-                                       s = Matrix::rowSums(as.matrix(counts)), 
-                                       bg = rep(0, nrow(counts)))
+  refProfiles <- estimate_MeanProfile(counts = counts, 
+                                      clust = as.character(clust), 
+                                      s = Matrix::rowSums(counts), 
+                                      bg = rep(0, nrow(counts)))
   # remove unused variables
   rm("exprs_tgrt","celltype_metadata")
   

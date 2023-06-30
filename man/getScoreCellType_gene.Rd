@@ -24,7 +24,7 @@ getScoreCellType_gene(
 \item{celltype_coln}{the column name of cell type in transcript_df}
 }
 \value{
-score_df, a data.frame of "\link{transID_coln}" and "score_\link{celltype_coln}" column for chosen cell-type
+a named vector with score of given cell type in values and transcript_id in names
 }
 \description{
 get each transcript's score based on score matrix and chosen cell-type

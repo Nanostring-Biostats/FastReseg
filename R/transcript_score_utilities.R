@@ -71,36 +71,32 @@ scoreGenesInRef <- function(genes, ref_profiles, flag_center= TRUE){
 #' @description get the cell type give maximum score
 #' @param score_GeneMatrix a gene x cell-type score matrix
 #' @param transcript_df the data.frame of transcript_ID and cell_ID
-#' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param cellID_coln the column name of cell_ID in transcript_df
-#' @param return_transMatrix logic flag whether to return the transcript level of score matrix (default = FALSE)
-#' @return return a list
-#' \enumerate{
-#'    \item{cellType_DF, a data.frame of cell_ID and cell_type}
-#'    \item{score_TransMatrix, a transcript x cell-type score matrix when return_transMatrix = TRUE}
-#' }
+#' @return return a named vector with cell type in values and cell_ID in names
 #' @export
 getCellType_maxScore <- function(score_GeneMatrix, 
                                  transcript_df, 
-                                 transID_coln = 'transcript_id',
                                  transGene_coln = "target",
-                                 cellID_coln = "cell_ID", 
-                                 return_transMatrix = FALSE){
+                                 cellID_coln = "cell_ID"){
   # check format of transcript_df
-  if(any(!c(cellID_coln, transGene_coln, transID_coln) %in% colnames(transcript_df))){
+  if(any(!c(cellID_coln, transGene_coln) %in% colnames(transcript_df))){
     stop(sprintf("Not all necessary columns can be found in provided transcript_df, missing columns include `%s`.",
-                 paste0(setdiff(c(cellID_coln, transGene_coln, transID_coln), 
+                 paste0(setdiff(c(cellID_coln, transGene_coln), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
-  
-  transcript_df <- data.table::as.data.table(transcript_df)
-  transcript_df <- transcript_df[, .SD, .SDcols = c(cellID_coln, transGene_coln, transID_coln)]
-  
-  
+
+  # convert to cell x gene count matrix
+  counts <- data.table::dcast(data.table::as.data.table(transcript_df), 
+                              formula = as.formula(paste0(cellID_coln, " ~ ", transGene_coln)), 
+                              drop = F, value.var = cellID_coln)
+  counts <- Matrix::Matrix(as.matrix(counts[, -1]), 
+                           dimnames = list(counts[[1]], colnames(counts)[-1]),
+                           sparse = T)
+
   # get common genes
   common_genes <- intersect(rownames(score_GeneMatrix), 
-                            unique(transcript_df[[transGene_coln]]))
+                            colnames(counts))
   message(sprintf("Found %d common genes among transcript_df and score_GeneMatrix. ", 
                   length(common_genes)))
   
@@ -108,39 +104,15 @@ getCellType_maxScore <- function(score_GeneMatrix,
     stop("Too few common genes to proceed. Check if score_GeneMatrix is a gene x cell-type matrix.")
   }
   
-  transcript_df <- transcript_df[which(transcript_df[[transGene_coln]] %in% common_genes), ]
+  # get cell x cell-type score matrix 
+  score_cellMatrix <- counts[, common_genes, drop = F] %*% score_GeneMatrix[common_genes, , drop = F]
   
-  
-  # get score for each transcripts
-  transcriptGeneScore <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
-  rownames(transcriptGeneScore) <- transcript_df[[transID_coln]]
-  tmp_score <- as.data.frame(transcriptGeneScore)
-  
-  # sparse matrix gave bigger size, so not to use
-  if(!return_transMatrix){
-    # to save some memory 
-    rm(transcriptGeneScore)
-  }
-  
-  
-  tmp_score[[cellID_coln]] <- transcript_df[[cellID_coln]]
-  
-  tmp_score <-data.table::setDT(tmp_score)[, lapply(.SD, sum), by = cellID_coln] 
-  tmp_cellID <- tmp_score[[cellID_coln]]
-  tmp_score[[cellID_coln]] <- NULL
   # assign cell type based on max values
-  max_idx_1st <- max.col(tmp_score,ties.method="first")
-  newCellTypes <- colnames(tmp_score)[max_idx_1st]
+  max_idx_1st <- max.col(score_cellMatrix,ties.method="first")
+  newCellTypes <- colnames(score_cellMatrix)[max_idx_1st]
+  names(newCellTypes) <- rownames(score_cellMatrix)
   
-  cellType_DF <- data.frame(cell_ID = tmp_cellID, 
-                            cell_type = newCellTypes)
-  outputs <- list(cellType_DF = cellType_DF)
-  
-  if(return_transMatrix){
-    outputs[[score_TransMatrix]] <- transcriptGeneScore 
-  }
-  
-  return(outputs)
+  return(newCellTypes)
 }
 
 
@@ -153,7 +125,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param celltype_coln the column name of cell type in transcript_df
-#' @return score_df, a data.frame of "[transID_coln]" and "score_[celltype_coln]" column for chosen cell-type
+#' @return a named vector with score of given cell type in values and transcript_id in names
 #' @export
 getScoreCellType_gene <- function(score_GeneMatrix, transcript_df, 
                                   transID_coln = "transcript_id",
@@ -166,8 +138,7 @@ getScoreCellType_gene <- function(score_GeneMatrix, transcript_df,
                  paste0(setdiff(c(transID_coln, transGene_coln, celltype_coln), 
                                 colnames(transcript_df)), collapse = "`, `")))
   }
-  transcript_df <- data.table::as.data.table(transcript_df)
-  transcript_df <- transcript_df[, .SD, .SDcols = c(transID_coln, transGene_coln, celltype_coln)]
+  transcript_df <- as.data.frame(transcript_df)[, c(transID_coln, transGene_coln, celltype_coln)]
   
   common_genes <- intersect(transcript_df[[transGene_coln]], rownames(score_GeneMatrix))
   if(length(common_genes) ==0){
@@ -176,17 +147,9 @@ getScoreCellType_gene <- function(score_GeneMatrix, transcript_df,
   
   # get same transcript_id order 
   transcript_df <- transcript_df[which(transcript_df[[transGene_coln]] %in% common_genes), ]
-  score_matrix <- score_GeneMatrix[transcript_df[[transGene_coln]], ]
   
-  # loop over each cell type to get score
-  all_celltypes <- unique(transcript_df[[celltype_coln]])
-  score_df <- data.frame(transcript_id = transcript_df[[transID_coln]], 
-                         celltype_NScore = rep(NA, nrow(transcript_df)))
-  for (each_celltype in all_celltypes){
-    rowidx <- which(transcript_df[[celltype_coln]] == each_celltype)
-    score_df[['celltype_NScore']][rowidx] <- score_matrix[rowidx, each_celltype]
-  }
-  colnames(score_df) <- c(transID_coln, paste0('score_', celltype_coln))
+  celltype_NScore <- score_GeneMatrix[as.matrix(transcript_df[, c(transGene_coln, celltype_coln)])]
+  names(celltype_NScore) <- transcript_df[[transID_coln]]
   
-  return(score_df)
+  return(celltype_NScore)
 }

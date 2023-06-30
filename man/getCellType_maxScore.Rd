@@ -7,10 +7,8 @@
 getCellType_maxScore(
   score_GeneMatrix,
   transcript_df,
-  transID_coln = "transcript_id",
   transGene_coln = "target",
-  cellID_coln = "cell_ID",
-  return_transMatrix = FALSE
+  cellID_coln = "cell_ID"
 )
 }
 \arguments{
@@ -18,20 +16,12 @@ getCellType_maxScore(
 
 \item{transcript_df}{the data.frame of transcript_ID and cell_ID}
 
-\item{transID_coln}{the column name of transcript_ID in transcript_df}
-
 \item{transGene_coln}{the column name of target or gene name in transcript_df}
 
 \item{cellID_coln}{the column name of cell_ID in transcript_df}
-
-\item{return_transMatrix}{logic flag whether to return the transcript level of score matrix (default = FALSE)}
 }
 \value{
-return a list
-\enumerate{
-\item{cellType_DF, a data.frame of cell_ID and cell_type}
-\item{score_TransMatrix, a transcript x cell-type score matrix when return_transMatrix = TRUE}
-}
+return a named vector with cell type in values and cell_ID in names
 }
 \description{
 get the cell type give maximum score

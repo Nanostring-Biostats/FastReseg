@@ -41,40 +41,32 @@ runSegErrorEvaluation <- function(score_GeneMatrix,
                                   flagModel_TransNum_cutoff = 50){
   
   ## for each cell, get new cell type based on maximum score ----
-  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-  select_cellmeta <- getCellType_maxScore(score_GeneMatrix = score_GeneMatrix, 
-                                          transcript_df = transcript_df, 
-                                          transID_coln = transID_coln,
-                                          transGene_coln = transGene_coln,
-                                          cellID_coln = cellID_coln, 
-                                          return_transMatrix = FALSE)
+  # `getCellType_maxScore` function returns a named vector with cell type in values and cell_ID in names
+  celltype_cellVector <- getCellType_maxScore(score_GeneMatrix = score_GeneMatrix, 
+                                              transcript_df = transcript_df, 
+                                              transGene_coln = transGene_coln,
+                                              cellID_coln = cellID_coln)
   
-  select_cellmeta <- select_cellmeta[['cellType_DF']]
-  colnames(select_cellmeta) <- c(cellID_coln,'tLLR_maxCellType')
-  
-  
-  all_cells <- select_cellmeta[[cellID_coln]]
-  
-  transcript_df <- merge(transcript_df, select_cellmeta, by = cellID_coln)
-  message(sprintf("Found %d cells and assigned cell type based on the provided `refProfiles` cluster profiles.", nrow(select_cellmeta)))
+  transcript_df[['tLLR_maxCellType']] <- celltype_cellVector[transcript_df[[cellID_coln]]]
+  transcript_df <- transcript_df[!is.na(transcript_df[['tLLR_maxCellType']]), ]
+  message(sprintf("Found %d cells and assigned cell type based on the provided `refProfiles` cluster profiles.", length(celltype_cellVector)))
   
   
   ##  for each transcript, calculate tLLR score based on the max cell type
-  # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
-  tmp_df <- getScoreCellType_gene(score_GeneMatrix = score_GeneMatrix, 
-                                  transcript_df = transcript_df, 
-                                  transID_coln = transID_coln,
-                                  transGene_coln = transGene_coln,
-                                  celltype_coln = 'tLLR_maxCellType')
-  transcript_df <- merge(transcript_df, tmp_df, by = transID_coln)
-  rm(tmp_df)
-  
-  
+  # `getScoreCellType_gene` function returns a named vector with score of given cell type in values and transcript_id in names
+  score_transVector <- getScoreCellType_gene(score_GeneMatrix = score_GeneMatrix, 
+                                             transcript_df = transcript_df, 
+                                             transID_coln = transID_coln,
+                                             transGene_coln = transGene_coln,
+                                             celltype_coln = 'tLLR_maxCellType')
+  transcript_df[['score_tLLR_maxCellType']] <- score_transVector[transcript_df[[transID_coln]]]
+  transcript_df <- transcript_df[!is.na(transcript_df[['score_tLLR_maxCellType']]), ]
+  rm(score_transVector)
   
   ## spatial modeling of tLLR score profile within each cell to identify cells with strong spatial dependency 
   # `score_cell_segmentation_error` function returns a data.frame with cell in row and spatial modeling outcomes in columns
   modStats_ToFlagCells <- score_cell_segmentation_error(
-    chosen_cells = all_cells, 
+    chosen_cells = names(celltype_cellVector), 
     transcript_df = transcript_df, 
     cellID_coln = cellID_coln, 
     transID_coln = transID_coln, 
@@ -85,8 +77,10 @@ runSegErrorEvaluation <- function(score_GeneMatrix,
   if(!is.null(modStats_ToFlagCells)){
     #-log10(P)
     modStats_ToFlagCells[['lrtest_-log10P']] <- -log10(modStats_ToFlagCells[['lrtest_Pr']])
-    modStats_ToFlagCells <- merge(select_cellmeta, modStats_ToFlagCells, by.x = cellID_coln, by.y = 'cell_ID')
-    
+    modStats_ToFlagCells[['tLLR_maxCellType']] <- celltype_cellVector[modStats_ToFlagCells[['cell_ID']]]
+    if(cellID_coln != 'cell_ID'){
+      colnames(modStats_ToFlagCells)[which(colnames(modStats_ToFlagCells) == 'cell_ID')] <- cellID_coln
+    }
   }
   
   outs <- list(modStats_ToFlagCells = modStats_ToFlagCells, 

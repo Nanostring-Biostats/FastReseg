@@ -135,15 +135,15 @@ runSegRefinement <- function(score_GeneMatrix,
   
   
   # get tLLR score under updated cell type
-  # `getScoreCellType_gene` function returns a data.frame with transcript in row and "[transID_coln]" and "score_[celltype_coln]" in column for chosen cell-type
-  tmp_df <- getScoreCellType_gene(score_GeneMatrix = score_GeneMatrix, 
-                                  transcript_df = post_reseg_results$updated_transDF, 
-                                  transID_coln = transID_coln,
-                                  transGene_coln = transGene_coln,
-                                  celltype_coln = 'updated_celltype')   
-  
-  post_reseg_results$updated_transDF <- merge(post_reseg_results$updated_transDF, tmp_df, by = transID_coln)
-  rm(tmp_df)
+  # `getScoreCellType_gene` function returns a named vector with score of given cell type in values and transcript_id in names
+  score_transVector <- getScoreCellType_gene(score_GeneMatrix = score_GeneMatrix, 
+                                             transcript_df = post_reseg_results$updated_transDF, 
+                                             transID_coln = transID_coln,
+                                             transGene_coln = transGene_coln,
+                                             celltype_coln = 'updated_celltype')   
+  post_reseg_results$updated_transDF[['score_updated_celltype']] <- score_transVector[post_reseg_results$updated_transDF[[transID_coln]]]
+  post_reseg_results$updated_transDF <- post_reseg_results$updated_transDF[!is.na(post_reseg_results$updated_transDF[['score_updated_celltype']]), ]
+  rm(score_transVector)
   
   # get perCell data
   if(return_perCellData){

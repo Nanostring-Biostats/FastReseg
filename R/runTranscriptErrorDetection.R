@@ -122,19 +122,15 @@ runTranscriptErrorDetection <- function(chosen_cells,
   flagged_transDF_SVM[, tmp_cellID := ifelse(connect_group == 0, get(cellID_coln), paste0(get(cellID_coln),'_g', connect_group))]
   
   # get new cell type of each group based on maximum
-  # `getCellType_maxScore` function returns a list contains element `cellType_DF`, a data.frame with cell in row, cell_ID and cell_type in column.
-  tmp_df <- getCellType_maxScore(score_GeneMatrix = score_GeneMatrix, 
-                                 transcript_df = flagged_transDF_SVM, 
-                                 transID_coln = transID_coln,
-                                 transGene_coln = transGene_coln,
-                                 cellID_coln = "tmp_cellID", 
-                                 return_transMatrix = FALSE)
-  colnames(tmp_df[['cellType_DF']]) <- c('tmp_cellID','group_maxCellType')
-  flagged_transDF_SVM <- merge(flagged_transDF_SVM, tmp_df[['cellType_DF']], by = 'tmp_cellID', all.x = TRUE)
+  # `getCellType_maxScore` function returns a named vector with cell type in values and cell_ID in names
+  celltype_cellVector <- getCellType_maxScore(score_GeneMatrix = score_GeneMatrix, 
+                                              transcript_df = flagged_transDF_SVM, 
+                                              transGene_coln = transGene_coln,
+                                              cellID_coln = "tmp_cellID")
+  flagged_transDF_SVM[['group_maxCellType']] <- celltype_cellVector[flagged_transDF_SVM[['tmp_cellID']]]
   flagged_transDF_SVM <- as.data.frame(flagged_transDF_SVM)
-  rm(tmp_df)
-  
-  
+  rm(celltype_cellVector)
+
   return(flagged_transDF_SVM)
 }
 
