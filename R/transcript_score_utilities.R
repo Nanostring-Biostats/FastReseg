@@ -89,7 +89,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
   # convert to cell x gene count matrix
   counts <- data.table::dcast(data.table::as.data.table(transcript_df), 
                               formula = as.formula(paste0(cellID_coln, " ~ ", transGene_coln)), 
-                              drop = F, value.var = cellID_coln)
+                              drop = F, value.var = cellID_coln, fun.aggregate = length)
   counts <- Matrix::Matrix(as.matrix(counts[, -1]), 
                            dimnames = list(counts[[1]], colnames(counts)[-1]),
                            sparse = T)
