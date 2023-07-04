@@ -82,6 +82,10 @@ runTranscriptErrorDetection <- function(chosen_cells,
   # flagged transcript ID, character vector
   flaggedSVM_transID <- flagged_transDF_SVM[flagged_transDF_SVM[['SVM_class']] ==0, transID_coln]
   
+  if(length(flaggedSVM_transID)<1){
+    return(NULL)
+  }
+  
   # group the low-score transcripts in space using either `groupTranscripts_dbscan` or `groupTranscripts_Delaunay` function 
   # returns a data.frame of connected transcripts among chosen_transcripts, with each transcript in row, 
   # the group ID for the connected transcript groups and the original cell ID, spatial coordinates in column.

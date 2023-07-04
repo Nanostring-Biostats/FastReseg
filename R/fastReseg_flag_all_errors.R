@@ -281,7 +281,11 @@ fastReseg_flag_all_errors <- function(counts,
     # SVM can separate continuous low score transcript from the rest.
     # but observed flagged cells with no flagged transcripts or multiple groups of flagged transcripts
     
-    if(length(flagged_cells)>0){
+    transcript_df[['intraC']][['SVM_class']] <- 1
+    
+    if(length(flagged_cells)<1){
+      message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")
+    }else {
       classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
       
       if(!is.null(seed_transError)){
@@ -289,15 +293,15 @@ fastReseg_flag_all_errors <- function(counts,
       }
       # `flag_bad_transcripts` function returns a data.frame with transcript in row, original cell_ID and SVM outcomes in column.
       tmp_df <- flag_bad_transcripts(chosen_cells = flagged_cells,
-                                    score_GeneMatrix = prep_res[['score_GeneMatrix']],
-                                    transcript_df = classDF_ToFlagTrans, 
-                                    cellID_coln = 'UMI_cellID', 
-                                    transID_coln = 'UMI_transID', 
-                                    score_coln = 'score_tLLR_maxCellType',
-                                    spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
-                                    model_cutoff = flagModel_TransNum_cutoff, 
-                                    score_cutoff = svmClass_score_cutoff, 
-                                    svm_args = svm_args)
+                                     score_GeneMatrix = prep_res[['score_GeneMatrix']],
+                                     transcript_df = classDF_ToFlagTrans, 
+                                     cellID_coln = 'UMI_cellID', 
+                                     transID_coln = 'UMI_transID', 
+                                     score_coln = 'score_tLLR_maxCellType',
+                                     spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
+                                     model_cutoff = flagModel_TransNum_cutoff, 
+                                     score_cutoff = svmClass_score_cutoff, 
+                                     svm_args = svm_args)
       if(!is.null(tmp_df)){
         # add in SVM results to flagged transcript, cells with all transcript score on same class are removed
         classDF_ToFlagTrans <- merge(classDF_ToFlagTrans, 
@@ -316,17 +320,9 @@ fastReseg_flag_all_errors <- function(counts,
         flaggedSVM_transID <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
         # assign SVM_class =0 for transcripts with low goodness-of-fit
         transcript_df[['intraC']][['SVM_class']] <- 1- as.numeric(transcript_df[['intraC']][['UMI_transID']] %in% flaggedSVM_transID)
-      } else {
-        # no cell above transcript number cutoff and have 
-        transcript_df[['intraC']][['SVM_class']] <- 1
-      }
+      } 
       
-      
-    } else {
-      # no cells flaggged for resegmentation
-      message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")
-      transcript_df[['intraC']][['SVM_class']] <- 1
-    }
+    } 
     
     
     # intracellular vs extracelluar compartment 
