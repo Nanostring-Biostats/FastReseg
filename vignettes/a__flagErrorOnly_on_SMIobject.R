@@ -19,6 +19,9 @@ setwd(sub_out_dir)
 
 
 #### (1) common settings for detection system ----
+# flag to return per cell expression matrix after trimming all putative contaminating transctipts 
+return_trimmed_perCell = TRUE 
+
 # pixel size = 0.18um/pixel, z-step size = 0.8um/step
 pixel_size = 0.18
 zStep_size = 0.8
@@ -133,7 +136,8 @@ reseg_outputs <- fastReseg_flag_all_errors(
   
   path_to_output = sub_out_dir, 
   combine_extra = TRUE,  # if TRUE, extracellular and trimmed transcripts are included in the updated transcript data.frame
-  ctrl_genes = ctrl_genes
+  ctrl_genes = ctrl_genes,
+  return_trimmed_perCell = return_trimmed_perCell
   )
 
 
@@ -223,8 +227,76 @@ jpeg(filename = fs::path(sub_out_dir, "FastReseg03_process_speed_vs_order.jpeg")
 print(p)
 dev.off()
 
+#### (5) create new giotto object using the trimmed per cell count ----
+if(return_trimmed_perCell){
+  ## (5.1) prepare expression list for multi-slot giotto object
+  # when use ctrl_genes = NULL, 
+  # NegPrb and FalseCode genes are absence from refernece profiles and thus missing in the transcript data.frame with updated cell segmentaion. 
+  # assume 0 values for both NegPrb and FalseCode genes for now
+  if(is.null(ctrl_genes)){
+    expr_lists <- list(rna = list(raw = reseg_outputs[['trimmed_perCellExprs']]))
+    expr_lists[['negprobes']] <- list(raw = matrix(0, nrow = 5,
+                                                   ncol = ncol(reseg_outputs[['trimmed_perCellExprs']]),
+                                                   dimnames = list(paste0('NegPrb', seq_len(5)),
+                                                                   colnames(reseg_outputs[['trimmed_perCellExprs']]))))
+    expr_lists[['falsecode']] <- list(raw = matrix(0, nrow = 5,
+                                                   ncol = ncol(reseg_outputs[['trimmed_perCellExprs']]),
+                                                   dimnames = list(paste0('FalseCode', seq_len(5)),
+                                                                   colnames(reseg_outputs[['trimmed_perCellExprs']]))))
+  } else {
+    tmpExp <- reseg_outputs[['trimmed_perCellExprs']]
+    
+    expr_lists <- list(rna = list(raw = tmpExp[!(rownames(tmpExp) %in% ctrl_genes), ]))
+    
+    expr_lists[['negprobes']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('NegPrb', ctrl_genes)], ])
+    expr_lists[['falsecode']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('FalseCode', ctrl_genes)], ])
+    
+    rm(tmpExp)
+    
+  }
+  
+  
+  ## (5.2) prepare cell annotation file, get it from original giotto object
+  getOriginalCellMeta <- function(path_to_SMIobject, gname = "gem", extraColns){
+    load(path_to_SMIobject)
+    cell_annotDF <- merge(Giotto::pDataDT(get(gname)), 
+                          Giotto:::select_spatial_locations(get(gname)), 
+                          by = 'cell_ID')
+    colns_to_keep <- intersect(colnames(cell_annotDF), 
+                               c('cell_ID', 'sdimx', 'sdimy',
+                                 'fov', 'Area', 'AspectRatio','Width','Height', 
+                                 'slide_ID_numeric', extraColns))
+    colns_to_keep <- c(colns_to_keep, grep('^Max|^Mean', colnames(cell_annotDF), value = T))
+    cell_annotDF <- as.data.frame(cell_annotDF)[, unique(colns_to_keep)]
+    return(cell_annotDF)
+  }
+  
+  cell_annotDF <- getOriginalCellMeta(path_to_SMIobject = path_to_SMIobject, 
+                                      extraColns = colnames(smi_inputs$sample_annot))
+  gc()
+  # rearrange cell order to be the same as expression matrix
+  cell_annotDF <- cell_annotDF[match(colnames(reseg_outputs[['trimmed_perCellExprs']]), cell_annotDF[['cell_ID']]),]
+  
+  ## (5.3) create giotto object
+  updated_SMIobj <- Giotto::createGiottoObject(expression= expr_lists,
+                                               expression_feat= names(expr_lists),
+                                               spatial_locs= cell_annotDF[, c('sdimx', 'sdimy')],
+                                               cell_metadata= list(rna = cell_annotDF, 
+                                                                   negprobes = cell_annotDF, 
+                                                                   falsecode = cell_annotDF))
+  
+  ### save new giotto object on file
+  saveRDS(updated_SMIobj, 
+       file = fs::path(sub_out_dir, 'fastResegTrimmed_updated_SMIobj.RData'))
+}
 
-#### (5) adjust the cutoff for flagging cells as needed ----
+
+
+#### Below are example scripts for adjusting individual cutoffs ----
+## no rerun of the whole pipeline, but only modify on a specific step.
+## use only when you are looking for the impact of specific parameters on a few FOVs. 
+
+#### (6) adjust the cutoff for flagging cells as needed ----
 message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error in `reseg_output`. ", 
                 length(unlist(reseg_outputs$combined_flaggedCells)), 
                 length(unlist(reseg_outputs$combined_flaggedCells))/nrow(reseg_outputs$combined_modStats_ToFlagCells)))
@@ -245,8 +317,8 @@ message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell s
                 flagCell_lrtest_cutoff))
 
 
-#### (6) redo identification of low goodness-of-fit transcript groups as needed ----
-## (6.1) cutoff for flagging transcript groups of low goodness-of-fit
+#### (7) redo identification of low goodness-of-fit transcript groups as needed ----
+## (7.1) cutoff for flagging transcript groups of low goodness-of-fit
 # spatial dimension of provided data for evaluation
 d2_or_d3 = 3
 
@@ -262,9 +334,9 @@ svm_args = list(kernel = "radial",
                 gamma = 0.4)
 
 # transcript score matrix from reference profiles
-transcript_loglik <- scoreGenesInRef(genes = rownames(reseg_outputs$refProfiles), ref_profiles = pmax(reseg_outputs$refProfiles, 1e-5))
+transcript_loglik <- FastReseg::scoreGenesInRef(genes = rownames(reseg_outputs$refProfiles), ref_profiles = pmax(reseg_outputs$refProfiles, 1e-5))
 tmp_max <- apply(transcript_loglik, 1, max)
-tLLRv2_geneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
+score_GeneMatrix <- sweep(transcript_loglik, 1, tmp_max, '-')
 rm(tmp_max, transcript_loglik)
 
 
@@ -273,27 +345,27 @@ if(!is.null(ctrl_genes)){
   message(sprintf("Include the following `ctrl_genes` in analysis: `%s`.\nIt's recommended to have total counts of those genes below 1%% of total counts of all genes in each cell.", 
                   paste0(ctrl_genes, collapse = "`, `")))
   
-  if(any(ctrl_genes %in% rownames(tLLRv2_geneMatrix))){
+  if(any(ctrl_genes %in% rownames(score_GeneMatrix))){
     message(sprintf("Overwrite transcript score for %d `ctrl_genes` shared with `refProfiles`: `%s`.", 
-                    sum(ctrl_genes %in% rownames(tLLRv2_geneMatrix)),
-                    paste0(intersect(ctrl_genes, rownames(tLLRv2_geneMatrix)), collapse = "`, `")))
+                    sum(ctrl_genes %in% rownames(score_GeneMatrix)),
+                    paste0(intersect(ctrl_genes, rownames(score_GeneMatrix)), collapse = "`, `")))
     
-    tLLRv2_geneMatrix <- tLLRv2_geneMatrix[!(rownames(tLLRv2_geneMatrix) %in% ctrl_genes), ]
+    score_GeneMatrix <- score_GeneMatrix[!(rownames(score_GeneMatrix) %in% ctrl_genes), ]
   }
   
-  tLLRv2_geneMatrix <- rbind(tLLRv2_geneMatrix, 
+  score_GeneMatrix <- rbind(score_GeneMatrix, 
                              matrix(svmClass_score_cutoff, 
-                                    nrow = length(ctrl_genes), ncol = ncol(tLLRv2_geneMatrix),
-                                    dimnames = list(ctrl_genes, colnames(tLLRv2_geneMatrix)))
+                                    nrow = length(ctrl_genes), ncol = ncol(score_GeneMatrix),
+                                    dimnames = list(ctrl_genes, colnames(score_GeneMatrix)))
   )
   
   
 }
 
-## (6.2) get file path to transcript data.frame
+## (7.2) get file path to transcript data.frame
 files_flagged_transDF <- dir(path = sub_out_dir, pattern = "^[0-9]+_flagged_transDF.csv", full.names = TRUE)
 
-## (6.3) flag transcript groups of low goodness-of-fit based on the provided cutoffs and flagged cells
+## (7.3) flag transcript groups of low goodness-of-fit based on the provided cutoffs and flagged cells
 # output folder for new data
 path_to_output <- fs::path(sub_out_dir, "newCutoff")
 if(!dir.exists(path_to_output)){
@@ -320,7 +392,7 @@ myFun_flagTranscriptsSVM <- function(eachTransDF_path){
   
   # perform SVM on flagged cells to identified transcript groups of low score
   tmp_df <- flag_bad_transcripts(chosen_cells = combined_flaggedCells,
-                                score_GeneMatrix = tLLRv2_geneMatrix,
+                                score_GeneMatrix = score_GeneMatrix,
                                 transcript_df = classDF_ToFlagTrans, 
                                 cellID_coln = 'UMI_cellID', 
                                 transID_coln = 'UMI_transID', 
@@ -358,10 +430,47 @@ myFun_flagTranscriptsSVM <- function(eachTransDF_path){
   return(res_to_return)
 }
 
-# lapply() to process all FOVs
-flagTrans_outputs <- lapply(files_flagged_transDF, myFun_flagTranscriptsSVM)
+
+# processing each FOV in parallel
+flagTrans_outputs <- parallel::mclapply(X = files_flagged_transDF, 
+                                      mc.allow.recursive = TRUE,
+                                      mc.cores = numCores(percentCores = 0.75),
+                                      FUN = myFun_flagTranscriptsSVM)
+
 flagTrans_outputs <- do.call(rbind, flagTrans_outputs)
 
 
+## (7.4) get the per cell expression after trimming for the updated flagged transDF
+trimmed_perCellExprs <- parallel::mclapply(
+  X = flagTrans_outputs$flagged_transDF, 
+  mc.allow.recursive = TRUE,
+  mc.cores = numCores(percentCores = 0.75),
+  FUN = function(flagTransDF_path){
+    flagTransDF <- read.csv(flagTransDF_path)
+    
+    # get gene x cell count matrix from transcript data.frame
+    res_to_return <- FastReseg::transDF_to_perCell_data(
+      transcript_df = data.table::as.data.table(flagTransDF)[SVM_class == 1, ], 
+      transGene_coln = 'target',
+      cellID_coln = "UMI_cellID",
+      spatLocs_colns = c('x','y','z'), 
+      celltype_coln = "SVM_cell_type",
+      return_cellMeta = FALSE)
+    
+    ## impute zero value for genes not in `res_to_return$perCell_expression` but in `score_GeneMatrix` 
+    missingGenes <- setdiff(rownames(score_GeneMatrix), 
+                            rownames(res_to_return$perCell_expression))
+    if(length(missingGenes)>0){
+      mockExprs <- matrix(0, nrow = length(missingGenes), 
+                          ncol = ncol(res_to_return$perCell_expression), 
+                          dimnames = list(missingGenes, 
+                                          colnames(res_to_return$perCell_expression)))
+      mockExprs <- Matrix::Matrix(mockExprs, sparse = TRUE)
+      res_to_return$perCell_expression <- rbind(res_to_return$perCell_expression, 
+                                                mockExprs)
+    }
+    return(res_to_return$perCell_expression)
+  })
 
+trimmed_perCellExprs <- do.call(cbind, trimmed_perCellExprs)
 
