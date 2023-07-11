@@ -280,3 +280,31 @@ checkTransFileInputsAndLoadFirst <- function(transcript_df = NULL,
   
   return(transcript_df)
 }
+
+
+#' Get number of cores for parallelized operations
+#'
+#' @param percentCores percent of cores to use for parallelization [0-1]
+#' @param minNotUsedCores minimum number of cores to leave for background processes
+#' 
+#' @return number of cores to use for mclapply
+numCores <- function(percentCores = 0.9, minNotUsedCores = 2) {
+  if(percentCores > 1 & percentCores <= 0){
+    stop("percentCores is not a valid number, must be between 0-1")
+  }
+  
+  num_cores <- 1
+  if (.Platform$OS.type == "unix") {
+    if (is.null(getOption("mc.cores"))) {
+      num_cores <- parallel::detectCores()
+      if(num_cores <= minNotUsedCores){
+        stop("minNotUsedCores must be fewer than available cores")
+      }
+      num_cores <- min(floor(num_cores*percentCores), num_cores-minNotUsedCores)
+    } else {
+      num_cores <- getOption("mc.cores") 
+    }
+  }
+  return(num_cores)
+}
+

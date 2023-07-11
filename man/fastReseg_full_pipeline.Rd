@@ -114,7 +114,7 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 
 \item{save_intermediates}{flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,}
 
-\item{return_perCellData}{flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type}
+\item{return_perCellData}{flag to return for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type, also export to output folder in disk when \code{transDF_export_option = 1}.}
 
 \item{combine_extra}{flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)}
 
@@ -151,7 +151,7 @@ evaluate the neighborhood environment of low-score transcript groups and perform
 To account for genes missing in \code{refProfiles} but present in input transcript data.frame, genes in \code{ctrl_genes} would be assigned with goodness-of-fit score equal to \code{svmClass_score_cutoff} for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those \code{ctrl_genes}, it's recommended to have total counts of those genes below 1\% of total counts of all genes in each cell.
 
 The pipeline would save the each per FOV output as individual file in \code{path_to_output} directory; \code{updated_transDF} would be saved as csv file.
-When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
+When \code{save_intermediates} = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when \code{save_intermediates} = TRUE}
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flag_bad_transcripts} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when \code{save_intermediates} = TRUE}
@@ -161,7 +161,7 @@ When save_intermediates = TRUE, all intermediate files and resegmenation outputs
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 }
-The pipeline would also combine per cell data for all FOVs, save and return the combined data when \code{return_perCellData} = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would be save as single .RData object in \code{path_to_output} directory.
+The pipeline would also combine per cell data for all FOVs and return the combined data when \code{return_perCellData} = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would also be saved as single .RData object in \code{path_to_output} directory when  \code{transDF_export_option = 1}.
 \describe{
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}

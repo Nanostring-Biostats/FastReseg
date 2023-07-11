@@ -40,9 +40,9 @@
 #' @details The function would first estimate mean profile for each cell cluster based on the provided cell x gene count matrix and cluster assignment for entire data set. 
 #' And then, the function would use the estimated cluster-specific profile as reference profiles when not provided. 
 #' For each transcript data.frame, the function would score each transcript based on the provided cell type-specific reference profiles, evaluate the goodness-of-fit of each transcript within original cell segment, and identify the low-score transcript groups within cells that has strong spatial dependency in transcript score profile. 
-#' The function would save the each per FOV output as individual file in `path_to_output` directory; `flagged_transDF`, `modStats_ToFlagCells` and `classDF_ToFlagTrans` would be saved as csv file, respectively. 
+#' When `transDF_export_option =1`, the function would save the each per FOV output as individual file in `path_to_output` directory; `flagged_transDF`, `modStats_ToFlagCells` and `classDF_ToFlagTrans` would be saved as csv file, respectively. 
 #' \describe{
-#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`, write to disk when `transDF_export_option =1`}
+#'    \item{flagged_transDF}{a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SMI_class`; the original per FOV cell ID and pixel/index-based coordinates systems are saved under columns, `CellId`, `pixel_x`, `pixel_y`, `idx_z`}
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function}
 #'    \item{classDF_ToFlagTrans}{data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flag_bad_transcripts` functions}
 #' }
@@ -136,18 +136,17 @@ fastReseg_flag_all_errors <- function(counts,
                                       seed_transError = NULL){
   transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
   if(transDF_export_option ==0){
-    message("No transcript data.frame would be exported with `transDF_export_option = 0`.")
+    message("No transcript data.frame or other per FOV outputs would be exported with `transDF_export_option = 0`.")
   } else if (transDF_export_option ==1){
-    message(sprintf("Per-FOV transcript data.frame with flagging information would be exported to disk at `path_to_output = '%s'`.", 
+    message(sprintf("Per-FOV outputs including transcript data.frame with flagging information would be exported to disk at `path_to_output = '%s'`.", 
                     path_to_output))
+    # create output directory, for per-FOV outputs 
+    if(!file.exists(path_to_output)) dir.create(path_to_output)
   } else if (transDF_export_option ==2){
     message("Per-FOV transcript data.frame with flagging information would be returned to function in list `flagged_transDF_list`.")
   } else {
     stop("Must specify how to export transcript data.frame in `transDF_export_option`.")
   }
-  
-  # create output directory, for per-FOV outputs beyond flagged_transDF
-  if(!file.exists(path_to_output)) dir.create(path_to_output)
   
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -272,8 +271,11 @@ fastReseg_flag_all_errors <- function(counts,
                       length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
       
       modStats_ToFlagCells[['file_idx']] <- idx
-      write.csv(modStats_ToFlagCells, file = fs::path(path_to_output, paste0(idx, '_modStats_ToFlagCells.csv')), row.names = FALSE)
       
+      if(transDF_export_option ==1){
+        write.csv(modStats_ToFlagCells, file = fs::path(path_to_output, paste0(idx, '_modStats_ToFlagCells.csv')), row.names = FALSE)
+      }
+
     }
     
     
@@ -313,8 +315,10 @@ fastReseg_flag_all_errors <- function(counts,
         rm(tmp_df)
         
         # write into disk
-        write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
-        
+        if(transDF_export_option ==1){
+          write.csv(classDF_ToFlagTrans, file = fs::path(path_to_output, paste0(idx, '_classDF_ToFlagTrans.csv')), row.names = FALSE)
+        }
+
         
         # flagged transcript ID, character vector
         flaggedSVM_transID <- classDF_ToFlagTrans[classDF_ToFlagTrans[['SVM_class']] ==0, 'UMI_transID']
@@ -405,8 +409,11 @@ fastReseg_flag_all_errors <- function(counts,
     return(res_to_return)
   }
   
-  # lapply() to get a list with each element to be a list of results from each FOV
-  process_outputs <- lapply(seq_len(nrow(transDF_fileInfo)), myFun_flag_eachFOV)
+  # processing each FOV in parallel
+  process_outputs <- parallel::mclapply(X = seq_len(nrow(transDF_fileInfo)), 
+                                        mc.allow.recursive = TRUE,
+                                        mc.cores = numCores(percentCores = 0.75),
+                                        FUN = myFun_flag_eachFOV)
   
   # combine `modStats_ToFlagCells` data for each FOV
   combined_modStats_ToFlagCells <- lapply(process_outputs, '[[', 'modStats_ToFlagCells')
