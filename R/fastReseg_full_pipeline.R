@@ -38,10 +38,11 @@
 #' @param path_to_output the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame `updated_transDF` is saved as individual csv files for each FOV, while cell data of all FOVs, `updated_perCellDT` and `updated_perCellExprs`, are combined to save as .RData object.
 #' @param transDF_export_option option on how to export updated transcript_df, 0 for no export, 1 for write to `path_to_output` in disk as csv for each FOV, 2 for return to function as list (default = 1)
 #' @param save_intermediates flag to save intermediate outputs into output folder, including data.frame for spatial modeling statistics of each cell,  
-#' @param return_perCellData flag to return and save to output folder for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type
+#' @param return_perCellData flag to return for gene x cell count matrix and per cell DF with updated mean spatial coordinates and new cell type, also export to output folder in disk when `transDF_export_option = 1`.
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not in `refProfiles` and expect no cell type dependency, e.g. negative control probes; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
 #' @param seed_process seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed  
+#' @param percentCores percent of cores to use for parallel processing (0-1] (default = 0.75)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -63,7 +64,7 @@
 #' To account for genes missing in `refProfiles` but present in input transcript data.frame, genes in `ctrl_genes` would be assigned with goodness-of-fit score equal to `svmClass_score_cutoff` for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those `ctrl_genes`, it's recommended to have total counts of those genes below 1% of total counts of all genes in each cell.
 #' 
 #' The pipeline would save the each per FOV output as individual file in `path_to_output` directory; `updated_transDF` would be saved as csv file. 
-#' When save_intermediates = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
+#' When `save_intermediates` = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object `each_segRes` containing the following elements: 
 #' \describe{
 #'    \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of `score_cell_segmentation_error` function, save when `save_intermediates` = TRUE}
 #'    \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flag_bad_transcripts` and `groupTranscripts_Delaunay` or `groupTranscripts_dbscan` functions, save when `save_intermediates` = TRUE}
@@ -73,7 +74,7 @@
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
-#' The pipeline would also combine per cell data for all FOVs, save and return the combined data when `return_perCellData` = TRUE; `updated_perCellDT` and `updated_perCellExprs` would be save as single .RData object in `path_to_output` directory.
+#' The pipeline would also combine per cell data for all FOVs and return the combined data when `return_perCellData` = TRUE; `updated_perCellDT` and `updated_perCellExprs` would also be saved as single .RData object in `path_to_output` directory when  `transDF_export_option = 1`.
 #' \describe{
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
@@ -217,10 +218,11 @@ fastReseg_full_pipeline <- function(counts,
                                     return_perCellData = TRUE, 
                                     combine_extra = FALSE, 
                                     ctrl_genes = NULL,
-                                    seed_process = NULL){
+                                    seed_process = NULL,
+                                    percentCores = 0.75){
   transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
   if(transDF_export_option ==0){
-    message("No transcript data.frame would be exported with `transDF_export_option = 0`.")
+    message("No transcript data.frame or per cell data would be exported with `transDF_export_option = 0`.")
   } else if (transDF_export_option ==1){
     message(sprintf("Per-FOV transcript data.frame with updated cell segmentation would be exported to disk at `path_to_output = '%s'`.", 
                     path_to_output))
@@ -230,12 +232,21 @@ fastReseg_full_pipeline <- function(counts,
     stop("Must specify how to export transcript data.frame in `transDF_export_option`.")
   }
   
-  # create output directory, for per-FOV outputs beyond updated_transDF 
-  if(!file.exists(path_to_output)) dir.create(path_to_output)
-  
+  if(transDF_export_option ==1 || save_intermediates){
+    if(!file.exists(path_to_output)) dir.create(path_to_output)
+    if(save_intermediates || return_perCellData){
+      message(sprintf("The %s would be exported to output directory at `path_to_output`.", 
+                      paste0(c("intermediate results", "per cell data")[c(save_intermediates, return_perCellData)], 
+                             collapse = " and ")))
+    }
+  }
+
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
   
+  if(percentCores > 1 & percentCores <= 0){
+    stop("percentCores is not a valid number, must be between 0-1")
+  }
   
   ## check inputs and then get baseline and cutoffs for counts
   ## if either distance cutoff is not provided, the function also checks the format of transcript data.frame provided and load 1st fov 
@@ -416,7 +427,6 @@ fastReseg_full_pipeline <- function(counts,
       # save intermediate files and all other outputs for current FOVs as single .RData
       save(each_segRes, 
            file = fs::path(path_to_output, paste0(idx, "_each_segRes.RData")))
-      
     }
     
     if(transDF_export_option ==2){
@@ -429,8 +439,11 @@ fastReseg_full_pipeline <- function(counts,
     return(res_to_return)
   }
   
-  # lapply() to get a list with each element for a list of results from each FOV
-  process_outputs <- lapply(seq_len(nrow(transDF_fileInfo)), myFun_reseg_eachFOV)
+  # processing each FOV in parallel
+  process_outputs <- parallel::mclapply(X = seq_len(nrow(transDF_fileInfo)), 
+                                        mc.allow.recursive = TRUE,
+                                        mc.cores = numCores(percentCores = percentCores),
+                                        FUN = myFun_reseg_eachFOV)
   
   ## combine data for each FOV ----
   if(return_perCellData){
@@ -443,9 +456,11 @@ fastReseg_full_pipeline <- function(counts,
     updated_perCellExprs <- do.call(cbind, updated_perCellExprs)
     
     # save combined perCell data into .RData
-    save(updated_perCellDT, 
-         updated_perCellExprs, 
-         file = fs::path(path_to_output, "combined_updated_perCellDT_perCellExprs.RData"))
+    if(transDF_export_option ==1){
+      save(updated_perCellDT, 
+           updated_perCellExprs, 
+           file = fs::path(path_to_output, "combined_updated_perCellDT_perCellExprs.RData"))
+    }
     
     all_segRes[['updated_perCellDT']] <- updated_perCellDT
     all_segRes[['updated_perCellExprs']] <- updated_perCellExprs

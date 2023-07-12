@@ -2,8 +2,8 @@ Package: FastReseg
 Title: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 Version: 0.1.1
 Authors@R: 
-    c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut", "cre")),
-             person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut")))
+    c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut")),
+             person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut", "cre")))
 Description: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
@@ -27,7 +27,8 @@ Imports:
     ggplot2,
     fs,
     stringr, 
-    Giotto
+    Giotto, 
+    parallel
 Suggests: 
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
