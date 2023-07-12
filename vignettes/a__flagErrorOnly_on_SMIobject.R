@@ -75,6 +75,7 @@ smi_inputs <- prepSMI_for_fastReseg(path_to_SMIobject = path_to_SMIobject,
 # write `transDF_fov_fileInfo` into csv file
 write.csv(smi_inputs[['transDF_fov_fileInfo']], 
           file = fs::path(sub_out_dir, 'transDF_fov_fileInfo.csv'))
+gc()
 
 #### (3) other parameters used in resegmentation workflow ----
 # ## use default values for those parameters, change them as needed below and then pass to `fastReseg_internalRef` function
@@ -91,7 +92,9 @@ write.csv(smi_inputs[['transDF_fov_fileInfo']],
 # svm_args = list(kernel = "radial", 
 #                 scale = FALSE, 
 #                 gamma = 0.4)
-
+# 
+# # percentage of cores used for parallel processing; try lower percentage if processing per FOV files with larger file size or running into memory issue
+# percentCores = 0.75
 
 #### (4) loop through each FOV to do resegmentation on pre-defined refProfiles, cutoffs ----
 ## open a log file to store all function outputs into disk
@@ -333,6 +336,9 @@ svm_args = list(kernel = "radial",
                 scale = FALSE,
                 gamma = 0.4)
 
+# percentage of cores used for parallel processing; try lower percentage if processing per FOV files with larger file size or running into memory issue
+percentCores = 0.75
+
 # transcript score matrix from reference profiles
 transcript_loglik <- FastReseg::scoreGenesInRef(genes = rownames(reseg_outputs$refProfiles), ref_profiles = pmax(reseg_outputs$refProfiles, 1e-5))
 tmp_max <- apply(transcript_loglik, 1, max)
@@ -434,7 +440,7 @@ myFun_flagTranscriptsSVM <- function(eachTransDF_path){
 # processing each FOV in parallel
 flagTrans_outputs <- parallel::mclapply(X = files_flagged_transDF, 
                                       mc.allow.recursive = TRUE,
-                                      mc.cores = numCores(percentCores = 0.75),
+                                      mc.cores = FastReseg:::numCores(percentCores = percentCores),
                                       FUN = myFun_flagTranscriptsSVM)
 
 flagTrans_outputs <- do.call(rbind, flagTrans_outputs)
@@ -444,7 +450,7 @@ flagTrans_outputs <- do.call(rbind, flagTrans_outputs)
 trimmed_perCellExprs <- parallel::mclapply(
   X = flagTrans_outputs$flagged_transDF, 
   mc.allow.recursive = TRUE,
-  mc.cores = numCores(percentCores = 0.75),
+  mc.cores = FastReseg:::numCores(percentCores = percentCores),
   FUN = function(flagTransDF_path){
     flagTransDF <- read.csv(flagTransDF_path)
     

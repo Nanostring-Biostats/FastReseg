@@ -70,7 +70,7 @@ write.csv(smi_inputs[['transDF_fov_fileInfo']],
 
 # save smi_inputs to disk
 save(smi_inputs, file = fs::path(sub_out_dir, "smi_inputs.RData"))
-
+gc()
 
 #### (3) other parameters used in resegmentation workflow ----
 # ## use default values for those parameters, change them as needed below and then pass to `fastReseg_internalRef` function
@@ -96,6 +96,9 @@ save(smi_inputs, file = fs::path(sub_out_dir, "smi_inputs.RData"))
 # 
 # # minimal percentage of transcripts shared membership between query cell and neighbor cells in leiden clustering results for a valid merging event, default = 0.5 for 50% cutoff
 # flagMerge_sharedLeiden_cutoff = 0.5
+# 
+# # percentage of cores used for parallel processing; try lower percentage if processing per FOV files with larger file size or running into memory issue
+# percentCores = 0.75
 
 #### (4) loop through each FOV to do resegmentation on pre-defined refProfiles, cutoffs ----
 ## open a log file to store all function outputs into disk

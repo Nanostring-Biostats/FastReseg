@@ -9,11 +9,11 @@
 An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 }
 \author{
-\strong{Maintainer}: Patrick Danaher \email{pdanaher@nanostring.com}
+\strong{Maintainer}: Lidan Wu \email{lwu@nanostring.com}
 
 Authors:
 \itemize{
-  \item Lidan Wu \email{lwu@nanostring.com}
+  \item Patrick Danaher \email{pdanaher@nanostring.com}
 }
 
 }

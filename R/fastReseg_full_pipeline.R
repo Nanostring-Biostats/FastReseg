@@ -42,6 +42,7 @@
 #' @param combine_extra flag to combine original extracellular transcripts and trimmed transcripts back to the updated transcript data.frame, slow process if many transcript in each FOV file. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not in `refProfiles` and expect no cell type dependency, e.g. negative control probes; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
 #' @param seed_process seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed  
+#' @param percentCores percent of cores to use for parallel processing (0-1] (default = 0.75)
 #' @return a list 
 #' \describe{
 #'    \item{refProfiles}{a genes X clusters matrix of cluster-specific reference profiles used in resegmenation pipeline}
@@ -217,7 +218,8 @@ fastReseg_full_pipeline <- function(counts,
                                     return_perCellData = TRUE, 
                                     combine_extra = FALSE, 
                                     ctrl_genes = NULL,
-                                    seed_process = NULL){
+                                    seed_process = NULL,
+                                    percentCores = 0.75){
   transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
   if(transDF_export_option ==0){
     message("No transcript data.frame or per cell data would be exported with `transDF_export_option = 0`.")
@@ -242,6 +244,9 @@ fastReseg_full_pipeline <- function(counts,
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
   
+  if(percentCores > 1 & percentCores <= 0){
+    stop("percentCores is not a valid number, must be between 0-1")
+  }
   
   ## check inputs and then get baseline and cutoffs for counts
   ## if either distance cutoff is not provided, the function also checks the format of transcript data.frame provided and load 1st fov 
@@ -437,7 +442,7 @@ fastReseg_full_pipeline <- function(counts,
   # processing each FOV in parallel
   process_outputs <- parallel::mclapply(X = seq_len(nrow(transDF_fileInfo)), 
                                         mc.allow.recursive = TRUE,
-                                        mc.cores = numCores(percentCores = 0.75),
+                                        mc.cores = numCores(percentCores = percentCores),
                                         FUN = myFun_reseg_eachFOV)
   
   ## combine data for each FOV ----

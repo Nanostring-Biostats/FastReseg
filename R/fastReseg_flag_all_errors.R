@@ -26,6 +26,7 @@
 #' @param return_trimmed_perCell flag to return a gene x cell count sparse matrix where all putative contaminating transcripts are trimmed (default = FALSE)
 #' @param combine_extra flag to combine original extracellular transcripts back to the flagged transcript data.frame. (default = FALSE)
 #' @param ctrl_genes a vector of control genes that are present in input transcript data.frame but not present in `counts` or `refProfiles`; the `ctrl_genes` would be included in FastReseg analysis. (default = NULL)
+#' @param percentCores percent of cores to use for parallel processing (0-1] (default = 0.75)
 #' @param seed_transError seed for transcript error detection step, default = NULL to skip the seed   
 #' @return a list 
 #' \describe{
@@ -133,7 +134,8 @@ fastReseg_flag_all_errors <- function(counts,
                                       return_trimmed_perCell = FALSE, 
                                       combine_extra = FALSE, 
                                       ctrl_genes = NULL,
-                                      seed_transError = NULL){
+                                      seed_transError = NULL,
+                                      percentCores = 0.75){
   transDF_export_option <- match.arg(as.character(transDF_export_option)[1], choices = c(1, 2, 0))
   if(transDF_export_option ==0){
     message("No transcript data.frame or other per FOV outputs would be exported with `transDF_export_option = 0`.")
@@ -151,6 +153,9 @@ fastReseg_flag_all_errors <- function(counts,
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
   
+  if(percentCores > 1 & percentCores <= 0){
+    stop("percentCores is not a valid number, must be between 0-1")
+  }
   
   ## check inputs and then get baseline and cutoffs for counts
   # no need to get distance cutoff for error flagging, set values to skip calculation 
@@ -412,7 +417,7 @@ fastReseg_flag_all_errors <- function(counts,
   # processing each FOV in parallel
   process_outputs <- parallel::mclapply(X = seq_len(nrow(transDF_fileInfo)), 
                                         mc.allow.recursive = TRUE,
-                                        mc.cores = numCores(percentCores = 0.75),
+                                        mc.cores = numCores(percentCores = percentCores),
                                         FUN = myFun_flag_eachFOV)
   
   # combine `modStats_ToFlagCells` data for each FOV

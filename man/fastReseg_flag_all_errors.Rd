@@ -29,7 +29,8 @@ fastReseg_flag_all_errors(
   return_trimmed_perCell = FALSE,
   combine_extra = FALSE,
   ctrl_genes = NULL,
-  seed_transError = NULL
+  seed_transError = NULL,
+  percentCores = 0.75
 )
 }
 \arguments{
@@ -81,6 +82,8 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 \item{ctrl_genes}{a vector of control genes that are present in input transcript data.frame but not present in \code{counts} or \code{refProfiles}; the \code{ctrl_genes} would be included in FastReseg analysis. (default = NULL)}
 
 \item{seed_transError}{seed for transcript error detection step, default = NULL to skip the seed}
+
+\item{percentCores}{percent of cores to use for parallel processing (0-1] (default = 0.75)}
 
 \item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
