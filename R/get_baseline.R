@@ -224,7 +224,7 @@ get_baselineCT <- function(refProfiles,
                       length(clust) - length(tmp_idx),
                       paste0(setdiff(unique(clust), colnames(refProfiles)), collapse = "`, `")))
       clust <- clust[tmp_idx]
-      counts <- as.matrix(counts)[tmp_idx, ] 
+      counts <- counts[tmp_idx, ] 
     }
 
     rm(tmp_idx)
@@ -232,8 +232,8 @@ get_baselineCT <- function(refProfiles,
   }
   
   # filter and re-order data
-  refProfiles <- as.matrix(refProfiles)[common_genes, common_celltypes]
-  counts <- as.matrix(counts)[, common_genes]
+  refProfiles <- refProfiles[common_genes, common_celltypes]
+  counts <- counts[, common_genes]
   
   # get score matrix based on refProfiles for each gene and cell ----
   # replace zero in mean profiles with 1E-5
@@ -252,6 +252,7 @@ get_baselineCT <- function(refProfiles,
     # assign cell type based on max values
     # cells with zero counts would get 1st cell type in refProfiles, will be skipped in baseline calculation 
     max_idx_1st <- max.col(tLLR_cellMatrix, ties.method="first")
+    gc()
     clust <- colnames(tLLR_cellMatrix)[max_idx_1st]
 
     common_celltypes <- unique(clust)
