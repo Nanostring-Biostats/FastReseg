@@ -47,10 +47,9 @@ scoreGenesInRef <- function(genes, ref_profiles, flag_center= TRUE){
   }
   common_feats <- sort(common_feats)
   # filter, normalize and log transform the ref_profiles
-  ref_profiles <- as.matrix(ref_profiles)
   ref_profiles <- ref_profiles[, order(colnames(ref_profiles))]
   ref_profiles <- ref_profiles[common_feats, ]
-  libsize <- colSums(ref_profiles, na.rm = TRUE)
+  libsize <- Matrix::colSums(ref_profiles, na.rm = TRUE)
   norm_exprs <- Matrix::t(Matrix::t(ref_profiles)/ libsize)
   loglik <- log(norm_exprs)
   
