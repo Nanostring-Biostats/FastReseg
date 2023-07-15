@@ -109,6 +109,7 @@ getCellType_maxScore <- function(score_GeneMatrix,
   
   # assign cell type based on max values
   max_idx_1st <- max.col(score_cellMatrix,ties.method="first")
+  gc()
   newCellTypes <- colnames(score_cellMatrix)[max_idx_1st]
   names(newCellTypes) <- rownames(score_cellMatrix)
   

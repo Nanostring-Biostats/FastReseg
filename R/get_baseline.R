@@ -252,6 +252,7 @@ get_baselineCT <- function(refProfiles,
     # assign cell type based on max values
     # cells with zero counts would get 1st cell type in refProfiles, will be skipped in baseline calculation 
     max_idx_1st <- max.col(tLLR_cellMatrix, ties.method="first")
+    gc()
     clust <- colnames(tLLR_cellMatrix)[max_idx_1st]
 
     common_celltypes <- unique(clust)
