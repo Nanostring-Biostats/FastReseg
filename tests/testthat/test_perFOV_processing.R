@@ -69,7 +69,7 @@ test_that("fastReseg_perFOV_full_process(), per FOV pipeline processing, returns
   
   # Test the presence of specific columns in the data frames or elements in list
   expect_true(all(c('UMI_transID', 'UMI_cellID', 'target', 'x', 'y', 'z', 'updated_cellID', 'updated_celltype') %in% colnames(res1$updated_transDF)))
-  expect_true(all(c('UMI_cellID', 'tLLR_maxCellType', 'transcript_num', 'lrtest_Pr', 'lrtest_-log10P', 'flagged') %in% colnames(res1$modStats_ToFlagCells)))
+  expect_true(all(c('UMI_cellID', 'tLLR_maxCellType', 'transcript_num', 'lrtest_Pr', 'lrtest_nlog10P', 'flagged') %in% colnames(res1$modStats_ToFlagCells)))
   expect_true(all(c('tmp_cellID', 'UMI_transID', 'UMI_cellID', 'target', 'x', 'y', 'z', 'DecVal', 'SVM_class', 'connect_group', 'group_maxCellType') %in% colnames(res1$groupDF_ToFlagTrans)))
   expect_true(all(c('CellId', 'cell_type', 'transcript_num', 'self_celltype', 'score_under_self', 'neighbor_CellId', 'neighbor_celltype', 'score_under_neighbor', 'corrected_CellId') %in% colnames(res1$neighborhoodDF_ToReseg)))
   expect_true(all(c('cells_to_discard', 'cells_to_update', 'cells_to_keep', 'reseg_full_converter') %in% names(res1$reseg_actions)))
@@ -94,7 +94,7 @@ outs <- runSegErrorEvaluation(
 
 modStats_ToFlagCells <- outs [['modStats_ToFlagCells']]
 
-modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_nlog10P']] > flagCell_lrtest_cutoff )
 flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
 
 test_that("runSegErrorEvaluation(), cell-level segmentation error evaluation, returns the expected outupts", {

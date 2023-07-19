@@ -77,7 +77,7 @@ gc()
 # # cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 # flagModel_TransNum_cutoff = 50 
 # 
-# # cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+# # cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 # flagCell_lrtest_cutoff = 5
 # 
 # # cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)

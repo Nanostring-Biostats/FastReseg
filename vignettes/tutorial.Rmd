@@ -29,7 +29,7 @@ This tutorial below shows how to apply functions in `FastReseg` to perform segme
 `FastReseg` package processes spatial transcriptome data through 5 different modules and provides 3 wrapper functions for streamline processing of multi-FOV dataset to different exit points.
 
 ```{r diagram, echo=FALSE, out.width = '100%'}
-knitr::include_graphics(paste0(rprojroot::find_rstudio_root_file(), "/vignettes/FastReseg_diagram.png"))
+knitr::include_graphics(paste0(rprojroot::find_rstudio_root_file(), "/vignettes/FastReseg_diagram.png"), error = FALSE)
 ```
 
 ## Input data
@@ -475,29 +475,30 @@ head(transcript_df, n = 3L)
 head(modStats_ToFlagCells)
 
 # histogram for spatial dependency in all cells
-hist(modStats_ToFlagCells$`lrtest_-log10P`, breaks = "FD", 
+tmp_flag <- which(!is.na(modStats_ToFlagCells$lrtest_nlog10P)) # exclude cells with too few transcript number
+hist(modStats_ToFlagCells$lrtest_nlog10P[tmp_flag], breaks = "FD", 
      main = paste0("Histogram of spatial dependency, mean = ", 
-                   round(mean(modStats_ToFlagCells$`lrtest_-log10P`), 2)))
-abline(v = mean(modStats_ToFlagCells$`lrtest_-log10P`), col="red", lwd=3, lty=2)
+                   round(mean(modStats_ToFlagCells$lrtest_nlog10P[tmp_flag]), 2)))
+abline(v = mean(modStats_ToFlagCells$lrtest_nlog10P[tmp_flag]), col="red", lwd=3, lty=2)
 
 ```
 
-The function above returns the statistics for evaluating each cell for spatial dependent model against null model. Based on the P value, `lrtest_Pr` or the negative log10 value `lrtest_-log10P`, one can select for cells with strong spatial dependency in transcript score profile. Those cells are likely to contain contaminating transcripts for neighbor cells. 
+The function above returns the statistics for evaluating each cell for spatial dependent model against null model. Based on the P value, `lrtest_Pr` or the negative log10 value `lrtest_nlog10P`, one can select for cells with strong spatial dependency in transcript score profile. Those cells are likely to contain contaminating transcripts for neighbor cells. 
 
 ```{r flag_cells}
 # cutoff to flag for cells with strong spatial dependcy in transcript score profiles
 flagCell_lrtest_cutoff  = 5
 
-modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_nlog10P']] > flagCell_lrtest_cutoff )
 flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
 
-message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
+message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_nlog10P > %.1f.", 
                  length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
 ```
 ```{r fig_flagCells, fig.show='hold'}
 # spatial plot some flagged cells with various degrees of spatial dependency in transcript profiles
 rownames(modStats_ToFlagCells) <- modStats_ToFlagCells$UMI_cellID
-cells_to_plot <- modStats_ToFlagCells[flagged_cells, 'lrtest_-log10P']
+cells_to_plot <- modStats_ToFlagCells[flagged_cells, 'lrtest_nlog10P']
 names(cells_to_plot) <- flagged_cells
 cells_to_plot <- cells_to_plot[order(cells_to_plot, decreasing = T)]
 cells_to_plot <- cells_to_plot[seq(1, length(cells_to_plot), by = 25)]
@@ -715,7 +716,7 @@ transDF_to_plot[['changed']][trim_idx] <- 'trim'
 # spatial plot for modification on original source cells
 cells_to_plot2 <- unique(changes_to_plot[['UMI_cellID']])
 plotSpatialScoreMultiCells(chosen_cells = cells_to_plot2,
-                           cell_labels = round(modStats_ToFlagCells[cells_to_plot2, 'lrtest_-log10P'], 2),
+                           cell_labels = round(modStats_ToFlagCells[cells_to_plot2, 'lrtest_nlog10P'], 2),
                            transcript_df = transDF_to_plot,
                            cellID_coln = "UMI_cellID",
                            transID_coln = "UMI_transID",
