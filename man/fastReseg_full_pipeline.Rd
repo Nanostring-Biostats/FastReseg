@@ -78,7 +78,7 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 
 \item{flagModel_TransNum_cutoff}{the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)}
 
-\item{flagCell_lrtest_cutoff}{the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
+\item{flagCell_lrtest_cutoff}{the cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile}
 
 \item{svmClass_score_cutoff}{the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)}
 

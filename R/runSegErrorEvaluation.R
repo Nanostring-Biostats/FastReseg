@@ -76,7 +76,7 @@ runSegErrorEvaluation <- function(score_GeneMatrix,
   
   if(!is.null(modStats_ToFlagCells)){
     #-log10(P)
-    modStats_ToFlagCells[['lrtest_-log10P']] <- -log10(modStats_ToFlagCells[['lrtest_Pr']])
+    modStats_ToFlagCells[['lrtest_nlog10P']] <- (-log10(modStats_ToFlagCells[['lrtest_Pr']]))
     modStats_ToFlagCells[['tLLR_maxCellType']] <- celltype_cellVector[modStats_ToFlagCells[['cell_ID']]]
     if(cellID_coln != 'cell_ID'){
       colnames(modStats_ToFlagCells)[which(colnames(modStats_ToFlagCells) == 'cell_ID')] <- cellID_coln

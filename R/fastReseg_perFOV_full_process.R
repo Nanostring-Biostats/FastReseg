@@ -9,7 +9,7 @@
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
-#' @param flagCell_lrtest_cutoff the cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+#' @param flagCell_lrtest_cutoff the cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 #' @param svmClass_score_cutoff the cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
 #' @param svm_args a list of arguments to pass to svm function for identifying low-score transcript groups in space, typically involve kernel, gamma, scale
 #' @param cellular_distance_cutoff maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average 2D cell diameter.
@@ -186,11 +186,11 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
     flagged_cells <- NULL
     
   } else{
-    ## (1.2) flag cells based on linear regression of tLLR, lrtest_-log10P
-    modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_-log10P']] > flagCell_lrtest_cutoff )
+    ## (1.2) flag cells based on linear regression of tLLR, lrtest_nlog10P
+    modStats_ToFlagCells[['flagged']] <- (modStats_ToFlagCells[['lrtest_nlog10P']] > flagCell_lrtest_cutoff )
     flagged_cells <- modStats_ToFlagCells[['UMI_cellID']][modStats_ToFlagCells[['flagged']]]
     
-    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_-log10P > %.1f.", 
+    message(sprintf("%d cells, %.4f of all evaluated cells, are flagged for resegmentation with lrtest_nlog10P > %.1f.", 
                     length(flagged_cells), length(flagged_cells)/nrow(modStats_ToFlagCells), flagCell_lrtest_cutoff))
     
     if(return_intermediates){
