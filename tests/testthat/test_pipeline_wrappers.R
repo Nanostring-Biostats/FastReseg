@@ -67,7 +67,7 @@ test_that("fastReseg_flag_all_errors() returns the expected output", {
   # Test the presence of specific elements within the errorFlagRes1
   expect_true(all(c("span_score", "span_transNum")  %in%  names(errorFlagRes1$baselineData)))
   expect_length(errorFlagRes1$combined_flaggedCells, nrow(transDF_fileInfo))
-  expect_true(all(c('UMI_cellID', 'tLLR_maxCellType', 'transcript_num', 'lrtest_Pr', 'lrtest_-log10P', 'flagged') %in% colnames(errorFlagRes1$combined_modStats_ToFlagCells)))
+  expect_true(all(c('UMI_cellID', 'tLLR_maxCellType', 'transcript_num', 'lrtest_Pr', 'lrtest_nlog10P', 'flagged') %in% colnames(errorFlagRes1$combined_modStats_ToFlagCells)))
   
   expect_true(identical(unique(errorFlagRes1$combined_modStats_ToFlagCells$file_idx), 
                         seq_len(nrow(transDF_fileInfo))))

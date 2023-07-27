@@ -82,7 +82,7 @@ gc()
 # # cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 # flagModel_TransNum_cutoff = 50 
 # 
-# # cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
+# # cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
 # flagCell_lrtest_cutoff = 5
 # 
 # # cutoff of transcript score to separate between high and low score transcripts in SVM (default = -2)
@@ -330,12 +330,12 @@ message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell s
 combined_modStats_ToFlagCells <- reseg_outputs$combined_modStats_ToFlagCells
 
 
-# cutoff of lrtest_-log10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile (default =5)
+# cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile (default =5)
 # lower values would flag more cells with potential segmentation error
 flagCell_lrtest_cutoff = 3
 
 # cells with potential segmentation errors, flagged by new cutoff
-combined_flaggedCells <- combined_modStats_ToFlagCells[combined_modStats_ToFlagCells['lrtest_-log10P'] > flagCell_lrtest_cutoff, 'UMI_cellID']
+combined_flaggedCells <- combined_modStats_ToFlagCells[combined_modStats_ToFlagCells['lrtest_nlog10P'] > flagCell_lrtest_cutoff, 'UMI_cellID']
 message(sprintf("%d cells, %.2f%% of all cells, are flagged for potential cell segemntation error based on provided `flagCell_lrtest_cutoff` = %.2f. ", 
                 length(combined_flaggedCells), 
                 length(combined_flaggedCells)/nrow(reseg_outputs$combined_modStats_ToFlagCells), 
