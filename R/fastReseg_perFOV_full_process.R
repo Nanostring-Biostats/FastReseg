@@ -626,7 +626,7 @@ makeDummyOuts_perFOV <- function(all_genes,
                                  value.var = transGene_coln, 
                                  fun.aggregate = length, fill = 0)
     rownames(exprs_tmp) <- exprs_tmp[['updated_cellID']]
-    exprs_tmp <- Matrix::Matrix(as.matrix(exprs_tmp[, -1]), sparse = TRUE)
+    exprs_tmp <- Matrix::Matrix(as.matrix(exprs_tmp[, -1, drop = F]), sparse = TRUE)
     
     perCell_expression <- Matrix::t(exprs_tmp)
     
