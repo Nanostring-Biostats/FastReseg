@@ -344,7 +344,7 @@ fastReseg_flag_all_errors <- function(counts,
     if(return_trimmed_perCell){
       res_to_return <- transDF_to_perCell_data(
         transcript_df = data.table::as.data.table(transcript_df[['intraC']])[SVM_class == 1, ], 
-        transGene_coln = transGene_coln,
+        transGene_coln = 'target',
         cellID_coln = "UMI_cellID",
         spatLocs_colns = c('x','y','z')[1:d2_or_d3], 
         celltype_coln = "SVM_cell_type",
