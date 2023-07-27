@@ -291,15 +291,14 @@ if(return_trimmed_perCell){
   
   cell_annotDF[['trimmed_nCount_RNA']] <- (cell_annotDF[['ori_nCount_RNA']] - cell_annotDF[['post_nCount_RNA']])
   cell_annotDF[['trimmed_fraction']] <- (cell_annotDF[['trimmed_nCount_RNA']] / cell_annotDF[['ori_nCount_RNA']])
-  
-  
-  # rearrange cell order to be the same as expression matrix
-  cell_annotDF <- cell_annotDF[match(colnames(reseg_outputs[['trimmed_perCellExprs']]), cell_annotDF[['cell_ID']]),]
   cell_annotDF[['in_ori_gem']] <- (!is.na(cell_annotDF$ori_nCount_RNA))
   
   # add in evaluation outcomes 
   tmp_meta <- reseg_outputs$combined_modStats_ToFlagCells
   cell_annotDF <- merge(cell_annotDF, tmp_meta, by.x = 'cell_ID', by.y = 'UMI_cellID', all.x = T)
+  
+  # rearrange cell order to be the same as expression matrix
+  cell_annotDF <- cell_annotDF[match(colnames(reseg_outputs[['trimmed_perCellExprs']]), cell_annotDF[['cell_ID']]),]
   
 
   ## (5.3) create giotto object
