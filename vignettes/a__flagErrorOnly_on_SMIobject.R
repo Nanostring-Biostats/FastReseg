@@ -248,8 +248,9 @@ if(return_trimmed_perCell){
                                                                    colnames(reseg_outputs[['trimmed_perCellExprs']]))))
   } else {
     tmpExp <- reseg_outputs[['trimmed_perCellExprs']]
+    missingGenes <- grep('NegPrb|FalseCode', ctrl_genes, invert = T, value = T)
     
-    expr_lists <- list(rna = list(raw = tmpExp[!(rownames(tmpExp) %in% ctrl_genes), ]))
+    expr_lists <- list(rna = list(raw = tmpExp[!(rownames(tmpExp) %in% setdiff(ctrl_genes, missingGenes)), ]))
     
     expr_lists[['negprobes']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('NegPrb', ctrl_genes)], ])
     expr_lists[['falsecode']] <- list(raw = tmpExp[rownames(tmpExp) %in% ctrl_genes[grepl('FalseCode', ctrl_genes)], ])
@@ -277,9 +278,29 @@ if(return_trimmed_perCell){
   cell_annotDF <- getOriginalCellMeta(path_to_SMIobject = path_to_SMIobject, 
                                       extraColns = colnames(smi_inputs$sample_annot))
   gc()
+  
+  # add in old counts
+  tmp_meta <- Matrix::rowSums(smi_inputs$counts)
+  cell_annotDF[['ori_nCount_RNA']] <- tmp_meta[cell_annotDF$cell_ID]
+  
+  # add in new counts 
+  tmp_meta <- Matrix::colSums(expr_lists$rna$raw)
+  tmp_meta <- data.frame(cell_ID = names(tmp_meta), 
+                         post_nCount_RNA = tmp_meta)
+  cell_annotDF <- merge(tmp_meta, cell_annotDF, by = 'cell_ID', all.x = T)
+  
+  cell_annotDF[['trimmed_nCount_RNA']] <- (cell_annotDF[['ori_nCount_RNA']] - cell_annotDF[['post_nCount_RNA']])
+  cell_annotDF[['trimmed_fraction']] <- (cell_annotDF[['trimmed_nCount_RNA']] / cell_annotDF[['ori_nCount_RNA']])
+  cell_annotDF[['in_ori_gem']] <- (!is.na(cell_annotDF$ori_nCount_RNA))
+  
+  # add in evaluation outcomes 
+  tmp_meta <- reseg_outputs$combined_modStats_ToFlagCells
+  cell_annotDF <- merge(cell_annotDF, tmp_meta, by.x = 'cell_ID', by.y = 'UMI_cellID', all.x = T)
+  
   # rearrange cell order to be the same as expression matrix
   cell_annotDF <- cell_annotDF[match(colnames(reseg_outputs[['trimmed_perCellExprs']]), cell_annotDF[['cell_ID']]),]
   
+
   ## (5.3) create giotto object
   updated_SMIobj <- Giotto::createGiottoObject(expression= expr_lists,
                                                expression_feat= names(expr_lists),
@@ -290,7 +311,7 @@ if(return_trimmed_perCell){
   
   ### save new giotto object on file
   saveRDS(updated_SMIobj, 
-       file = fs::path(sub_out_dir, 'fastResegTrimmed_updated_SMIobj.RData'))
+       file = fs::path(sub_out_dir, 'fastResegTrimmed_updated_SMIobj.rds'))
 }
 
 

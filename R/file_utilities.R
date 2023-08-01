@@ -134,7 +134,7 @@ prepare_perFOV_transDF <- function(each_transDF,
   # remove extracellular transcript from each_transDF
   if(!is.null(extracellular_cellID)){
     if(length(extracellular_cellID)>0){
-      extraC_idx <- which(each_transDF[[cellID_coln]] %in% extracellular_cellID)
+      extraC_idx <- which(each_transDF[['CellId']] %in% extracellular_cellID)
       intraC_idx <- setdiff(seq_len(nrow(each_transDF)), extraC_idx)
       
       if(length(extraC_idx)>0){

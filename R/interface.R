@@ -238,9 +238,9 @@ prepSMI_for_fastReseg <- function(path_to_SMIobject,
     fileInfo_to_use[['slideName']] <- sample_annot[['slidenameColumn']][idx]
     
     # fov offset position
-    fov_offsets <- read.csv(sample_annot[['fovOffsetPath']][idx], header = FALSE, 
-                            col.names = c("SlidePerRun", "X_mm", "Y_mm", "Z_mm", "ZOffset_mm", 
-                                          "ROI", "fov"))
+    fov_offsets <- read.csv(sample_annot[['fovOffsetPath']][idx], header = FALSE)
+    colnames(fov_offsets) <- c("SlidePerRun", "X_mm", "Y_mm", "Z_mm", "ZOffset_mm", 
+                                          "ROI", "fov", "acq_order") [1: ncol(fov_offsets)]
     # SMI assay has flipped axes between fov coordinates on stage and the pixel coordinates within individual FOV image
     # flip the xy axes to align stage coordinates to image coordinates
     fov_offsets[['offset_y']] <- fov_offsets[['X_mm']]*1000
