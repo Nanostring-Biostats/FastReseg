@@ -8,11 +8,11 @@
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param score_coln the column name of score in transcript_df
-#' @param spatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param spatLocs_colns the column names of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param model_cutoff the cutoff of transcript number to do spatial modeling (default = 50)
 #' @param score_cutoff the cutoff of score to separate between high and low score transcripts (default = -2)
 #' @param svm_args a list of arguments to pass to svm function, typically involve kernel, gamma, scale
-#' @param groupTranscripts_method use either "dbscan" or "delaunay method" to group transcripts in space (default = "dbscan")
+#' @param groupTranscripts_method use either "dbscan" or "delaunay" method to group transcripts in space (default = "dbscan")
 #' @param distance_cutoff maximum molecule-to-molecule distance within same transcript group (default = "auto")
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config
 #' @param seed_transError seed for transcript error detection step, default = NULL to skip the seed   

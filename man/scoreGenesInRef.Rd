@@ -11,7 +11,7 @@ scoreGenesInRef(genes, ref_profiles, flag_center = TRUE)
 
 \item{ref_profiles}{a gene X cell_type expression matrix for reference profiles}
 
-\item{flag_center}{flag to center the score matrix per gene before turn, default = TRUE}
+\item{flag_center}{flag to center the score matrix per gene before return, default = TRUE}
 }
 \value{
 loglik, a gene X cell_type matrix of centered loglik score for each gene

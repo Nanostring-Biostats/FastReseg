@@ -37,7 +37,7 @@ estimate_MeanProfile <- function(counts, clust, s, bg) {
 #' @description calculate log-likilhood score of each gene based on reference expression profiles and return the centered score matrix
 #' @param genes a vector of gene name to score
 #' @param ref_profiles a gene X cell_type expression matrix for reference profiles
-#' @param flag_center flag to center the score matrix per gene before turn, default = TRUE 
+#' @param flag_center flag to center the score matrix per gene before return, default = TRUE 
 #' @return loglik, a gene X cell_type matrix of centered loglik score for each gene
 #' @export
 scoreGenesInRef <- function(genes, ref_profiles, flag_center= TRUE){

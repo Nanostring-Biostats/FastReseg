@@ -92,8 +92,8 @@ a list
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, return when \code{return_intermediates} = TRUE}
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flag_bad_transcripts} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, return when \code{return_intermediates} = TRUE}
-\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{get_neighborhood_content} function, return when \code{return_intermediates} = TRUE}
-\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations_leidenCut} function, return when \code{return_intermediates} = TRUE}
+\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood environment of low-score transcript groups, output of \code{get_neighborhood_content} function, return when \code{return_intermediates} = TRUE}
+\item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations} function, return when \code{return_intermediates} = TRUE}
 \item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter}
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
