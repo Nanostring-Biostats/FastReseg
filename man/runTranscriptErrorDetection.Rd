@@ -37,21 +37,21 @@ runTranscriptErrorDetection(
 
 \item{score_coln}{the column name of score in transcript_df}
 
+\item{spatLocs_colns}{the column names of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
+
 \item{model_cutoff}{the cutoff of transcript number to do spatial modeling (default = 50)}
 
 \item{score_cutoff}{the cutoff of score to separate between high and low score transcripts (default = -2)}
 
 \item{svm_args}{a list of arguments to pass to svm function, typically involve kernel, gamma, scale}
 
-\item{groupTranscripts_method}{use either "dbscan" or "delaunay method" to group transcripts in space (default = "dbscan")}
+\item{groupTranscripts_method}{use either "dbscan" or "delaunay" method to group transcripts in space (default = "dbscan")}
 
 \item{distance_cutoff}{maximum molecule-to-molecule distance within same transcript group (default = "auto")}
 
 \item{config_spatNW_transcript}{configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config}
 
 \item{seed_transError}{seed for transcript error detection step, default = NULL to skip the seed}
-
-\item{spatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
 }
 \value{
 data frame for transcripts in \code{chosen_cells} only, containing information for transcript score classifications and spatial group assignments as well as new cell/group ID for downstream resegmentation.

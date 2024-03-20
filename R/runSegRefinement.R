@@ -27,9 +27,9 @@
 #' @param seed_segRefine seed for transcript error correction step, default = NULL to skip the seed     
 #' @return a list 
 #' \describe{
-#'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of `get_neighborhood_content` function, return when `return_intermediates` = TRUE}
-#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations_leidenCut` function, return when `return_intermediates` = TRUE}
+#'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` columns based on reseg_full_converter}
+#'    \item{neighborhoodDF_ToReseg}{a data.frame for neighborhood environment of low-score transcript groups, output of `get_neighborhood_content` function, return when `return_intermediates` = TRUE}
+#'    \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations` function, return when `return_intermediates` = TRUE}
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
@@ -225,7 +225,7 @@ runSegRefinement <- function(score_GeneMatrix,
 #' @return a list 
 #' \describe{
 #'    \item{updated_transDF}{the updated transcript_df with `updated_cellID` and `updated_celltype` column based on reseg_full_converter}
-#'    \item{perCell_DT}{a per cell data.table with mean sptial coordinates and new cell type when return_perCellDF = TRUE}
+#'    \item{perCell_DT}{a per cell data.table with mean spatial coordinates and new cell type when return_perCellDF = TRUE}
 #'    \item{perCell_expression}{a gene x cell count sparse matrix for updated transcript data.frame when return_perCellDF = TRUE}
 #' }
 #' @details Update transcript data.frame based on resegmentation action and get new cell type; when return_perCellDF = TRUE, return gene x cell count matrix and per cell data.frame with mean per cell spatial coordinates and new cell type.

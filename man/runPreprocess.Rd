@@ -59,6 +59,8 @@ If set to NULL, the pipeline would first randomly choose no more than 2500 cells
 
 \item{transDF_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided \code{transcript_df} directly}
 
+\item{filepath_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
+
 \item{prefix_colns}{the column names of annotation in \code{transDF_fileInfo}, to be added to the CellId as prefix when creating unique cell_ID for entire dataset; set to NULL if use the original \code{transID_coln} or \code{cellID_coln}}
 
 \item{fovOffset_colns}{the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in \code{transDF_fileInfo}, unit in micron
@@ -77,8 +79,6 @@ Notice that some assays like SMI has XY axes swapped between stage and each FOV 
 \item{spatLocs_colns}{column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in \code{transcript_df}}
 
 \item{extracellular_cellID}{a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)}
-
-\item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
 \value{
 a nested list

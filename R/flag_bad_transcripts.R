@@ -7,7 +7,7 @@
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param score_coln the column name of score in transcript_df
-#' @param spatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param spatLocs_colns the column names of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param model_cutoff the cutoff of transcript number to do spatial modeling (default = 50)
 #' @param score_cutoff the cutoff of score to separate between high and low score transcripts (default = -2)
 #' @param svm_args a list of arguments to pass to svm function, typically involve kernel, gamma, scale
@@ -191,7 +191,7 @@ flag_bad_transcripts <- function(chosen_cells,
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transGene_coln the column name of target or gene name in transcript_df
 #' @param score_coln the column name of score in transcript_df
-#' @param spatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
+#' @param spatLocs_colns the column names of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param model_cutoff the cutoff of transcript number to do spatial modeling (default = 50)
 #' @param score_cutoff the cutoff of score to separate between high and low score transcripts (default = -2)
 #' @return a data.frame 

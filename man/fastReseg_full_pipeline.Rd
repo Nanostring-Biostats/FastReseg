@@ -55,6 +55,8 @@ fastReseg_full_pipeline(
 
 \item{transDF_fileInfo}{a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire dataset; when NULL, use the provided \code{transcript_df} directly}
 
+\item{filepath_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
+
 \item{prefix_colns}{the column names of annotation in \code{transDF_fileInfo}, to be added to the CellId as prefix when creating unique cell_ID for entire dataset; set to NULL if use the original \code{transID_coln} or \code{cellID_coln}}
 
 \item{fovOffset_colns}{the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in \code{transDF_fileInfo}, unit in micron
@@ -124,8 +126,6 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 \item{seed_process}{seed for per FOV processing, used in transcript error detection and correction steps, default = NULL to skip the seed}
 
 \item{percentCores}{percent of cores to use for parallel processing (0-1] (default = 0.75)}
-
-\item{filepath_fov_coln}{the column name of each individual file of per FOV transcript data.frame in \code{transDF_fileInfo}}
 }
 \value{
 a list
@@ -158,7 +158,7 @@ When \code{save_intermediates} = TRUE, all intermediate files and resegmenation 
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when \code{save_intermediates} = TRUE}
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flag_bad_transcripts} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when \code{save_intermediates} = TRUE}
-\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood enviornment of low-score transcript groups, output of \code{get_neighborhood_content} function, save when \code{save_intermediates} = TRUE}
+\item{neighborhoodDF_ToReseg}{a data.frame for neighborhood environment of low-score transcript groups, output of \code{get_neighborhood_content} function, save when \code{save_intermediates} = TRUE}
 \item{reseg_actions}{a list of 4 elements describing how the resegmenation would be performed on original \code{transcript_df} by the group assignment of transcripts listed in \code{groupDF_ToFlagTrans}, output of \code{decide_ReSegment_Operations} function, save when \code{save_intermediates} = TRUE}
 \item{updated_transDF}{the updated transcript_df with \code{updated_cellID} and \code{updated_celltype} column based on reseg_full_converter, write to disk when \code{transDF_export_option =1}}
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}

@@ -39,7 +39,7 @@ choose_distance_cutoff(
 a list
 \describe{
 \item{cellular_distance_cutoff}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. }
-\item{perCell_coordDT}{a data.table with cell in row, spatial XY coordiantes of centroid and dimensions of bounding box in column}
+\item{perCell_coordDT}{a data.table with cell in row, spatial XY coordinates of centroid and dimensions of bounding box in column}
 \item{molecular_distance_cutoff}{maximum molecule-to-molecule distance within connected transcript group, same unit as input spatial coordinate; return if run_molecularDist = TRUE}
 \item{distance_profile}{a named vector for the quantile profile of minimal molecular distance between transcripts belong to different cells at step size of 10\% quantile; return if run_molecularDist = TRUE}
 }

@@ -18,6 +18,8 @@ getNeighbors_transDF(
 
 \item{neighbor_distance_xy}{maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average cell diameter.}
 
+\item{transcript_df}{the data.frame with transcript_id, cell_id and spatail coordinates}
+
 \item{cellID_coln}{the column name of cell_ID in transcript_df}
 
 \item{transID_coln}{the column name of transcript_ID in transcript_df}

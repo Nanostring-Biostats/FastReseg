@@ -24,7 +24,7 @@
 #' @return a list 
 #' \enumerate{
 #'    \item{cells_to_discard, a vector of cell ID that should be discarded during resegmentation}
-#'    \item{cells_to_update, a named vector of cell ID whether the cell_ID in name would be replaced with cell_ID in value.}
+#'    \item{cells_to_update, a named vector of cell ID where the cell_ID in name would be replaced with cell_ID in value.}
 #'    \item{cells_to_keep, a vector of cell ID that should be kept as it is.}
 #'    \item{reseg_full_converter, a single named vector of cell ID to update the original cell ID, assign NA for cells_to_discard.}
 #' }

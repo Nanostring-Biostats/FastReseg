@@ -17,6 +17,8 @@ myFun_3point_singleCell(
 \item{transSpatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
 
 \item{distance_cutoff}{maximum distance within connected transcript group}
+
+\item{startGroup}{the index of starting group ID}
 }
 \value{
 a data.table with \code{transcript_group} column added to original input data.table

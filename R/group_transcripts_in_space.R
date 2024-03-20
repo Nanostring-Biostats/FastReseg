@@ -10,7 +10,7 @@
 #' #' \enumerate{
 #'    \item{cellID_coln, orignal cell_ID}
 #'    \item{transID_coln, connected transcripts among chosen_transcripts}
-#'    \item{transSpatLocs_coln, spatial coordiantes of transcript}
+#'    \item{transSpatLocs_coln, spatial coordinates of transcript}
 #'    \item{transcript_group, group of chosen_transcripts}
 #' } 
 #' @details For query cell, group flagged transcripts only based on their molecular distance to each other. When distance cutoff = 'auto', use 20% average XY cell range as cutoff. In case of no more than 3 flagged transcripts per cell, determine the grouping based on distance cutoff directly. In case of more transcripts per cell, use \code{dbscan} to group transcripts with distance_cutoff as `eps` and `minPts = 1`.  
@@ -121,7 +121,7 @@ groupTranscripts_dbscan <- function(chosen_transcripts = NULL,
 #' #' \enumerate{
 #'    \item{cellID_coln, orignal cell_ID}
 #'    \item{transID_coln, connected transcripts among chosen_transcripts}
-#'    \item{transSpatLocs_coln, spatial coordiantes of transcript}
+#'    \item{transSpatLocs_coln, spatial coordinates of transcript}
 #'    \item{transcript_group, group of chosen_transcripts}
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
@@ -141,8 +141,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
                                       transcript_df, 
                                       cellID_coln = "CellId", 
                                       transID_coln = "transcript_id",
-                                      transSpatLocs_coln = c('x','y','z'), 
-                                      visualize_network = FALSE){
+                                      transSpatLocs_coln = c('x','y','z')){
   
   # `distance_cutoff` is for orphan transcript determination, not for spatial network building which is defined in `config_spatNW_transcript` separately
   if(distance_cutoff =='auto'){
@@ -450,6 +449,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
 #' @param dfCoord_subset transcript data.table for single cell with only 3 transcripts in rows
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df
 #' @param distance_cutoff maximum distance within connected transcript group 
+#' @param startGroup the index of starting group ID
 #' @return a data.table with `transcript_group` column added to original input data.table
 #' @importFrom data.table as.data.table setDT
 # function for 3 point case in a single cell only

@@ -31,7 +31,7 @@ data frame of connected transcripts among chosen_transcripts
 #' \enumerate{
 \item{cellID_coln, orignal cell_ID}
 \item{transID_coln, connected transcripts among chosen_transcripts}
-\item{transSpatLocs_coln, spatial coordiantes of transcript}
+\item{transSpatLocs_coln, spatial coordinates of transcript}
 \item{transcript_group, group of chosen_transcripts}
 }
 }

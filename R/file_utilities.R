@@ -166,7 +166,7 @@ prepare_perFOV_transDF <- function(each_transDF,
 #' @description check input formats for transcript data.frame file list and load 1st fov
 #' @param transcript_df the data.frame of transcript level information with unique CellId, set to NULL if read from the `transDF_fileInfo`
 #' @param transDF_fileInfo a data.frame with each row for each individual file of per FOV transcript data.frame within which the coordinates and CellId are unique, columns include the file path of per FOV transcript data.frame file, annotation columns like slide and fov to be used as prefix when creating unique cell_ID across entire data set; when NULL, use the provided `transcript_df` directly
-#' @param filepath_fov_coln the column name of each individual file of per FOV transcript data.frame in `transDF_fileInfo`
+#' @param filepath_coln the column name of each individual file of per FOV transcript data.frame in `transDF_fileInfo`
 #' @param prefix_colns the column names of annotation in `transDF_fileInfo`, to be added to the CellId as prefix when creating unique cell_ID for entire data set; set to NULL if use the original `transID_coln` or `cellID_coln` 
 #' @param fovOffset_colns the column name of coordinate offsets in 1st and 2nd dimension for each per FOV transcript data.frame in `transDF_fileInfo`, unit in micron
 #' Notice that some assays like SMI has XY axes swapped between stage and each FOV such that `fovOffset_colns` should be c("stage_Y", "stage_X").

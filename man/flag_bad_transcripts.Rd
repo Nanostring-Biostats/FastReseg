@@ -33,13 +33,13 @@ flag_bad_transcripts(
 
 \item{score_coln}{the column name of score in transcript_df}
 
+\item{spatLocs_colns}{the column names of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
+
 \item{model_cutoff}{the cutoff of transcript number to do spatial modeling (default = 50)}
 
 \item{score_cutoff}{the cutoff of score to separate between high and low score transcripts (default = -2)}
 
 \item{svm_args}{a list of arguments to pass to svm function, typically involve kernel, gamma, scale}
-
-\item{spatLocs_coln}{the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df}
 }
 \value{
 a data.frame
