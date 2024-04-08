@@ -23,7 +23,8 @@
 #'    \item{sample_annot}{a data.frame of sample annotation with each row for each slide, columns for file path and metedata that are read from file path of `config_loading[["annotfile"]]`.}
 #'    \item{ctrl_genes}{a vector of ctrl genes in SMI object, include all feat_ID not under `rna` feat_type. }
 #' }
-#' @details The function requires the pre-built \code{"Giotto"} object that contains single cell typing results on original cell segmentation outcomes. This pre-built object may contain multi-slide multi-FOV data and should be built with raw data whose file path information is stored in `config_loading`.
+#' @details The function requires the pre-built \code{"Giotto"} object that contains single cell typing results on original cell segmentation outcomes. The pre-built object is expected to have same data structure as the ones built with \code{"Giotto(==2.0.0.9021)"}. For pre-built object with different data structure, please refer to `vignettes\tutorial.Rmd` for preprocessing steps. 
+#' This pre-built object may contain multi-slide multi-FOV data and should be built with raw data whose file path information is stored in `config_loading`.
 #' `config_loading` should contain at least the following 6 elements:
 #' \describe{
 #'    \item{annotfile}{file path to the sample annotation file}
@@ -36,7 +37,6 @@
 #' The function would first calculate reference profiles, `refProfiles`, and several cutoffs from the entire dataset, including the cutoffs for transcript number, `lowerCutoff_transNum` and `higherCutoff_transNum`, the cutoff for transcript tLLR score `score_baseline`, and the center-to-center distance cutoff for neighbor cells with direct contact, `cellular_distance_cutoff`.
 #' Then, the function would check the existence of fov offset position and transcript data.frame for each FOV in each slide. 
 #' Lastly, the function would prepare `transDF_fov_fileInfo` to be used with `fastReseg_internalRef` function for downstream resegmentation workflow which would use either NULL or a user-defined value for `molecular_distance_cutoff`, the molecule-to-molecule distance cutoff for neighbor molecules belonging to same cell. When `molecular_distance_cutoff` is set to NULL in downstream `fastReseg_internalRef` function, `molecular_distance_cutoff` would then be estimated from transcript data for the first FOV transcript data.frame. 
-#' @importFrom Giotto pDataDT
 #' @export 
 prepSMI_for_fastReseg <- function(path_to_SMIobject, 
                                   config_loading, 
