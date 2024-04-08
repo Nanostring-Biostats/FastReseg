@@ -65,8 +65,10 @@ refProfiles <- example_refProfiles
 
 # create `transDF_fileInfo` for multiple per FOV transcript data.frame 
 # coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
-transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-                                             "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+dataDir <- system.file("extdata", package = "FastReseg")
+transDF_fileInfo <- data.frame(file_path = fs::path(dataDir, 
+                                                    c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                                      "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
                                slide = c(1, 1),
                                fov = c(1,2),
                                stage_X = 1000*c(5.13, -2.701),
@@ -669,7 +671,7 @@ table(updated_perCellDT[['reSeg_action']])
 ```{r description_runSegRefinement, echo=FALSE, results ='asis'}
 df2 <- data.frame(variable = c("`updated_transDF`", "`neighborhoodDF_ToReseg`", "`reseg_actions`", "", "`updated_perCellDT`", "`updated_perCellExprs`"),
                   description = c("the updated transcript_df with `updated_cellID` and `updated_celltype` columns reflecting the new segmentation outcomes", 
-                                  "data.frame for neighborhood enviornment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat()` function, return when `return_intermediates = TRUE`", 
+                                  "data.frame for neighborhood environment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat()` function, return when `return_intermediates = TRUE`", 
                                   "*list of 4 elements describing how the resegmenation would be performed on `reseg_transcript_df` by the group assignment of transcripts listed in `reseg_cellID_coln`, return when `return_intermediates = TRUE`*", 
                                   "* `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation.\n
                                   * `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with new cell_ID in value.\n

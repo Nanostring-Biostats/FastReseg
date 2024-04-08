@@ -5,9 +5,9 @@
 \title{createSpatialDelaunayNW_from_spatLocs}
 \usage{
 createSpatialDelaunayNW_from_spatLocs(
-  config_spatNW = list(name = "spatial_network", dimensions = "all", method = "Delaunay",
-    minimum_k = 0, delaunay_method = "delaunayn_geometry", maximum_distance_delaunay =
-    "auto", options = "Pp", Y = TRUE, j = TRUE, S = 0),
+  config_spatNW = list(name = "spatial_network", dimensions = "all", method =
+    "Delaunay", minimum_k = 0, delaunay_method = "delaunayn_geometry",
+    maximum_distance_delaunay = "auto", options = "Pp", Y = TRUE, j = TRUE, S = 0),
   spatLocs_df,
   ID_column = "cell_ID",
   spatLocs_column = c("sdimx", "sdimy", "sdimz")
@@ -23,13 +23,13 @@ createSpatialDelaunayNW_from_spatLocs(
 \item{spatLocs_column}{column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in \code{spatLocs_df}}
 }
 \value{
-delaunay_network_Obj, a spatial network object created by \code{Giotto} functions
+delaunay_network_Obj, a spatial network object created by \code{GiottoClass} functions
 }
 \description{
-generate delaunay network based on provided config and spatial location using \code{Giotto} functions
+generate delaunay network based on provided config and spatial location using \code{GiottoClass} functions
 }
 \details{
-This function leverages \code{Giotto} package to create spatial networks from spatial coordinates. An example \code{config_spatNW} list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for \code{Giotto::createSpatialNetwork}.
+This function leverages \code{GiottoClass} package to create spatial networks from spatial coordinates. An example \code{config_spatNW} list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for \code{GiottoClass::createSpatialNetwork}.
 #' ' \describe{
 \item{name}{spatial network name; default = 'spatial_network'}
 \item{dimensions}{a vector for which spatial dimensions to use, default = 'all' to use all dimentions}

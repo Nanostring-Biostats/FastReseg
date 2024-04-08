@@ -6,7 +6,7 @@ data("example_CellGeneExpr")
 data("example_clust")
 data("example_refProfiles")
 
-dataDir = gsub("tests/testthat", "data", getwd())
+dataDir = system.file("extdata", package = "FastReseg")
 
 # create `transDF_fileInfo` for multiple per FOV transcript data.frame 
 # coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.

@@ -33,8 +33,8 @@ fastReseg_full_pipeline(
   groupTranscripts_method = c("dbscan", "delaunay"),
   spatialMergeCheck_method = c("leidenCut", "geometryDiff"),
   cutoff_spatialMerge = 0.5,
-  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta = 0.01,
-    n_iterations = 200),
+  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta =
+    0.01, n_iterations = 200),
   config_spatNW_transcript = NULL,
   path_to_output = "reSeg_res",
   transDF_export_option = c(1, 2, 0),
@@ -209,8 +209,10 @@ data("example_clust")
 # update your path accordingly
 # Notice that some assays like SMI has XY axes swapped between stage and each FOV;
 # coordinates for each FOV should have units in micron
-fileInfo_DF <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-                                        "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+dataDir <- system.file("extdata", package = "FastReseg")
+fileInfo_DF <- data.frame(file_path = fs::path(dataDir,
+                                               c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                                 "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
                           slide = c(1, 1),
                           fov = c(1,2),
                           stage_X = 1000*c(5.13, -2.701),

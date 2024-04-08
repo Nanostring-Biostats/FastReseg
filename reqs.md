@@ -248,11 +248,11 @@ A `data.frame` for transcripts of interest only, containing columns for cell ids
 ##### Inputs:
 
 -   a `data.frame` for spatial location of each entry for cell or transcript
--   a configure list on controlling the spatial network generation.For more details, see the manual for `Giotto::createSpatialNetwork`.
+-   a configure list on controlling the spatial network generation.For more details, see the manual for `GiottoClass::createSpatialNetwork`.
 
 ##### Outputs:
 
-a `delaunay_network_Obj`, a spatial network object created by `Giotto` functions. For more details, see the manual for `Giotto::createSpatialNetwork`.
+a `delaunay_network_Obj`, a spatial network object created by `GiottoClass` functions. For more details, see the manual for `GiottoClass::createSpatialNetwork`.
 
 #### Reqs for groupTranscripts_dbscan:
 

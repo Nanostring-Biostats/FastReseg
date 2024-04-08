@@ -218,7 +218,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
             outputs[['merge']] <- FALSE
           }else{
             # run leiden clustering on igraph
-            network_edge_dt <- delaunayNW_Obj$networkDT[, c("from", "to", "weight"), with = F]
+            network_edge_dt <- delaunayNW_Obj@networkDT[, c("from", "to", "weight"), with = F]
             # assign init membership based on source cell_ID, query cell = 2, neighbor cell =1
             init_membership <- as.integer(df_subset[[cellID_coln]] == query_cellID) +1
             names(init_membership) <- df_subset[[transID_coln]]
@@ -390,7 +390,7 @@ decide_ReSegment_Operations <- function(neighborhood_df,
 
 #' @title check_config_leiden
 #' @description check config used for leiden clustering, assign default values if missing arguments
-#' @param config a list of config would be used to create spatial network using delaunay method only via Giotto::createSpatialNetwork
+#' @param config a list of config would be used to create spatial network using delaunay method only via GiottoClass::createSpatialNetwork
 #' @return the corrected config list
 check_config_leiden <- function(config){
   if(is.null(config$objective_function)){

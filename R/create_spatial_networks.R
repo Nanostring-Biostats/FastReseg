@@ -1,12 +1,12 @@
 #' @title createSpatialDelaunayNW_from_spatLocs
-#' @description generate delaunay network based on provided config and spatial location using `Giotto` functions
+#' @description generate delaunay network based on provided config and spatial location using `GiottoClass` functions
 #' @param config_spatNW configuration list 
 #' @param spatLocs_df data.frame for spatial location of each entry for cell or transcript
 #' @param ID_column column name for entry ID in `spatLocs_df`
 #' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in `spatLocs_df` 
 #' @importFrom data.table as.data.table
-#' @return delaunay_network_Obj, a spatial network object created by `Giotto` functions
-#' @details This function leverages `Giotto` package to create spatial networks from spatial coordinates. An example `config_spatNW` list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for `Giotto::createSpatialNetwork`. 
+#' @return delaunay_network_Obj, a spatial network object created by `GiottoClass` functions
+#' @details This function leverages `GiottoClass` package to create spatial networks from spatial coordinates. An example `config_spatNW` list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for `GiottoClass::createSpatialNetwork`. 
 #'#' ' \describe{
 #'    \item{name}{spatial network name; default = 'spatial_network'}
 #'    \item{dimensions}{a vector for which spatial dimensions to use, default = 'all' to use all dimentions}
@@ -86,10 +86,12 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
     second_dimension = colnames(spatLocs_matrix)[[2]]
     spatLoc_in_use <- spatial_locations[, c("cell_ID", first_dimension, second_dimension), with = F]
     if (method == "RTriangle") {
-      delaunay_output = Giotto:::create_delaunayNetwork_RTriangle(spatial_locations = spatLoc_in_use, 
-                                                                  sdimx = first_dimension, sdimy = second_dimension, 
-                                                                  Y = config_spatNW$Y, j = config_spatNW$j, S = config_spatNW$S)
-      outputObj = delaunay_output$geometry_obj
+      delaunay_output = GiottoClass:::.create_delaunaynetwork_RTriangle(
+        spatial_locations = spatLoc_in_use, 
+        sdimx = first_dimension, sdimy = second_dimension, 
+        Y = config_spatNW$Y, j = config_spatNW$j, S = config_spatNW$S)
+      
+      outputObj = delaunay_output$RTriangle_obj
       delaunay_network_DT = delaunay_output$delaunay_network_DT
       parameters = list(maximum_distance = config_spatNW$maximum_distance_delaunay, 
                         minimum_k = config_spatNW$minimum_k, 
@@ -98,18 +100,22 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       
     }
     else if (method == "deldir") {
-      delaunay_output = Giotto:::create_delaunayNetwork_deldir(spatial_locations = spatLoc_in_use, 
-                                                               sdimx = first_dimension, sdimy = second_dimension)
-      outputObj = delaunay_output$geometry_obj
+      delaunay_output = GiottoClass:::.create_delaunaynetwork_deldir(
+        spatial_locations = spatLoc_in_use, 
+        sdimx = first_dimension, sdimy = second_dimension)
+      
+      outputObj = delaunay_output$deldir_obj
       delaunay_network_DT = delaunay_output$delaunay_network_DT
       parameters = list(maximum_distance = config_spatNW$maximum_distance_delaunay, 
                         minimum_k = config_spatNW$minimum_k)
       outputObj = outputObj
     }
     else if (method == "delaunayn_geometry") {
-      delaunay_output = Giotto:::create_delaunayNetwork_geometry(spatial_locations = spatLoc_in_use, 
-                                                                 sdimx = first_dimension, sdimy = second_dimension, 
-                                                                 options = config_spatNW$options)
+      delaunay_output = GiottoClass:::.create_delaunaynetwork_geometry(
+        spatial_locations = spatLoc_in_use, 
+        sdimx = first_dimension, sdimy = second_dimension, 
+        options = config_spatNW$options)
+      
       outputObj = delaunay_output$geometry_obj
       delaunay_network_DT = delaunay_output$delaunay_network_DT
       parameters = list(options = config_spatNW$options)
@@ -120,10 +126,12 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       return(NULL)
     }
     
-    delaunay_network_DT = Giotto:::calculate_distance_and_weight(delaunay_network_DT, 
-                                                                 sdimx = first_dimension, 
-                                                                 sdimy = second_dimension, 
-                                                                 d2_or_d3 = 2)
+    delaunay_network_DT = GiottoClass:::.calculate_distance_and_weight(
+      delaunay_network_DT, 
+      sdimx = first_dimension, 
+      sdimy = second_dimension, 
+      d2_or_d3 = 2)
+    
   }else if (d2_or_d3 == 3) {
     if (method != "delaunayn_geometry") {
       stop(method, " method only applies to 2D data, use delaunayn_geometry, see details \n")
@@ -134,9 +142,11 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       second_dimension = colnames(spatLocs_matrix)[[2]]
       third_dimension = colnames(spatLocs_matrix)[[3]]
       spatLoc_in_use <- spatial_locations[, c("cell_ID", first_dimension, second_dimension,third_dimension), with = F]
-      delaunay_output <- Giotto:::create_delaunayNetwork_geometry_3D(spatial_locations = spatLoc_in_use, 
-                                                                     sdimx = first_dimension, sdimy = second_dimension, 
-                                                                     sdimz = third_dimension, options = config_spatNW$options)
+      delaunay_output <- GiottoClass:::.create_delaunaynetwork_geometry_3d(
+        spatial_locations = spatLoc_in_use, 
+        sdimx = first_dimension, sdimy = second_dimension, 
+        sdimz = third_dimension, options = config_spatNW$options)
+      
       outputObj = delaunay_output$geometry_obj
       delaunay_network_DT = delaunay_output$delaunay_network_DT
       parameters = list(options = config_spatNW$options)
@@ -148,31 +158,35 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       return(NULL)
     }
     
-    delaunay_network_DT = Giotto:::calculate_distance_and_weight(delaunay_network_DT, 
-                                                                 sdimx = first_dimension, sdimy = second_dimension,
-                                                                 sdimz = third_dimension, d2_or_d3 = 3)
+    delaunay_network_DT = GiottoClass:::.calculate_distance_and_weight(
+      delaunay_network_DT, 
+      sdimx = first_dimension, sdimy = second_dimension,
+      sdimz = third_dimension, d2_or_d3 = 3)
     
     
   }
   
   networkDT_before_filter = delaunay_network_DT
-  delaunay_network_DT = Giotto:::filter_network(networkDT_before_filter, 
-                                                maximum_distance = config_spatNW$maximum_distance_delaunay, 
-                                                minimum_k = config_spatNW$minimum_k)
-  meanCellDistance = Giotto:::get_distance(delaunay_network_DT, method = "mean")
-  medianCellDistance = Giotto:::get_distance(delaunay_network_DT, method = "median")
+  delaunay_network_DT = GiottoClass:::.filter_network(networkDT_before_filter, 
+                                                      maximum_distance = config_spatNW$maximum_distance_delaunay, 
+                                                      minimum_k = config_spatNW$minimum_k)
+  meanCellDistance = GiottoClass:::get_distance(delaunay_network_DT, method = "mean")
+  medianCellDistance = GiottoClass:::get_distance(delaunay_network_DT, method = "median")
   cellShapeObj = list(meanCellDistance = meanCellDistance, 
                       medianCellDistance = medianCellDistance)
-  delaunay_network_Obj = Giotto:::create_spatialNetworkObject(name = config_spatNW$name, 
-                                                              method = method, parameters = parameters, outputObj = outputObj, 
-                                                              networkDT = delaunay_network_DT, networkDT_before_filter = networkDT_before_filter, 
-                                                              cellShapeObj = cellShapeObj, misc = NULL)
+  delaunay_network_Obj = new("spatialNetworkObj", 
+                             name = config_spatNW$name, 
+                             method = method, parameters = parameters, outputObj = outputObj, 
+                             networkDT = delaunay_network_DT, networkDT_before_filter = networkDT_before_filter, 
+                             cellShapeObj = cellShapeObj, crossSectionObjects = NULL, 
+                             spat_unit = "cell", provenance = NULL, misc = NULL)
   return(delaunay_network_Obj)
   
 }
 
 
-#' checking whether a single value in config have correct data type, length and value range
+#' @title checkTypeLengthValue
+#' @description checking whether a single value in config have correct data type, length and value range
 #' @param config the list storing config
 #' @param name parameter name in config list
 #' @param expect_type expected data type for vector, e.g. c("numeric","integer") for integer values, "character", "logical", etc
@@ -181,22 +195,22 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
 #' @param expect_value a single numeric value or a character vector that would be used to check against with expect_range, NULL for any value
 #' @return a message if config[[name]] does not satisfy the criteria
 #' @examples 
-#' config <- list(pos_Integer = 1, neg_value = -0.2, flag = TRUE, 
-#' length2character = c("a","b"))
+#' config <- list(pos_Integer = 1, neg_value = -0.2, flag = TRUE,
+#'                length2character = c("a","b"))
 #' # check if positive integer of any length
-#' checkTypeLengthValue(config, "pos_Integer", 
-#'                      expect_type = c("numeric","integer"), 
-#'                      expect_range = "larger", expect_value = 0)
+#' FastReseg:::checkTypeLengthValue(config, "pos_Integer",
+#'                                  expect_type = c("numeric","integer"),
+#'                                  expect_range = "larger", expect_value = 0)
 #' # check if negative value of any length
-#' checkTypeLengthValue(config, "neg_value", 
-#'                      expect_type = "numeric", 
-#'                      expect_range = "smaller", expect_value = 0)
+#' FastReseg:::checkTypeLengthValue(config, "neg_value",
+#'                                  expect_type = "numeric",
+#'                                  expect_range = "smaller", expect_value = 0)
 #' # check if logical value
-#' checkTypeLengthValue(config, "flag", expect_type = "logical")
+#' FastReseg:::checkTypeLengthValue(config, "flag", expect_type = "logical")
 #' # check if character has 2 elements within c("a","b")
-#' checkTypeLengthValue(config, "length2character", 
-#'                      expect_type = "character", expect_len = 2,
-#'                      expect_range = "within", expect_value = c("a","b"))
+#' FastReseg:::checkTypeLengthValue(config, "length2character",
+#'                                  expect_type = "character", expect_len = 2,
+#'                                  expect_range = "within", expect_value = c("a","b"))
 checkTypeLengthValue <- function(config, name, 
                                  expect_type, 
                                  expect_len = NULL,
@@ -290,9 +304,9 @@ checkTypeLengthValue <- function(config, name,
 
 #' @title check_config_spatialNW
 #' @description check config used to create spatial network, assign default values if missing arguments
-#' @param config a list of config would be used to create spatial network using delaunay method only via Giotto::createSpatialNetwork
+#' @param config a list of config would be used to create spatial network using delaunay method only via GiottoClass::createSpatialNetwork
 #' @param spat_locs a data.frame with spatial location info
-#' @importFrom Giotto createSpatialNetwork
+#' @importFrom GiottoClass createSpatialNetwork
 #' @return the corrected config list
 check_config_spatialNW <- function(config, spat_locs){
   # check config, assign default value if NULL

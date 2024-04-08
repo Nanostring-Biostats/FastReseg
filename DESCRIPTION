@@ -27,8 +27,10 @@ Imports:
     ggplot2,
     fs,
     stringr, 
-    Giotto, 
+    GiottoClass(>= 0.2.3), 
     parallel
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    pander,
+    Giotto
 Config/testthat/edition: 3

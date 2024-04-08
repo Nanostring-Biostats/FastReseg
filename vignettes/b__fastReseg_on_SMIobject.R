@@ -1,5 +1,7 @@
 #### pipeline to process multi-FOV multi-slide data
 ## The pipeline assumes the pre-existing of single cell typing results on original cell segmentation outcomes. 
+## The pre-built object is expected to have same data structure as the ones built with `Giotto 2.0.0.9021`. 
+## For pre-built object with different data structure, please refer to `vignettes\tutorial.Rmd` for preprocessing steps. 
 ## Firstly, calculate reference profiles and cutoffs for transcript number and transcript tLLR score, `cellular_distance_cutoff` on entire data set;
 ## Secondly, check the existence of fov offset position and transcript data.frame for each FOV in each slide; 
 ## Thirdly, estimate `molecular_distance_cutoff` that defining the neighborhood from 1st FOV of 1st slide. 
@@ -7,6 +9,15 @@
 
 library(ggplot2)
 library(FastReseg)
+
+# install correct version of Giotto for SMITAP object
+if(packageVersion("Giotto") != "2.0.0.9021"){
+  remotes::install_github("drieslab/Giotto/commit/0c8c2866e881b1c6b35ddc97c24dcb58b555c375")
+}
+
+
+# helper function for extracting data from pre-built Giotto object
+source(fs::path(system.file("extdata", package = "FastReseg"), "SMITAP_interface.R"))
 
 main_output_dir <- '/home/rstudio/NAS_data/lwu/testRun/SpatialTest/giotto_test/SMITAP_proj/SMI003_DavidTing_MGH'
 sub_out_dir <- fs::path(main_output_dir, "fastReseg01")

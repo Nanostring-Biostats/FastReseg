@@ -158,8 +158,10 @@ prep_res2 <- runPreprocess(
   extracellular_cellID = 0 
 )
 # case 3: provide both `refProfiles` and `clust`, use transDF_fileInfo for multi-files, no known molecular distance cutoffs
-transDF_fileInfo <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-                                             "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+dataDir <- system.file("extdata", package = "FastReseg")
+transDF_fileInfo <- data.frame(file_path = fs::path(dataDir,
+                                                    c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                                      "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
                                slide = c(1, 1),
                                fov = c(1,2),
                                stage_X = 1000*c(5.13, -2.701),

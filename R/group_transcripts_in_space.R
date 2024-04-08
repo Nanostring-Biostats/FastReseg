@@ -356,7 +356,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
       # if failed to give delaunay network, assign separate group to exact same coordinates
       if(!is.null(delaunayNW_Obj)){
         # make decision based on network
-        transNetWorkDT <- delaunayNW_Obj$networkDT
+        transNetWorkDT <- delaunayNW_Obj@networkDT
         
         ## convert to igraph object
         all_index = unique(x = c(transNetWorkDT$from, transNetWorkDT$to))

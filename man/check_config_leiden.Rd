@@ -7,7 +7,7 @@
 check_config_leiden(config)
 }
 \arguments{
-\item{config}{a list of config would be used to create spatial network using delaunay method only via Giotto::createSpatialNetwork}
+\item{config}{a list of config would be used to create spatial network using delaunay method only via GiottoClass::createSpatialNetwork}
 }
 \value{
 the corrected config list
