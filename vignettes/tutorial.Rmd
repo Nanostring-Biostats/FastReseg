@@ -29,7 +29,7 @@ This tutorial below shows how to apply functions in `FastReseg` to perform segme
 `FastReseg` package processes spatial transcriptome data through 5 different modules and provides 3 wrapper functions for streamline processing of multi-FOV dataset to different exit points.
 
 ```{r diagram, echo=FALSE, out.width = '100%'}
-knitr::include_graphics(paste0(rprojroot::find_rstudio_root_file(), "/vignettes/FastReseg_diagram.png"), error = FALSE)
+knitr::include_graphics(paste0(system.file("vignettes", package = "FastReseg"), "/FastReseg_diagram.png"), error = FALSE)
 ```
 
 ## Input data
