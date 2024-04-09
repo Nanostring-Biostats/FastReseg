@@ -31,5 +31,8 @@ Imports:
 Suggests: 
     testthat (>= 3.0.0),
     pander,
-    Giotto
+    Giotto,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
+VignetteBuilder: knitr

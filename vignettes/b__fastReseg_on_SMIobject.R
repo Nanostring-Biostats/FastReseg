@@ -11,7 +11,9 @@ library(ggplot2)
 library(FastReseg)
 
 # install correct version of Giotto for SMITAP object
-if(packageVersion("Giotto") != "2.0.0.9021"){
+if(!requireNamespace("Giotto")){
+  remotes::install_github("drieslab/Giotto/commit/0c8c2866e881b1c6b35ddc97c24dcb58b555c375")
+} else if(packageVersion("Giotto") != "2.0.0.9021"){
   remotes::install_github("drieslab/Giotto/commit/0c8c2866e881b1c6b35ddc97c24dcb58b555c375")
 }
 
