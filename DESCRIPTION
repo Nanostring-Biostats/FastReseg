@@ -16,9 +16,9 @@ Imports:
     Matrix,
     stats,
     e1071,
-    igraph,
+    igraph (>= 1.2.4.1),
     spatstat.geom,
-    dbscan,
+    dbscan (>= 1.1-3),
     dplyr,
     concaveman,
     data.table,
@@ -26,13 +26,16 @@ Imports:
     ggplot2,
     fs,
     stringr, 
-    GiottoClass(>= 0.2.3), 
+    GiottoClass(>= 0.2.3),
+    geometry(>= 0.4.6.1),
     parallel
 Suggests: 
     testthat (>= 3.0.0),
     pander,
-    Giotto,
     knitr,
-    rmarkdown
+    rmarkdown,
+    RTriangle (>= 1.6-0.10),
+    deldir (>= 1.0.6),
+    Giotto
 Config/testthat/edition: 3
 VignetteBuilder: knitr
