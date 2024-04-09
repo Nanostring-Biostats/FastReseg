@@ -305,6 +305,16 @@ numCores <- function(percentCores = 0.9, minNotUsedCores = 2) {
       num_cores <- getOption("mc.cores") 
     }
   }
+  
+  # limit the core number during R CMD check
+  limitCores <- as.logical(Sys.getenv("_R_CHECK_LIMIT_CORES_", "false"))
+  ## Possible values: 'TRUE' 'false', 'warn', 'error'
+  if(!is.na(limitCores)){
+    if(limitCores){
+      num_cores <- min(2, num_cores)
+    }
+  }
+  
   return(num_cores)
 }
 

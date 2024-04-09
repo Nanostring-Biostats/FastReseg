@@ -4,7 +4,7 @@
 \name{FastReseg-package}
 \alias{FastReseg}
 \alias{FastReseg-package}
-\title{FastReseg: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts}
+\title{FastReseg: An R package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts}
 \description{
 An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 }
