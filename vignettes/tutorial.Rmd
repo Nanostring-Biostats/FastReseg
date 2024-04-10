@@ -233,7 +233,7 @@ str(refineAll_res)
 list.files("res2_multiFiles")
 ``` 
 
-`fastReseg_full_pipeline()` returns the new cell expression count matrix `updated_perCellExprs` and spatial coordinate data.frame `updated_perCellDT` when `return_perCellData = TRUE`. It also writes the transcript data.frame updated with new cell segmentation outcomes into individual `updated_transDF.csv` files at FOV level under `path_to_output` directory. Intermediate results, including `modStats_ToFlagCells` and `groupDF_ToFlagTrans` for cell-level and transcript-level segmentation evaluation, are also saved into individual `each_segRes.RData` object at FOV level when `save_intermediates = TRUE`. For more details, please refer to the manuals of `fastReseg_full_pipeline()` and see section [Processing each FOV outside of core wrapper] for excerpts of example outputs.
+`fastReseg_full_pipeline()` returns the new cell expression count matrix `updated_perCellExprs` and spatial coordinate data.frame `updated_perCellDT` when `return_perCellData = TRUE`. It also writes the transcript data.frame updated with new cell segmentation outcomes into individual `updated_transDF.csv` files at FOV level under `path_to_output` directory. Intermediate results, including `modStats_ToFlagCells` and `groupDF_ToFlagTrans` for cell-level and transcript-level segmentation evaluation, are also saved into individual `each_segRes.rds` object at FOV level when `save_intermediates = TRUE`. For more details, please refer to the manuals of `fastReseg_full_pipeline()` and see section [Processing each FOV outside of core wrapper] for excerpts of example outputs.
 
 ## Modular functions for individual tasks
 

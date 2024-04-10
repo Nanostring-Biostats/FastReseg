@@ -20,7 +20,7 @@
     -   Returns a gene x cell count sparse matrix for updated transcript data.frame after resegmentation. -- test: test_pipeline_wrappers.R#L134 -- test: test_pipeline_wrappers.R#L142
 -   If run with `save_intermediates = TRUE`,
     -   Returns a list of 4 elements describing how the resegmenation would be performed on original transcript `data.frame`. -- test: test_pipeline_wrappers.R#L132 -- test: test_pipeline_wrappers.R#L147
-    -   Saves all intermediate files and resegmenation outputs of each FOV as single `.RData` object per FOV. -- test: test_pipeline_wrappers.R#L154-157
+    -   Saves all intermediate files and resegmenation outputs of each FOV as single `.rds` object per FOV. -- test: test_pipeline_wrappers.R#L154-157
 -   If run with `save_intermediates = TRUE` and `transDF_export_option =1`,
     -   Saves each of the per FOV outputs as individual files with columns for resegmented outcomes, e.g. `updated_cellID` and `updated_celltype`. -- test: test_pipeline_wrappers.R#L155 -- test: test_pipeline_wrappers.R#L160
 

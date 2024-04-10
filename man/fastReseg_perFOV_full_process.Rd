@@ -24,8 +24,8 @@ fastReseg_perFOV_full_process(
   groupTranscripts_method = c("dbscan", "delaunay"),
   spatialMergeCheck_method = c("leidenCut", "geometryDiff"),
   cutoff_spatialMerge = 0.5,
-  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta =
-    0.01, n_iterations = 200),
+  leiden_config = list(objective_function = "CPM", resolution_parameter = 1, beta = 0.01,
+    n_iterations = 200),
   config_spatNW_transcript = NULL,
   return_intermediates = TRUE,
   return_perCellData = TRUE,

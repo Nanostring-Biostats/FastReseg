@@ -199,6 +199,8 @@ fastReseg_flag_all_errors <- function(counts,
     filepath_coln = 'file_path'
     fovOffset_colns = c('stage_X', 'stage_Y')
     prefix_colns = NULL
+  }else{
+    transDF_fileInfo <- as.data.frame(transDF_fileInfo)
   }
   
   ## initialize list to collect each FOV outputs ----
@@ -295,7 +297,8 @@ fastReseg_flag_all_errors <- function(counts,
     if(length(flagged_cells)<1){
       message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")
     }else {
-      classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
+      classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),
+                                                       setdiff(colnames(transcript_df[['intraC']]), c('DecVal','SVM_class','SVM_cell_type'))]
       
       if(!is.null(seed_transError)){
         set.seed(seed_transError)

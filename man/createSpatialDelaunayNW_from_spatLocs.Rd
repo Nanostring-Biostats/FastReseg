@@ -5,9 +5,9 @@
 \title{createSpatialDelaunayNW_from_spatLocs}
 \usage{
 createSpatialDelaunayNW_from_spatLocs(
-  config_spatNW = list(name = "spatial_network", dimensions = "all", method =
-    "Delaunay", minimum_k = 0, delaunay_method = "delaunayn_geometry",
-    maximum_distance_delaunay = "auto", options = "Pp", Y = TRUE, j = TRUE, S = 0),
+  config_spatNW = list(name = "spatial_network", dimensions = "all", method = "Delaunay",
+    minimum_k = 0, delaunay_method = "delaunayn_geometry", maximum_distance_delaunay =
+    "auto", options = "Pp", Y = TRUE, j = TRUE, S = 0),
   spatLocs_df,
   ID_column = "cell_ID",
   spatLocs_column = c("sdimx", "sdimy", "sdimz")

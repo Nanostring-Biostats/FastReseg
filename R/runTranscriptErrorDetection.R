@@ -45,7 +45,8 @@ runTranscriptErrorDetection <- function(chosen_cells,
   }
   
   # transcript data.frame for flagged cells only, including column for transcript scores
-  classDF_ToFlagTrans <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells),]
+  classDF_ToFlagTrans <- as.data.frame(transcript_df)[which(transcript_df[[cellID_coln]] %in% chosen_cells),
+                                                      setdiff(colnames(transcript_df), c('DecVal','SVM_class','SVM_cell_type'))]
   
   if(nrow(classDF_ToFlagTrans)<1) {
     stop("Error: No transcripts within `chosen_cells`.")

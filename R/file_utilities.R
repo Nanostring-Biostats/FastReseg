@@ -11,8 +11,11 @@ myFun_fov_load <- function(path_to_fov){
   } else if (grepl(".txt$", path_to_fov)){
     each_transDF <- read.csv(path_to_fov, sep = '\t', header = TRUE)
     
+  } else if (grepl(".rds$", path_to_fov, ignore.case = TRUE)){
+    each_transDF <- readRDS(path_to_fov)
+    
   } else {
-    stop(sprintf('The per FOV transcript data.frame must be RData, csv, or txt file. Current `path_to_fov` = %s', 
+    stop(sprintf('The per FOV transcript data.frame must be RData, rds, csv, or txt file. Current `path_to_fov` = %s', 
                  path_to_fov))
   }
   
@@ -284,7 +287,7 @@ checkTransFileInputsAndLoadFirst <- function(transcript_df = NULL,
 
 #' Get number of cores for parallelized operations
 #'
-#' @param percentCores percent of cores to use for parallelization [0-1]
+#' @param percentCores percent of cores to use for parallelization, value range 0 to 1
 #' @param minNotUsedCores minimum number of cores to leave for background processes
 #' 
 #' @return number of cores to use for mclapply
