@@ -108,8 +108,8 @@
 #' The example dataset is based on the cropped regions from two different FOVs of same SMI RNA readout run for FFPE melanoma tissue sample. 
 #' The corresponding raw transcript data files are 
 #' \itemize{
-#'    \item{`data/Run4104_FOV001__complete_code_cell_target_call_coord.csv`}
-#'    \item{`data/Run4104_FOV002__complete_code_cell_target_call_coord.csv`}
+#'    \item{`extdata/Run4104_FOV001__complete_code_cell_target_call_coord.csv`}
+#'    \item{`extdata/Run4104_FOV002__complete_code_cell_target_call_coord.csv`}
 #' }
 #' Each raw transcript data files have 1 transcript per row with 25 different meta information in columns. Some important columns are
 #' \describe{
@@ -139,8 +139,8 @@
 #' The example dataset is based on the cropped regions from two different FOVs of same SMI RNA readout run for FFPE melanoma tissue sample. 
 #' The corresponding raw transcript data files are 
 #' \itemize{
-#'    \item{`data/Run4104_FOV001__complete_code_cell_target_call_coord.csv`}
-#'    \item{`data/Run4104_FOV002__complete_code_cell_target_call_coord.csv`}
+#'    \item{`extdata/Run4104_FOV001__complete_code_cell_target_call_coord.csv`}
+#'    \item{`extdata/Run4104_FOV002__complete_code_cell_target_call_coord.csv`}
 #' }
 #' Each raw transcript data files have 1 transcript per row with 25 different meta information in columns. Some important columns are
 #' \describe{

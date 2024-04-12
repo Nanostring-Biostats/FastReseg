@@ -111,7 +111,7 @@ For \code{spatialMergeCheck_method = "geometryDiff"}, this is the maximum percen
 
 \item{config_spatNW_transcript}{configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config (default = NULL)}
 
-\item{path_to_output}{the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame \code{updated_transDF} is saved as individual csv files for each FOV, while cell data of all FOVs, \code{updated_perCellDT} and \code{updated_perCellExprs}, are combined to save as .RData object.}
+\item{path_to_output}{the file path to output folder where the resegmentation data is saved; directory would be created by function if not exists; transcript data.frame \code{updated_transDF} is saved as individual csv files for each FOV, while cell data of all FOVs, \code{updated_perCellDT} and \code{updated_perCellExprs}, are combined to save as \code{.rds} object.}
 
 \item{transDF_export_option}{option on how to export updated transcript_df, 0 for no export, 1 for write to \code{path_to_output} in disk as csv for each FOV, 2 for return to function as list (default = 1)}
 
@@ -154,7 +154,7 @@ evaluate the neighborhood environment of low-score transcript groups and perform
 To account for genes missing in \code{refProfiles} but present in input transcript data.frame, genes in \code{ctrl_genes} would be assigned with goodness-of-fit score equal to \code{svmClass_score_cutoff} for all cell types to minimize the impact of those genes on the identification of low-score transcript groups via SVM. To avoid significant interference from those \code{ctrl_genes}, it's recommended to have total counts of those genes below 1\% of total counts of all genes in each cell.
 
 The pipeline would save the each per FOV output as individual file in \code{path_to_output} directory; \code{updated_transDF} would be saved as csv file.
-When \code{save_intermediates} = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single .RData object in 1 list object \code{each_segRes} containing the following elements:
+When \code{save_intermediates} = TRUE, all intermediate files and resegmenation outputs of each FOV would be saved as single \code{.rds} object which is a list containing the following elements:
 \describe{
 \item{modStats_ToFlagCells}{a data.frame for spatial modeling statistics of each cell, output of \code{score_cell_segmentation_error} function, save when \code{save_intermediates} = TRUE}
 \item{groupDF_ToFlagTrans}{data.frame for the group assignment of transcripts within putative wrongly segmented cells, merged output of \code{flag_bad_transcripts} and \code{groupTranscripts_Delaunay} or \code{groupTranscripts_dbscan} functions, save when \code{save_intermediates} = TRUE}
@@ -164,7 +164,7 @@ When \code{save_intermediates} = TRUE, all intermediate files and resegmenation 
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
 }
-The pipeline would also combine per cell data for all FOVs and return the combined data when \code{return_perCellData} = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would also be saved as single .RData object in \code{path_to_output} directory when  \code{transDF_export_option = 1}.
+The pipeline would also combine per cell data for all FOVs and return the combined data when \code{return_perCellData} = TRUE; \code{updated_perCellDT} and \code{updated_perCellExprs} would also be saved in a list as single \code{.rds} object in \code{path_to_output} directory when  \code{transDF_export_option = 1}.
 \describe{
 \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when \code{return_perCellData} = TRUE}
 \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when \code{return_perCellData} = TRUE}
@@ -209,8 +209,10 @@ data("example_clust")
 # update your path accordingly
 # Notice that some assays like SMI has XY axes swapped between stage and each FOV;
 # coordinates for each FOV should have units in micron
-fileInfo_DF <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-                                        "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+dataDir <- system.file("extdata", package = "FastReseg")
+fileInfo_DF <- data.frame(file_path = fs::path(dataDir,
+                                               c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                                                 "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
                           slide = c(1, 1),
                           fov = c(1,2),
                           stage_X = 1000*c(5.13, -2.701),

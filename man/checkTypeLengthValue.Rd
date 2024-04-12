@@ -2,7 +2,7 @@
 % Please edit documentation in R/create_spatial_networks.R
 \name{checkTypeLengthValue}
 \alias{checkTypeLengthValue}
-\title{checking whether a single value in config have correct data type, length and value range}
+\title{checkTypeLengthValue}
 \usage{
 checkTypeLengthValue(
   config,
@@ -33,20 +33,20 @@ a message if config[\link{name}] does not satisfy the criteria
 checking whether a single value in config have correct data type, length and value range
 }
 \examples{
-config <- list(pos_Integer = 1, neg_value = -0.2, flag = TRUE, 
-length2character = c("a","b"))
+config <- list(pos_Integer = 1, neg_value = -0.2, flag = TRUE,
+               length2character = c("a","b"))
 # check if positive integer of any length
-checkTypeLengthValue(config, "pos_Integer", 
-                     expect_type = c("numeric","integer"), 
-                     expect_range = "larger", expect_value = 0)
+FastReseg:::checkTypeLengthValue(config, "pos_Integer",
+                                 expect_type = c("numeric","integer"),
+                                 expect_range = "larger", expect_value = 0)
 # check if negative value of any length
-checkTypeLengthValue(config, "neg_value", 
-                     expect_type = "numeric", 
-                     expect_range = "smaller", expect_value = 0)
+FastReseg:::checkTypeLengthValue(config, "neg_value",
+                                 expect_type = "numeric",
+                                 expect_range = "smaller", expect_value = 0)
 # check if logical value
-checkTypeLengthValue(config, "flag", expect_type = "logical")
+FastReseg:::checkTypeLengthValue(config, "flag", expect_type = "logical")
 # check if character has 2 elements within c("a","b")
-checkTypeLengthValue(config, "length2character", 
-                     expect_type = "character", expect_len = 2,
-                     expect_range = "within", expect_value = c("a","b"))
+FastReseg:::checkTypeLengthValue(config, "length2character",
+                                 expect_type = "character", expect_len = 2,
+                                 expect_range = "within", expect_value = c("a","b"))
 }

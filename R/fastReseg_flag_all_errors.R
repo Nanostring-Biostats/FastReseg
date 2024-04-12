@@ -81,8 +81,10 @@
 #' # update your path accordingly
 #' # Notice that some assays like SMI has XY axes swapped between stage and each FOV;
 #' # coordinates for each FOV should have units in micron
-#' fileInfo_DF <- data.frame(file_path = c("data/Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-#'                                         "data/Run4104_FOV002__complete_code_cell_target_call_coord.csv"),
+#' dataDir <- system.file("extdata", package = "FastReseg")
+#' fileInfo_DF <- data.frame(file_path = fs::path(dataDir,
+#'                                                c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+#'                                                  "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
 #'                           slide = c(1, 1),
 #'                           fov = c(1,2),
 #'                           stage_X = 1000*c(5.13, -2.701),
@@ -197,6 +199,8 @@ fastReseg_flag_all_errors <- function(counts,
     filepath_coln = 'file_path'
     fovOffset_colns = c('stage_X', 'stage_Y')
     prefix_colns = NULL
+  }else{
+    transDF_fileInfo <- as.data.frame(transDF_fileInfo)
   }
   
   ## initialize list to collect each FOV outputs ----
@@ -293,7 +297,8 @@ fastReseg_flag_all_errors <- function(counts,
     if(length(flagged_cells)<1){
       message("No cells being flagged for resegmentation, no SVM is performed on this dataset.")
     }else {
-      classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),]
+      classDF_ToFlagTrans <- transcript_df[['intraC']][which(transcript_df[['intraC']][['UMI_cellID']] %in% flagged_cells),
+                                                       setdiff(colnames(transcript_df[['intraC']]), c('DecVal','SVM_class','SVM_cell_type'))]
       
       if(!is.null(seed_transError)){
         set.seed(seed_transError)

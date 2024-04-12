@@ -7,7 +7,7 @@
 numCores(percentCores = 0.9, minNotUsedCores = 2)
 }
 \arguments{
-\item{percentCores}{percent of cores to use for parallelization \link{0-1}}
+\item{percentCores}{percent of cores to use for parallelization, value range 0 to 1}
 
 \item{minNotUsedCores}{minimum number of cores to leave for background processes}
 }

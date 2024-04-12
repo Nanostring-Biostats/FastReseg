@@ -41,7 +41,13 @@ See the "vignettes" folder.
 
 
 ### Installation
+
+#### Install the development version from GitHub
 ```
-git clone https://github.com/Nanostring-Biostats/FastReseg.git
-devtools::install()
+if(!requireNamespace("GiottoClass", quietly=TRUE))
+  remotes::install_github("drieslab/GiottoClass", upgrade="never", 
+  ref = "6d9d385beebcc57b78d34ffbe30be1ef0a184681")
+  
+devtools::install_github("Nanostring-Biostats/FastReseg", 
+                         build_vignettes = TRUE, ref = "main")
 ```

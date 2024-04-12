@@ -438,7 +438,7 @@ get_neighborhood_content <- function(chosen_cells = NULL,
 #' @description find neighbor cells of chosen_cells and return the relevant transcript data.frame for both query 
 #' @param chosen_cells the cell_ID of chosen cells need to be evaluate for re-segmentation
 #' @param neighbor_distance_xy maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, same unit as input spatial coordinate. Default = NULL to use the 2 times of average cell diameter.
-#' @param transcript_df the data.frame with transcript_id, cell_id and spatail coordinates
+#' @param transcript_df the data.frame with transcript_id, cell_id and spatial coordinates
 #' @param cellID_coln the column name of cell_ID in transcript_df
 #' @param transID_coln the column name of transcript_ID in transcript_df
 #' @param transSpatLocs_coln the column name of 1st, 2nd, optional 3rd spatial dimension of each transcript in transcript_df

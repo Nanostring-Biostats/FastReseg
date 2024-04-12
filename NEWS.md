@@ -4,7 +4,10 @@
 
 * Addresses compatibility with new latest.fovs that has additional column for acquisition order
 * Fixes error associated with 1-cell-per-fov data and non-standard-formatted transcript data.frame
-* add in requirements and specifications
+* Add in requirements and specifications
+* Switch to `GiottoClass` package for creating Delaunay spatial networks  
+* Move data used in `vignettes` to `inst\extdata` folder, including example raw transcript files and helper functions for SMITAP objects
+* Save outputs as `.rds` instead of `.RData` in `fastReseg_full_pipeline()` wrapper
 
 # FastReseg 0.1.1
 

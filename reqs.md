@@ -53,7 +53,7 @@ A list, with the following elements:
 -   reseg_actions: a list of 4 elements describing how the resegmenation would be performed on original `transcript_df` by the group assignment of transcripts listed in `groupDF_ToFlagTrans`, output of `decide_ReSegment_Operations()` function, return when `save_intermediates = TRUE`.
 -   updated_transDF_list: a list of per-FOV transcript `data.frame` with updated cell segmenation in `updated_cellID` and `updated_celltype` columns, return when `transDF_export_option = 2`.
 
-The pipeline function would save the each per FOV output as individual file in `path_to_output` directory;`updated_transDF`would be saved as csv file. When`save_intermediates = TRUE`, all intermediate files and resegmenation outputs of each FOV would be saved as single `.RData` object in 1 list object`each_segRes` containing the following elements:
+The pipeline function would save the each per FOV output as individual file in `path_to_output` directory;`updated_transDF`would be saved as csv file. When`save_intermediates = TRUE`, all intermediate files and resegmenation outputs of each FOV would be saved as single `.rds` object in 1 list containing the following elements:
 
 -   modStats_ToFlagCells: a `data.frame` for spatial modeling statistics of each cell, output of `score_cell_segmentation_error()` function, save when `save_intermediates = TRUE`.
 -   groupDF_ToFlagTrans: `data.frame` for the group assignment of transcripts within putative wrongly segmented cells, merged output of `flag_bad_transcripts()` and `groupTranscripts_Delaunay()` or `groupTranscripts_dbscan()` functions, save when `save_intermediates = TRUE`.
@@ -63,7 +63,7 @@ The pipeline function would save the each per FOV output as individual file in `
 -   updated_perCellDT: a per cell `data.table` with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData = TRUE`
 -   updated_perCellExprs: a gene x cell count sparse matrix for updated transcript `data.frame` after resegmentation, return when `return_perCellData = TRUE`.
 
-The pipeline would also combine per cell data for all FOVs and return the combined data when `return_perCellData = TRUE`; `updated_perCellDT` and `updated_perCellExprs` would also be saved as single `.RData` object in `path_to_output` directory when `transDF_export_option = 1`.
+The pipeline would also combine per cell data for all FOVs and return the combined data when `return_perCellData = TRUE`; `updated_perCellDT` and `updated_perCellExprs` would also be saved in a list as single `.rds` object in `path_to_output` directory when `transDF_export_option = 1`.
 
 -   updated_perCellDT: a per cell `data.table` with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData = TRUE`.
 -   updated_perCellExprs: a gene x cell count sparse matrix for updated transcript `data.frame` after resegmentation, return when `return_perCellData = TRUE`.
@@ -248,11 +248,11 @@ A `data.frame` for transcripts of interest only, containing columns for cell ids
 ##### Inputs:
 
 -   a `data.frame` for spatial location of each entry for cell or transcript
--   a configure list on controlling the spatial network generation.For more details, see the manual for `Giotto::createSpatialNetwork`.
+-   a configure list on controlling the spatial network generation.For more details, see the manual for `GiottoClass::createSpatialNetwork`.
 
 ##### Outputs:
 
-a `delaunay_network_Obj`, a spatial network object created by `Giotto` functions. For more details, see the manual for `Giotto::createSpatialNetwork`.
+a `delaunay_network_Obj`, a spatial network object created by `GiottoClass` functions. For more details, see the manual for `GiottoClass::createSpatialNetwork`.
 
 #### Reqs for groupTranscripts_dbscan:
 

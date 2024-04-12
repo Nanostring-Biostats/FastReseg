@@ -6,7 +6,7 @@ data("example_CellGeneExpr")
 data("example_clust")
 data("example_refProfiles")
 
-dataDir = gsub("tests/testthat", "data", getwd())
+dataDir = system.file("extdata", package = "FastReseg")
 
 # create `transDF_fileInfo` for multiple per FOV transcript data.frame 
 # coordinates for each FOV, `stage_x` and `stage_y`, should have units in micron.
@@ -153,8 +153,8 @@ test_that("fastReseg_full_pipeline() returns the expected output", {
   # Test if the per FOV output files are saved in the specified directory
   expect_true(file.exists(outDir2))
   expect_true(all(paste0(seq_len(nrow(transDF_fileInfo)), "_updated_transDF.csv") %in% outFiles))
-  expect_true(all(paste0(seq_len(nrow(transDF_fileInfo)), "_each_segRes.RData") %in% outFiles))
-  expect_true("combined_updated_perCellDT_perCellExprs.RData" %in% outFiles)
+  expect_true(all(paste0(seq_len(nrow(transDF_fileInfo)), "_each_segRes.rds") %in% outFiles))
+  expect_true("combined_updated_perCellDT_perCellExprs.rds" %in% outFiles)
   
   # check on 1st transDF
   expect_true(all(c('UMI_transID', 'UMI_cellID', 'target', 'x', 'y', 'z', 'updated_cellID', 'updated_celltype') %in% colnames(updated_transDF)))
