@@ -18,7 +18,8 @@ knitr::opts_chunk$set(
   comment = "#>",
   out.width = '100%',
   fig.width=10, 
-  fig.height=10
+  fig.height=10,
+  fig.path = "figures/"
 )
 ```
 
@@ -29,7 +30,7 @@ This tutorial below shows how to apply functions in `FastReseg` to perform segme
 `FastReseg` package processes spatial transcriptome data through 5 different modules and provides 3 wrapper functions for streamline processing of multi-FOV dataset to different exit points.
 
 ```{r diagram, echo=FALSE, out.width = '100%'}
-knitr::include_graphics(paste0(system.file("vignettes", package = "FastReseg"), "/FastReseg_diagram.png"), error = FALSE)
+knitr::include_graphics("figures/FastReseg_diagram.png", error = FALSE)
 ```
 
 ## Input data
@@ -166,13 +167,17 @@ list.files("res1f_multiFiles")
 
 `fastReseg_flag_all_errors()` function takes similar input arguments as `prepare_perFOV_transDF()` and `runPreprocess()` (discussed in section [Preprocess on whole dataset]). It does dataset preprocessing before segmentation error detection. The function returns a list of outputs including `combined_modStats_ToFlagCells`, which is a data.frame for spatial modeling statistics of cell-level segmentation evaluation (see section [Flag cells with putative segmentation errors] for an excerpt), and `combined_flaggedCells`, which contains cell IDs for all cells flagged with potential cell segmentation errors in the dataset. `fastReseg_flag_all_errors()` function also exports the per-FOV outputs as 3 individual files per FOV under `path_to_output` directory.
 
-```{r description_flagAll, echo=FALSE, results ='asis'}
+```{r description_flagAll, echo=FALSE, results ='asis', out.width = '100%'}
 df3 <- data.frame(variable = c("`flagged_transDF`", "`modStats_ToFlagCells`", "`classDF_ToFlagTrans`"),
                   description = c("a transcript data.frame for each FOV, with columns for unique IDs of transcripts `UMI_transID` and cells `UMI_cellID`, for global coordiante system `x`, `y`, `z`, and for the goodness-of-fit in original cell segment `SVM_class`", 
                                   "a data.frame for spatial modeling statistics of each cell, output of `runSegErrorEvaluation()` function", 
                                   "data.frame for the class assignment of transcripts within putative wrongly segmented cells, output of `flag_bad_transcripts()` function"))
 
-pander::pander(df3, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+'%>%' <- kableExtra::'%>%'
+kableExtra::kable(df3, format = "html", escape = FALSE) %>%
+  kableExtra::kable_styling(bootstrap_options = "striped", full_width = TRUE) %>%
+  kableExtra::column_spec(1, width = "25%", extra_css = "white-space: pre-line; text-align: left;") %>%
+  kableExtra::column_spec(2, width = "70%", extra_css = "white-space: pre-line; text-align: left;")
 ```
 
 One can simply trim off the transcripts with low goodness-of-fit to current segmentation from the `flagged_transDF` by removing the transcripts with `SVM_class = 0`. Conveniently, `fastReseg_flag_all_errors()` would also return `trimmed_perCellExprs`, the gene x cell count matrix where all putative contaminating transcripts are trimmed, when `return_trimmed_perCell = TRUE`.
@@ -311,22 +316,22 @@ molecular_distance_cutoff <- prep_res[['cutoffs_list']][['molecular_distance_cut
 
 `runPreprocess()` function returns a list of outputs among which `score_GeneMatrix` and `cutoffs_list` would be passed to downstream resegmentation pipeline. 
 
-```{r description_runPreprocess, echo=FALSE, results ='asis'}
+```{r description_runPreprocess, echo=FALSE, results ='asis', out.width = '100%'}
 df1 <- data.frame(variable = c("`clust`", "`refProfiles`", "`baselineData`", "`cutoffs_list`","", "`ctrl_genes`", "`score_GeneMatrix`", "`processed_1st_transDF`"),
                   description = c("vector of cluster assignments used in caculating `baselineData`", 
                                   "gene X cluster matrix of cluster-specific reference profiles to use in resegmenation pipeline", 
                                   "list of two matrice in cluster X percentile format for the cluster-specific percentile distribution of per cell value in terms of transcript score and number, respectively", 
-                                  "*list of cutoffs to use in resegmentation pipeline:*", 
-                                  "* `score_baseline`: named vector of per cell type minimal score required to call certain cell type of high enough confidence.\n
-                                  * `lowerCutoff_transNum`: named vector of per cell type minimal transcript number per cell to keep query cell as it is.\n
-                                  * `higherCutoff_transNum`: named vector of per cell type maxmium transcript number per cell to keep query cell as it is without merging to neighbor cell of consistent cell type.\n
-                                  * `cellular_distance_cutoff`: maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron.\n
-                                  * `molecular_distance_cutoff`: maximum molecule-to-molecule distance within connected transcript group, unit in micron.", 
+                                  "<i>list of cutoffs to use in resegmentation pipeline:</i>", 
+                                  "<ul><li> `score_baseline`: named vector of per cell type minimal score required to call certain cell type of high enough confidence.</li></ul><ul><li> `lowerCutoff_transNum`: named vector of per cell type minimal transcript number per cell to keep query cell as it is.</li></ul><ul><li> `higherCutoff_transNum`: named vector of per cell type maxmium transcript number per cell to keep query cell as it is without merging to neighbor cell of consistent cell type.</li></ul><ul><li> `cellular_distance_cutoff`: maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact, unit in micron.</li></ul><ul><li> `molecular_distance_cutoff`: maximum molecule-to-molecule distance within connected transcript group, unit in micron.</li></ul>", 
                                   "vector of control genes whose transcript scores are set to fixed value for all cell types, return when `ctrl_genes` is not `NULL`.", 
                                   "gene x cell-type score matrix to use in resegmenation pipeline, the scores for `ctrl_genes` are set to be the same as `svmClass_score_cutoff`", 
                                   "list of 2 elements for the intracellular and extracellular transcript data.frame of the processed outcomes of 1st transcrip file"))
 
-pander::pander(df1, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+# '%>%' <- kableExtra::'%>%'
+kableExtra::kable(df1, format = "html", escape = FALSE) %>%
+  kableExtra::kable_styling(bootstrap_options = "striped", full_width = TRUE) %>%
+  kableExtra::column_spec(1, width = "25%", extra_css = "white-space: pre-line; text-align: left;") %>%
+  kableExtra::column_spec(2, width = "70%", extra_css = "white-space: pre-line; text-align: left;")
 ```
 
 ##### initial cell typing and control genes
@@ -668,19 +673,20 @@ table(updated_perCellDT[['reSeg_action']])
 
 `runSegRefinement()` function returns a list of outputs with updated cell segmentation that could be used in further single cell analysis.  
 
-```{r description_runSegRefinement, echo=FALSE, results ='asis'}
+```{r description_runSegRefinement, echo=FALSE, results ='asis', out.width = '100%'}
 df2 <- data.frame(variable = c("`updated_transDF`", "`neighborhoodDF_ToReseg`", "`reseg_actions`", "", "`updated_perCellDT`", "`updated_perCellExprs`"),
                   description = c("the updated transcript_df with `updated_cellID` and `updated_celltype` columns reflecting the new segmentation outcomes", 
                                   "data.frame for neighborhood environment of low-score transcript groups, output of `neighborhood_for_resegment_spatstat()` function, return when `return_intermediates = TRUE`", 
-                                  "*list of 4 elements describing how the resegmenation would be performed on `reseg_transcript_df` by the group assignment of transcripts listed in `reseg_cellID_coln`, return when `return_intermediates = TRUE`*", 
-                                  "* `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation.\n
-                                  * `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with new cell_ID in value.\n
-                                  * `cells_to_keep`: a vector of cell ID that should be kept as it is.\n
-                                  * `reseg_full_converter`: a single named vector of cell ID to update the original cell ID, assign `NA` for `cells_to_discard`.\n", 
+                                  "<i>list of 4 elements describing how the resegmenation would be performed on `reseg_transcript_df` by the group assignment of transcripts listed in `reseg_cellID_coln`, return when `return_intermediates = TRUE`</i>", 
+                                  "<ul><li> `cells_to_discard`: a vector of cell ID that should be discarded during resegmentation.</li></ul><ul><li> `cells_to_update`: a named vector of cell ID whether the cell_ID in name would be replaced with new cell_ID in value.</li></ul><ul><li> `cells_to_keep`: a vector of cell ID that should be kept as it is.</li></ul><ul><li> `reseg_full_converter`: a single named vector of cell ID to update the original cell ID, assign `NA` for `cells_to_discard`.</li></ul>", 
                                   "per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData = TRUE`", 
                                   "gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData = TRUE`"))
 
-pander::pander(df2, keep.line.breaks = TRUE, style = 'grid', justify = 'left', split.cells = c("40%", "60%"))
+
+kableExtra::kable(df2, format = "html", escape = FALSE) %>%
+  kableExtra::kable_styling(bootstrap_options = "striped", full_width = TRUE) %>%
+  kableExtra::column_spec(1, width = "25%", extra_css = "white-space: pre-line; text-align: left;") %>%
+  kableExtra::column_spec(2, width = "70%", extra_css = "white-space: pre-line; text-align: left;")
 ```
 
 ##### Visualize example resegmentation outcomes 

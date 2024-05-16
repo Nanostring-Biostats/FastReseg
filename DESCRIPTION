@@ -31,7 +31,7 @@ Imports:
     parallel
 Suggests: 
     testthat (>= 3.0.0),
-    pander,
+    kableExtra,
     knitr,
     rmarkdown,
     RTriangle (>= 1.6-0.10),
