@@ -1,11 +1,11 @@
 Package: FastReseg
-Title: An R package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts
+Title: An R Package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts
 Version: 1.0.0
 Authors@R: 
     c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut")),
              person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut", "cre")))
 Description: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
-License: See LICENSE file
+License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
