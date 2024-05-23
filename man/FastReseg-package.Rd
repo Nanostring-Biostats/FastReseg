@@ -4,16 +4,23 @@
 \name{FastReseg-package}
 \alias{FastReseg}
 \alias{FastReseg-package}
-\title{FastReseg: An R package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts}
+\title{FastReseg: An R Package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts}
 \description{
 An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://nanostring-biostats.github.io/FastReseg/}
+}
+
+}
 \author{
-\strong{Maintainer}: Lidan Wu \email{lwu@nanostring.com}
+\strong{Maintainer}: Lidan Wu \email{lwu@nanostring.com} (\href{https://orcid.org/0000-0003-3150-6170}{ORCID})
 
 Authors:
 \itemize{
-  \item Patrick Danaher \email{pdanaher@nanostring.com}
+  \item Patrick Danaher \email{pdanaher@nanostring.com} (\href{https://orcid.org/0000-0002-2844-5883}{ORCID})
 }
 
 }

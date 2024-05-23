@@ -33,5 +33,6 @@ Calculate average per molecule transcript score for each cell in \code{counts} e
 \examples{
 data(example_refProfiles)
 data(ori_RawExprs)
-baselineData <- get_baselineCT(refProfiles = example_refProfiles, counts = ori_RawExprs, clust = NULL)
+baselineData <- get_baselineCT(refProfiles = example_refProfiles, 
+                               counts = ori_RawExprs, clust = NULL)
 }

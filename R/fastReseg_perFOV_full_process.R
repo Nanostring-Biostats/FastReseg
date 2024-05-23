@@ -47,14 +47,20 @@
 #' data(example_refProfiles)
 #' data(mini_transcriptDF)
 #' data(example_baselineCT)
-#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] #' cell_ID for extracellualr transcripts
+#' #' cell_ID for extracellualr transcripts
+#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] 
 #' score_baseline <- example_baselineCT[['span_score']][,"25%"]
 #' lowerCutoff_transNum  <- example_baselineCT[['span_transNum']][,"25%"]
 #' higherCutoff_transNum  <- example_baselineCT[['span_transNum']][,"50%"]
-#' #' calculate log-likelihood of each gene under each cell type and center the score matrix on per gene basis
-#' score_GeneMatrix <- scoreGenesInRef(genes = intersect(unique(mini_transcriptDF[["target"]]), rownames(example_refProfiles)),
+#' 
+#' # calculate log-likelihood of each gene under each cell type and center the 
+#' # score matrix on per gene basis
+#' score_GeneMatrix <- scoreGenesInRef(genes = intersect(unique(mini_transcriptDF[["target"]]), 
+#'                                                       rownames(example_refProfiles)),
 #'                                     ref_profiles = pmax(example_refProfiles, 1e-5))
-#' # case 1: run with default methods: "dbscan" for transcript grouping, "leidenCut" for merging check 
+#'                                     
+#' # case 1: run with default methods: "dbscan" for transcript grouping, 
+#' # "leidenCut" for merging check 
 #' final_res1 <- fastReseg_perFOV_full_process(score_GeneMatrix= score_GeneMatrix,
 #'                                            transcript_df = mini_transcriptDF,
 #'                                            extracellular_cellID = extracellular_cellID,
@@ -65,7 +71,8 @@
 #'                                            higherCutoff_transNum= higherCutoff_transNum)
 #' 
 #' 
-#' # case 2: run with alternative methods: "delaunay" for transcript grouping, "geometryDiff" for merging check 
+#' # case 2: run with alternative methods: "delaunay" for transcript grouping, 
+#' # "geometryDiff" for merging check 
 #' final_res2 <- fastReseg_perFOV_full_process(score_GeneMatrix= score_GeneMatrix,
 #'                                            transcript_df = mini_transcriptDF,
 #'                                            extracellular_cellID = extracellular_cellID,
@@ -78,7 +85,8 @@
 #'                                            spatialMergeCheck_method = "geometryDiff")
 #' 
 #' 
-#' # case 3: run with default "dbscan" for transcript grouping, but apply no spatial constraint on merging
+#' # case 3: run with default "dbscan" for transcript grouping, but apply no 
+#' # spatial constraint on merging
 #' final_res3 <- fastReseg_perFOV_full_process(score_GeneMatrix= score_GeneMatrix,
 #'                                             transcript_df = mini_transcriptDF,
 #'                                             extracellular_cellID = extracellular_cellID,
