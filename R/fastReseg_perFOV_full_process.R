@@ -568,6 +568,7 @@ checkAndPrepInputs_perFOV <- function(all_celltypes,
 #'    \item{updated_perCellDT}{a per cell data.table with mean spatial coordinates, new cell type and resegmentation action after resegmentation, return when `return_perCellData` = TRUE}
 #'    \item{updated_perCellExprs}{a gene x cell count sparse matrix for updated transcript data.frame after resegmentation, return when `return_perCellData` = TRUE}
 #' }
+#' @importFrom data.table .SD
 makeDummyOuts_perFOV <- function(all_genes, 
                                  transcript_df, 
                                  transID_coln = 'UMI_transID',

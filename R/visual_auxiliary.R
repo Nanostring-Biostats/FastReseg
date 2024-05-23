@@ -12,6 +12,7 @@
 #' @param title the text title for plot
 #' @return ggplot
 #' @importFrom ggplot2 ggplot aes geom_point scale_color_gradient2 labs facet_wrap theme_classic theme element_text unit margin element_rect
+#' @importFrom data.table .SD
 #' @export
 plotSpatialScoreMultiCells <- function(chosen_cells, cell_labels, 
                                        transcript_df, 

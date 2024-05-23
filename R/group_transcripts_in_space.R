@@ -15,6 +15,7 @@
 #' } 
 #' @details For query cell, group flagged transcripts only based on their molecular distance to each other. When distance cutoff = 'auto', use 20% average XY cell range as cutoff. In case of no more than 3 flagged transcripts per cell, determine the grouping based on distance cutoff directly. In case of more transcripts per cell, use \code{dbscan} to group transcripts with distance_cutoff as `eps` and `minPts = 1`.  
 #' @importFrom dbscan dbscan
+#' @importFrom data.table .SD
 #' @export
 groupTranscripts_dbscan <- function(chosen_transcripts = NULL, 
                                     distance_cutoff = 'auto',
@@ -125,6 +126,7 @@ groupTranscripts_dbscan <- function(chosen_transcripts = NULL,
 #'    \item{transcript_group, group of chosen_transcripts}
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
+#' @importFrom data.table ':=' .N .SD
 #' @export
 groupTranscripts_Delaunay <- function(chosen_transcripts = NULL, 
                                       config_spatNW_transcript = list(name = 'transcript_delaunay_network',
@@ -451,7 +453,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
 #' @param distance_cutoff maximum distance within connected transcript group 
 #' @param startGroup the index of starting group ID
 #' @return a data.table with `transcript_group` column added to original input data.table
-#' @importFrom data.table as.data.table setDT
+#' @importFrom data.table as.data.table setDT .SD ':='
 # function for 3 point case in a single cell only
 myFun_3point_singleCell <- function(dfCoord_subset, 
                                     transSpatLocs_coln = c('x','y','z'),

@@ -17,6 +17,7 @@
 #' @param config_spatNW_transcript configuration list to create spatial network at transcript level, see manual for \code{createSpatialDelaunayNW_from_spatLocs} for more details, set to NULL to use default config
 #' @param seed_transError seed for transcript error detection step, default = NULL to skip the seed   
 #' @return data frame for transcripts in `chosen_cells` only, containing information for transcript score classifications and spatial group assignments as well as new cell/group ID for downstream resegmentation.
+#' @importFrom data.table ':='
 #' @export
 #' 
 runTranscriptErrorDetection <- function(chosen_cells, 

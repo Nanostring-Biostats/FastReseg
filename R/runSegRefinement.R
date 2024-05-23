@@ -229,6 +229,7 @@ runSegRefinement <- function(score_GeneMatrix,
 #'    \item{perCell_expression}{a gene x cell count sparse matrix for updated transcript data.frame when return_perCellDF = TRUE}
 #' }
 #' @details Update transcript data.frame based on resegmentation action and get new cell type; when return_perCellDF = TRUE, return gene x cell count matrix and per cell data.frame with mean per cell spatial coordinates and new cell type.
+#' @importFrom data.table .SD
 #' @export
 update_transDF_ResegActions <- function(transcript_df, 
                                         reseg_full_converter, 
@@ -334,6 +335,7 @@ update_transDF_ResegActions <- function(transcript_df,
 #'    \item{perCell_DT}{a per cell data.table with mean spatial coordinates, cell type, return when `return_cellMeta` = TRUE}
 #'    \item{perCell_expression}{a gene x cell count sparse matrix derived from transcript data.frame after resegmentation}
 #' }
+#' @importFrom data.table .SD
 transDF_to_perCell_data <- function(transcript_df, 
                                     transGene_coln = "target",
                                     cellID_coln = "updated_cellID",

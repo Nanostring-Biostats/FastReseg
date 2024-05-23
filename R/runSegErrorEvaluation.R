@@ -108,6 +108,7 @@ runSegErrorEvaluation <- function(score_GeneMatrix,
 #' }
 #' @details For tLLRv2 score of transcripts within each cell,  run a quadratic model: mod_alternative = lm(tLLRv2 ~ x + y + x2 + y2 +xy) for 2D,  lm(tLLRv2 ~ x + y + z + x2 + y2 +z2 +xy + xz + yz) for 3D and a null model: mod_null = lm(tLLRv2 ~ 1); then run lmtest::lrtest(mod_alternative, mod_null). Return statistics for mod_alternative$fitted.values (standard deviation and minimal value), summary(mod_alternative)$r.squared and as well as lrtest chi-squared value.  
 #' @importFrom stats as.formula lm
+#' @importFrom data.table .N .SD
 #' @export
 score_cell_segmentation_error <- function(chosen_cells, transcript_df, 
                                           cellID_coln = "CellId", 

@@ -6,16 +6,26 @@ Authors@R: c(
   person(given = "Lidan", family = "Wu", email = "lwu@nanostring.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0003-3150-6170"))
   )
 Description: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
+URL: https://nanostring-biostats.github.io/FastReseg/, 
+  https://github.com/Nanostring-Biostats/FastReseg
+BugReports: https://github.com/Nanostring-Biostats/FastReseg/issues
 License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
+Additional_repositories:
+    https://github.com/drieslab/GiottoClass, 
+    https://github.com/drieslab/Giotto
+Depends:
+    R (>= 3.5.0)
 Imports:
     lmtest,
     MASS,
     Matrix,
     stats,
+    methods, 
+    utils, 
     e1071,
     igraph (>= 1.2.4.1),
     spatstat.geom,
@@ -40,4 +50,3 @@ Suggests:
     Giotto
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://nanostring-biostats.github.io/FastReseg/
