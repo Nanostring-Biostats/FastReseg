@@ -4,8 +4,7 @@
 #' @param spatLocs_df data.frame for spatial location of each entry for cell or transcript
 #' @param ID_column column name for entry ID in `spatLocs_df`
 #' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in `spatLocs_df` 
-#' @importFrom data.table as.data.table
-#' @importFrom data.table .SD
+#' @importFrom data.table as.data.table .SD
 #' @importFrom methods new
 #' @return delaunay_network_Obj, a spatial network object created by `GiottoClass` functions
 #' @details This function leverages `GiottoClass` package to create spatial networks from spatial coordinates. An example `config_spatNW` list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for `GiottoClass::createSpatialNetwork`. 

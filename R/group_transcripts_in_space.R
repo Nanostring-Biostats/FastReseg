@@ -454,7 +454,6 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
 #' @param startGroup the index of starting group ID
 #' @return a data.table with `transcript_group` column added to original input data.table
 #' @importFrom data.table as.data.table setDT .SD ':='
-# function for 3 point case in a single cell only
 myFun_3point_singleCell <- function(dfCoord_subset, 
                                     transSpatLocs_coln = c('x','y','z'),
                                     distance_cutoff = 2.7, 

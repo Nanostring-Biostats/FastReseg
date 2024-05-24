@@ -37,7 +37,7 @@ See the "vignettes" folder.
 
 
 #### workflow:
-![image](vignettes/figures/README-FastReseg_diagram.png)
+![image](vignettes/README-FastReseg_diagram.png)
 
 
 ### Installation

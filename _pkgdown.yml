@@ -1,4 +1,18 @@
 url: https://nanostring-biostats.github.io/FastReseg/
+
 template:
   bootstrap: 5
 
+development:
+  mode: auto
+  
+exclude:
+  - specs.md
+  - reqs.md
+
+articles:
+  - title: Tutorial on workflow and core functions
+    navbar: Tutorial on workflow and core functions
+    contents:
+      - tutorial.Rmd
+  

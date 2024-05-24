@@ -5,3 +5,6 @@
 ^_pkgdown\.yml$
 ^docs$
 ^pkgdown$
+^specs.md$
+^reqs.md$
+^vignettes/articles$
