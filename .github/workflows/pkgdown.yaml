@@ -33,7 +33,7 @@ jobs:
           use-public-rspm: true
       
       - name: Install additional dependencies
-      run: |
+        run: |
           Rscript -e "remotes::install_github('drieslab/GiottoClass', ref = '6d9d385beebcc57b78d34ffbe30be1ef0a184681')"
           Rscript -e "remotes::install_github('drieslab/Giotto', ref = '0c8c2866e881b1c6b35ddc97c24dcb58b555c375')"
 
