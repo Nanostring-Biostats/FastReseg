@@ -48,8 +48,5 @@ Suggests:
     RTriangle (>= 1.6-0.10),
     deldir (>= 1.0.6),
     Giotto
-Remotes: 
-  drieslab/GiottoClass@6d9d385
-  drieslab/Giotto@0c8c286
 Config/testthat/edition: 3
 VignetteBuilder: knitr
