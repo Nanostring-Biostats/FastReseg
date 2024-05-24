@@ -49,7 +49,7 @@ Suggests:
     deldir (>= 1.0.6),
     Giotto
 Remotes: 
-  drieslab/GiottoClass@6d9d385beebcc57b78d34ffbe30be1ef0a184681
-  drieslab/Giotto@0c8c2866e881b1c6b35ddc97c24dcb58b555c375
+  drieslab/GiottoClass@6d9d385
+  drieslab/Giotto@0c8c286
 Config/testthat/edition: 3
 VignetteBuilder: knitr
