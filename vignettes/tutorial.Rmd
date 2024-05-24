@@ -2,6 +2,8 @@
 title: "FastReseg to detect and correct segmentation error in spatial transcriptome data"
 author: "Lidan Wu"
 date: "`r Sys.Date()`"
+resource_files:
+  - README-FastReseg_diagram.png
 output: 
   rmarkdown::html_vignette:
     toc: true

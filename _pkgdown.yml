@@ -11,8 +11,8 @@ exclude:
   - reqs.md
 
 articles:
-  - title: Tutorial on workflow and core functions
-    navbar: Tutorial on workflow and core functions
+  - title: Tutorial
+    navbar: Workflow and core functions
     contents:
-      - tutorial.Rmd
+      - tutorial
   
