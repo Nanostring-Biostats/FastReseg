@@ -1,3 +1,5 @@
+## Package Requirements 
+
 #### Reqs for fastReseg_flag_all_errors:
 
 `fastReseg_flag_all_errors()` is a wrapper function to process multiple files of one dataset for segmentation error detection in transcript level. The function reformats the individual transcript `data.frame` to have unique IDs and a global coordinate system and save into disk, then scores each cell for segmentation error and flags transcripts that have low goodness-of-fit to current cells.
