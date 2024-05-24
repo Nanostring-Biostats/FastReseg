@@ -18,7 +18,7 @@
 
   5) Pipeline wrappers would combine resegmentation outputs from individual FOVs into one.
 
-For continence, two pipeline wrapper functions are included for streamline processing of multi-FOV dataset to different exit points.
+For convenience, two pipeline wrapper functions are included for streamline processing of multi-FOV dataset to different exit points.
 
 - `fastReseg_flag_all_errors()`: performs preprocess and then evaluates and flags segmentation error in all input files, optional to return the gene expression matrix where all putative contaminating transcripts are trimmed from current cell segments.
 - `fastReseg_full_pipeline()`: performs preprocess, detect and correct cell segmentation errors by trimming, splitting and merging given the local neighborhood of poor-fit transcript groups, can process multiple input files in parallel.   
@@ -30,18 +30,17 @@ For continence, two pipeline wrapper functions are included for streamline proce
 
 ### Demo
 See the "vignettes" folder. 
+
 - `tutorial.Rmd` and `tutorial.html` for example usages of streamline pipeline wrappers and modular functions for individual task.
 - `a__flagErrorOnly_on_SMIobject.R` for flagging segmentation errors without correcting, interfacing `FastReseg` with SMI TAP pipeline (`Giotto`).
 - `b__fastReseg_on_SMIobject.R` for runing entire resegmentation workfkow on a given dataset, example dataset, interfacing `FastReseg` with SMI TAP pipeline (`Giotto`).
 
 
-
-#### workflow:
+### Workflow:
 ![image](vignettes/README-FastReseg_diagram.png)
 
 
 ### Installation
-
 #### Install the development version from GitHub
 ```
 if(!requireNamespace("GiottoClass", quietly=TRUE))

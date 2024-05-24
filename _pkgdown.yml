@@ -1,18 +1,94 @@
 url: https://nanostring-biostats.github.io/FastReseg/
 
 template:
-  bootstrap: 5
+  bootstrap: flatly
 
 development:
   mode: auto
-  
+
 exclude:
   - specs.md
   - reqs.md
 
-articles:
-  - title: Tutorial
-    navbar: Workflow and core functions
-    contents:
-      - tutorial
+reference:
+- title: "Pipeline wrapper"
+  desc: "Wrapper function to process multi-FOV dataset or per-FOV data"
+- contents:
+  - starts_with("fastReseg_")
   
+- title: "Example data"
+  desc: "Example data to use with tutorial"
+- contents:
+  - has_keyword("datasets")
+
+- title: "Preprocessing"
+  desc: "Functions to prepare input data and get baseline"
+- contents:
+  - runPreprocess
+  - has_keyword("baseline")
+  - has_keyword("estimate")
+  - has_keyword("cutoff")
+  - has_keyword("score")
+  
+- title: "Modular function"
+  desc: "Functions to perform individual tasks for each FOV"
+- contents:
+  - starts_with("run")
+  
+- title: "Flag poor fitted cells"
+  desc: "Functions to detect cell segmentation errors"
+- contents:
+  - runSegErrorEvaluation
+  - score_cell_segmentation_error
+  
+- title: "Flag poor fitted transcripts"
+  desc: "Functions to identify wrongly segmented transcript groups"
+- contents:
+  - runTranscriptErrorDetection
+  - flag_bad_transcripts
+  - groupTranscripts_dbscan
+  - groupTranscripts_Delaunay
+  - createSpatialDelaunayNW_from_spatLocs
+  - flagTranscripts_LDA_hyperplane
+
+- title: "Segmentation refinement"
+  desc: "Functions to evaluate neighborhood of flagged transcript groups and perform refinement"
+- contents:
+  - runSegRefinement
+  - prepResegDF 
+  - get_neighborhood_content
+  - getNeighbors_transDF
+  - decide_ReSegment_Operations
+  - update_transDF_ResegActions
+  - transDF_to_perCell_data
+  
+- title: "Visualization"
+  desc: "Auxillary function to visualize spatial pattern of transcript-level information of multiple cells"
+- contents:
+  - plotSpatialScoreMultiCells
+  
+- title: "Ultilties"
+  desc: "Auxillary function to set parallel processing and digesting input files"
+- contents:
+  - numCores
+  - checkTransFileInputsAndLoadFirst
+  - prepare_perFOV_transDF
+  - myFun_fov_load
+  
+- title: "Miscellaneous"
+  desc: "Supporting functions of various purposes"
+- contents:
+  - check_config_leiden
+  - check_config_spatialNW
+  - checkAndPrepInputs_perFOV
+  - checkTypeLengthValue
+  - compartment_and_add_extra
+  - initializeAllSegRes
+  - makeDummyOuts_perFOV
+  - myFun_3point_singleCell
+
+articles:
+- title: Tutorial
+  navbar: Workflow and core functions
+- contents:
+  - tutorial
