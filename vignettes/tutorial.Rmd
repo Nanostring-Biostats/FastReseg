@@ -2,6 +2,8 @@
 title: "FastReseg to detect and correct segmentation error in spatial transcriptome data"
 author: "Lidan Wu"
 date: "`r Sys.Date()`"
+resource_files:
+  - README-FastReseg_diagram.png
 output: 
   rmarkdown::html_vignette:
     toc: true
@@ -30,7 +32,7 @@ This tutorial below shows how to apply functions in `FastReseg` to perform segme
 `FastReseg` package processes spatial transcriptome data through 5 different modules and provides 3 wrapper functions for streamline processing of multi-FOV dataset to different exit points.
 
 ```{r diagram, echo=FALSE, out.width = '100%'}
-knitr::include_graphics("figures/FastReseg_diagram.png", error = FALSE)
+knitr::include_graphics("README-FastReseg_diagram.png", error = FALSE)
 ```
 
 ## Input data

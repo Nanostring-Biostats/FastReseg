@@ -1,20 +1,31 @@
 Package: FastReseg
-Title: An R Package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts
+Title: Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts
 Version: 1.0.0
-Authors@R: 
-    c(person("Patrick", "Danaher", email = "pdanaher@nanostring.com", role = c("aut")),
-             person("Lidan", "Wu", email = "lwu@nanostring.com", role = c("aut", "cre")))
+Authors@R: c(
+  person(given = "Patrick", family = "Danaher", email = "pdanaher@nanostring.com", role = c("aut"), comment = c(ORCID = "0000-0002-2844-5883")),
+  person(given = "Lidan", family = "Wu", email = "lwu@nanostring.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0003-3150-6170"))
+  )
 Description: An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
+URL: https://nanostring-biostats.github.io/FastReseg/, 
+  https://github.com/Nanostring-Biostats/FastReseg
+BugReports: https://github.com/Nanostring-Biostats/FastReseg/issues
 License: file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.1
+Additional_repositories:
+    https://github.com/drieslab/GiottoClass, 
+    https://github.com/drieslab/Giotto
+Depends:
+    R (>= 3.5.0)
 Imports:
     lmtest,
     MASS,
     Matrix,
     stats,
+    methods, 
+    utils, 
     e1071,
     igraph (>= 1.2.4.1),
     spatstat.geom,

@@ -176,10 +176,12 @@ data("mini_transcriptDF")
 data("ori_RawExprs")
 data("example_refProfiles")
 data("example_baselineCT")
-extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+# cell_ID for extracellualr transcripts
+extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] 
 
 # case #'1: provide `transcript_df` directly,
-# do auto-calculation of distance cutoff from data while using the provided cutoffs for score and transcript numbers.
+# do auto-calculation of distance cutoff from data while using the provided 
+# cutoffs for score and transcript numbers.
 res1 <- fastReseg_full_pipeline(counts = ori_RawExprs,
                                 clust = NULL,
                                 refProfiles = example_refProfiles,
@@ -199,8 +201,10 @@ res1 <- fastReseg_full_pipeline(counts = ori_RawExprs,
                                 imputeFlag_missingCTs = TRUE,
                                 path_to_output = "res1_directDF")
 
-# case #'2: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV,
-# do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster assignment of each cell, `clust`,
+# case #'2: provide file paths to per FOV transcript data files and specify 
+# the spatial offset for each FOV,
+# do auto-calculation of score and transcript number cutoffs from gene 
+# expression matrix, `counts`, and cluster assignment of each cell, `clust`,
 # do auto-calculation of distance cutoff from the 1st per FOV transcript data.
 data("example_CellGeneExpr")
 data("example_clust")
@@ -210,13 +214,14 @@ data("example_clust")
 # Notice that some assays like SMI has XY axes swapped between stage and each FOV;
 # coordinates for each FOV should have units in micron
 dataDir <- system.file("extdata", package = "FastReseg")
-fileInfo_DF <- data.frame(file_path = fs::path(dataDir,
-                                               c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-                                                 "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
-                          slide = c(1, 1),
-                          fov = c(1,2),
-                          stage_X = 1000*c(5.13, -2.701),
-                          stage_Y = 1000*c(-0.452, 0.081))
+fileInfo_DF <- data.frame(
+  file_path = fs::path(dataDir,  
+                       c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+                         "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
+  slide = c(1, 1),
+  fov = c(1,2),
+  stage_X = 1000*c(5.13, -2.701),
+  stage_Y = 1000*c(-0.452, 0.081))
 
 res2 <- fastReseg_full_pipeline(counts = example_CellGeneExpr,
                                 clust = example_clust,
@@ -224,15 +229,26 @@ res2 <- fastReseg_full_pipeline(counts = example_CellGeneExpr,
                                 transDF_fileInfo =fileInfo_DF,
                                 filepath_coln = 'file_path',
                                 prefix_colns = c('slide','fov'),
-                                fovOffset_colns = c('stage_Y','stage_X'), # match XY axes between stage and each FOV
-                                pixel_size = 0.18, # 0.18 micron per pixel in transcript data
-                                zstep_size = 0.8, # 0.8 micron per z step in transcript data
+                                
+                                # match XY axes between stage and each FOV
+                                fovOffset_colns = c('stage_Y','stage_X'), 
+                                # 0.18 micron per pixel in transcript data
+                                pixel_size = 0.18, 
+                                # 0.8 micron per z step in transcript data
+                                zstep_size = 0.8, 
+                                
                                 transcript_df = NULL,
-                                transID_coln = NULL, # row index as transcript_id
+                                
+                                # row index as transcript_id
+                                transID_coln = NULL, 
+                                
                                 transGene_coln = "target",
                                 cellID_coln = "CellId",
                                 spatLocs_colns = c("x","y","z"),
-                                extracellular_cellID = c(0), # CellId = 0 means extracelluar transcripts in raw data
+                                
+                                # CellId = 0 means extracelluar transcripts in raw data
+                                extracellular_cellID = c(0), 
+                                
                                 molecular_distance_cutoff = NULL,
                                 cellular_distance_cutoff = NULL,
                                 score_baseline = NULL,
@@ -241,9 +257,12 @@ res2 <- fastReseg_full_pipeline(counts = example_CellGeneExpr,
                                 imputeFlag_missingCTs = TRUE,
                                 path_to_output = "res2_multiFiles")
 
-# case #'3: provide file paths to per FOV transcript data files and specify the spatial offset for each FOV,
-# do auto-calculation of score and transcript number cutoffs from gene expression matrix, `counts`, and cluster-specific reference profiles, `refProfiles`,
-# use the provided distance cutoff for `molecular_distance_cutoff` but calculate the `cellular_distance_cutoff`
+# case #'3: provide file paths to per FOV transcript data files and specify 
+# the spatial offset for each FOV,
+# do auto-calculation of score and transcript number cutoffs from gene 
+# expression matrix, `counts`, and cluster-specific reference profiles, `refProfiles`,
+# use the provided distance cutoff for `molecular_distance_cutoff` but 
+# calculate the `cellular_distance_cutoff`
 res3 <- fastReseg_full_pipeline(counts = example_CellGeneExpr,
                                 clust = NULL,
                                 refProfiles = example_refProfiles,

@@ -52,7 +52,8 @@ Choose appropriate cellular distance cutoff and molecular distance cutoff based 
 }
 \examples{
 data(mini_transcriptDF)
-extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+# cell_ID for extracellualr transcripts
+extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID']
 distCutoffs <- choose_distance_cutoff(mini_transcriptDF,
                                       extracellular_cellID = extracellular_cellID)
 }

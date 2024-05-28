@@ -25,6 +25,8 @@
 #'    \item{score_under_neighbor, score in query cell under neighbor_celltype}
 #' }
 #' @details Locate neighbor cells of each query cell firstly via cell-to-cell distance in 2D plane within neighbor_distance_xy, then via molecule-to-molecule 3D distance within distance_cutoff. If no neighbor cells found for query cell, use the cell id and cell type of query cell to fill in the columns for neighbor cells in returned data.frame
+#' @importFrom stats quantile aggregate
+#' @importFrom data.table .SD
 #' @export
 get_neighborhood_content <- function(chosen_cells = NULL, 
                                      score_GeneMatrix,  

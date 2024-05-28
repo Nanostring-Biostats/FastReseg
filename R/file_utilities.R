@@ -2,6 +2,7 @@
 #' @title myFun_fov_load
 #' @description supporting function for \code{runPreprocess}, \code{fastReseg_full_pipeline} and \code{fastReseg_flag_all_errors}, to load transcript data.frame of each FOV from file path
 #' @param path_to_fov file path to per fov transcript data.frame 
+#' @importFrom utils read.csv
 myFun_fov_load <- function(path_to_fov){
   if(grepl(".RData$", path_to_fov, ignore.case = TRUE)){
     each_transDF <- get(load(path_to_fov))

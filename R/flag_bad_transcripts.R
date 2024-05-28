@@ -23,6 +23,7 @@
 #'    \item{SVM_cell_type, new cell type for each transcript groups within each cells}
 #' }
 #' @details For score of transcripts within each cell, assign 0 or 1 label to each transcript based on whether the score is above score_cutoff; then run support vector machine on svm(above_cutoff ~ x + y) for 2D, svm(above_cutoff ~ x + y + z) for 3D, default to do radial kernal with scale = TRUE and gamma = 0.1.  
+#' @importFrom data.table .N .SD
 #' @export
 flag_bad_transcripts <- function(chosen_cells, 
                                  score_GeneMatrix, 
@@ -206,6 +207,8 @@ flag_bad_transcripts <- function(chosen_cells,
 #'    \item{LDA_cell_type, new cell type for each transcript groups within each cells}
 #' }
 #' @details For score of transcripts within each cell, assign 0 or 1 label to each transcript based on whether the score is above score_cutoff; then run linear discriminant analysis on lda(above_cutoff ~ x + y + xy + x^2 + y^2) for 2D, lda(above_cutoff ~ x + y + z+ xy +xz + yz + x^2 + y^2 + z^2) for 3D. Coordinate variables with variance less than 1e-8 would not be used. Z-step of 5E-4mm or similar often resulted in too small of variables for z2. 
+#' @importFrom stats var as.formula predict quantile
+#' @importFrom data.table .N .SD
 #' @export
 flagTranscripts_LDA_hyperplane <- function(chosen_cells, 
                                            score_GeneMatrix, 

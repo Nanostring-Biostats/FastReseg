@@ -1,3 +1,5 @@
+## Package Specifications
+
 #### Specs for fastReseg_flag_all_errors:
 
 -   Returns a genes x clusters matrix of cluster-specific reference profiles used in resegmenation pipeline. -- test: test_pipeline_wrappers.R#L54

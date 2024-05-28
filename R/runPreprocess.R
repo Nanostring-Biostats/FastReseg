@@ -50,7 +50,8 @@
 #' data("example_CellGeneExpr")
 #' data("example_clust")
 #' data("example_refProfiles")
-#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+#' # cell_ID for extracellualr transcripts
+#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] 
 #' 
 #' # case 1: use `clust` and `transcript_df` directly, with known distance cutoffs
 #' prep_res1 <- runPreprocess(
@@ -75,7 +76,9 @@
 #'   spatLocs_colns = c('x','y','z'),
 #'   extracellular_cellID = 0 
 #' )
-#' # case 2: use `refProfiles` to get `clust`, use `transcript_df` directly, unknown distance cutoffs
+#' 
+#' # case 2: use `refProfiles` to get `clust`, use `transcript_df` directly, 
+#' # unknown distance cutoffs
 #' prep_res2 <- runPreprocess(
 #'   counts = example_CellGeneExpr,
 #'   clust = NULL,
@@ -83,7 +86,10 @@
 #'   score_baseline = NULL,
 #'   lowerCutoff_transNum = NULL,
 #'   higherCutoff_transNum= NULL,
-#'   imputeFlag_missingCTs = TRUE, # impute for cell types missing in provided 'transcript_df' 
+#'   
+#'   # impute for cell types missing in provided 'transcript_df' 
+#'   imputeFlag_missingCTs = TRUE, 
+#'   
 #'   ctrl_genes = NULL,
 #'   svmClass_score_cutoff = -2,
 #'   molecular_distance_cutoff = NULL,
@@ -98,15 +104,18 @@
 #'   spatLocs_colns = c('x','y','z'),
 #'   extracellular_cellID = 0 
 #' )
-#' # case 3: provide both `refProfiles` and `clust`, use transDF_fileInfo for multi-files, no known molecular distance cutoffs
+#' 
+#' # case 3: provide both `refProfiles` and `clust`, use transDF_fileInfo for 
+#' # multi-files, no known molecular distance cutoffs
 #' dataDir <- system.file("extdata", package = "FastReseg")
-#' transDF_fileInfo <- data.frame(file_path = fs::path(dataDir,
-#'                                                     c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
-#'                                                       "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
-#'                                slide = c(1, 1),
-#'                                fov = c(1,2),
-#'                                stage_X = 1000*c(5.13, -2.701),
-#'                                stage_Y = 1000*c(-0.452, 0.081))
+#' transDF_fileInfo <- data.frame(
+#'   file_path = fs::path(dataDir,
+#'                        c("Run4104_FOV001__complete_code_cell_target_call_coord.csv",
+#'                          "Run4104_FOV002__complete_code_cell_target_call_coord.csv")),
+#'   slide = c(1, 1),
+#'   fov = c(1,2),
+#'   stage_X = 1000*c(5.13, -2.701),
+#'   stage_Y = 1000*c(-0.452, 0.081))
 #' prep_res3 <- runPreprocess(
 #'   counts = example_CellGeneExpr,
 #'   clust = example_clust,
@@ -132,6 +141,7 @@
 #'   spatLocs_colns = c('x','y','z'),
 #'   extracellular_cellID = 0 
 #' )
+#' @importFrom stats median
 #' @export
 #' 
 runPreprocess <- function(counts, 

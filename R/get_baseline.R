@@ -19,12 +19,14 @@
 #' @details `cellular_distance_cutoff` is defined as maximum cell-to-cell distance in x, y between the center of query cells to the center of neighbor cells with direct contact. The function calculates average 2D cell diameter from input data.frame and use 2 times of the mean cell diameter as `cellular_distance_cutoff`. `molecular_distance_cutoff` is defined as maximum molecule-to-molecule distance within connected transcript groups belonging to same source cells. The function would first randomly choose `sampleSize_cellNum` number of cells from `sampleSize_nROI` number of randomly picked ROIs with search radius to be 5 times of `cellular_distance_cutoff`, and then calculate the minimal molecular distance between picked cells. The function would further use the 5 times of 90% quantile of minimal molecular distance as `molecular_distance_cutoff`. This calculation is slow and is not recommended for large transcript data.frame.
 #' @examples 
 #' data(mini_transcriptDF)
-#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID'] # cell_ID for extracellualr transcripts
+#' # cell_ID for extracellualr transcripts
+#' extracellular_cellID <- mini_transcriptDF[which(mini_transcriptDF$CellId ==0), 'cell_ID']
 #' distCutoffs <- choose_distance_cutoff(mini_transcriptDF,
 #'                                       extracellular_cellID = extracellular_cellID)
 #' @importFrom data.table as.data.table
 #' @importFrom dplyr between
 #' @importFrom spatstat.geom ppp pp3 box3 nndist
+#' @importFrom stats quantile
 #' @export
 choose_distance_cutoff <- function(transcript_df, 
                                    transID_coln = 'UMI_transID',
@@ -184,7 +186,8 @@ choose_distance_cutoff <- function(transcript_df,
 #' @examples 
 #' data(example_refProfiles)
 #' data(ori_RawExprs)
-#' baselineData <- get_baselineCT(refProfiles = example_refProfiles, counts = ori_RawExprs, clust = NULL)
+#' baselineData <- get_baselineCT(refProfiles = example_refProfiles, 
+#'                                counts = ori_RawExprs, clust = NULL)
 #' @export
 get_baselineCT <- function(refProfiles, 
                            counts, 
