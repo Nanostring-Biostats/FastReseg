@@ -105,7 +105,18 @@ reference:
   - makeDummyOuts_perFOV
   - myFun_3point_singleCell
 
+external-articles:
+- name: fastReseg_manuscript
+  title: Working principles and Manuscript
+  description: Manuscript for FastReseg describing working principles, performance
+    characterization and parameter impacts.
+  href: https://www.biorxiv.org/content/10.1101/2024.12.05.627051v1.abstract
+
 articles:
+- title: Manuscript
+  navbar: ~
+  contents: fastReseg_manuscript
+  
 - title: Tutorial
   navbar: Workflow and core functions
   contents:
@@ -113,4 +124,3 @@ articles:
   
 search:
   exclude: ['reqs.html', 'specs.html']
-  
