@@ -4,7 +4,7 @@
 \name{FastReseg-package}
 \alias{FastReseg}
 \alias{FastReseg-package}
-\title{FastReseg: An R Package for Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts}
+\title{FastReseg: Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts}
 \description{
 An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
 }
@@ -12,6 +12,8 @@ An R package for detection and correction of cell segmentation error based on sp
 Useful links:
 \itemize{
   \item \url{https://nanostring-biostats.github.io/FastReseg/}
+  \item \url{https://github.com/Nanostring-Biostats/FastReseg}
+  \item Report bugs at \url{https://github.com/Nanostring-Biostats/FastReseg/issues}
 }
 
 }
