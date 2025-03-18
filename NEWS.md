@@ -1,5 +1,9 @@
 # FastReseg
 
+# FastReseg 1.0.1
+
+* Update DESCRIPTION with github remotes and include installation instructions for R 4.3.x
+
 # FastReseg 1.0.0
 
 * Addresses compatibility with new latest.fovs that has additional column for acquisition order
