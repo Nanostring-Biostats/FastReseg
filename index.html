@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">FastReseg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.0.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -138,10 +138,15 @@
 <div class="section level4">
 <h4 id="install-the-development-version-from-github">Install the development version from GitHub<a class="anchor" aria-label="anchor" href="#install-the-development-version-from-github"></a>
 </h4>
-<pre><code><span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"GiottoClass"</span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<pre><code><span><span class="co"># to use with R 4.3.x</span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"GiottoUtils"</span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"drieslab/GiottoClass"</span>, upgrade<span class="op">=</span><span class="st">"never"</span>,</span>
-<span>  ref <span class="op">=</span> <span class="st">"6d9d385beebcc57b78d34ffbe30be1ef0a184681"</span><span class="op">)</span></span>
+<span>  ref <span class="op">=</span> <span class="st">"bec3c79398a9aff299a01cc152ff6f2245a8f965"</span><span class="op">)</span></span>
 <span></span>
+<span><span class="kw">if</span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"GiottoClass"</span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"drieslab/GiottoClass"</span>, upgrade<span class="op">=</span><span class="st">"never"</span>,</span>
+<span>  ref <span class="op">=</span> <span class="st">"6d9d385beebcc57b78d34ffbe30be1ef0a184681"</span><span class="op">)</span></span></code></pre>
+<pre><code><span><span class="co"># install FastReseg from github</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"Nanostring-Biostats/FastReseg"</span>,</span>
 <span>                         build_vignettes <span class="op">=</span> <span class="cn">TRUE</span>, ref <span class="op">=</span> <span class="st">"main"</span><span class="op">)</span></span></code></pre>
 </div>
@@ -190,7 +195,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer>
