@@ -1,6 +1,6 @@
 Package: FastReseg
 Title: Detection and Correction of Cell Segmentation Error Based on Spatial Profile of Transcripts
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(
   person(given = "Patrick", family = "Danaher", email = "pdanaher@nanostring.com", role = c("aut"), comment = c(ORCID = "0000-0002-2844-5883")),
   person(given = "Lidan", family = "Wu", email = "lwu@nanostring.com", role = c("aut", "cre"), comment = c(ORCID = "0000-0003-3150-6170"))
@@ -14,15 +14,12 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1
-Additional_repositories:
-    https://github.com/drieslab/GiottoClass, 
-    https://github.com/drieslab/Giotto
 Depends:
     R (>= 3.5.0)
 Imports:
     lmtest,
     MASS,
-    Matrix,
+    Matrix(>= 1.6.2),
     stats,
     methods, 
     utils, 
@@ -37,16 +34,19 @@ Imports:
     ggplot2,
     fs,
     stringr, 
+    GiottoUtils(>= 0.1.6),
     GiottoClass(>= 0.2.3),
     geometry(>= 0.4.6.1),
     parallel
+Remotes: 
+  github::drieslab/GiottoUtils, 
+  github::drieslab/GiottoClass
 Suggests: 
     testthat (>= 3.0.0),
     kableExtra,
     knitr,
     rmarkdown,
     RTriangle (>= 1.6-0.10),
-    deldir (>= 1.0.6),
-    Giotto
+    deldir (>= 1.0.6)
 Config/testthat/edition: 3
 VignetteBuilder: knitr
