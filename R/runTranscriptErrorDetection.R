@@ -65,7 +65,7 @@ runTranscriptErrorDetection <- function(chosen_cells,
                                               transID_coln = transID_coln, 
                                               transGene_coln = transGene_coln,
                                               score_coln =  score_coln,
-                                              spatLocs_colns = c("x", "y", "z"), 
+                                              spatLocs_colns = spatLocs_colns, 
                                               model_cutoff = model_cutoff, 
                                               score_cutoff = score_cutoff, 
                                               svm_args = svm_args)
