@@ -1,5 +1,9 @@
 # FastReseg
 
+# FastReseg 1.0.2
+
+* Fix 2d data failure with `runTranscriptErrorDetection()` as identified in issue #39. 
+
 # FastReseg 1.0.1
 
 * Update DESCRIPTION with github remotes and include installation instructions for R 4.3.x
