@@ -26,6 +26,7 @@
 #' @param transGene_coln the column name of target or gene name in `transcript_df`
 #' @param cellID_coln the column name of cell_ID in `transcript_df`; when `prefix_colns` != NULL, unique cell_ID would be generated from `prefix_colns` and `cellID_coln` in each `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
+#' @param invert_y flag to invert y axis of local coordinates during stitching (default = TRUE)
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @return a nested list 
 #' \describe{
@@ -139,6 +140,7 @@
 #'   transGene_coln = "target",
 #'   cellID_coln = 'CellId',
 #'   spatLocs_colns = c('x','y','z'),
+#'   invert_y = TRUE,  # flip y axis of local image coordinates
 #'   extracellular_cellID = 0 
 #' )
 #' @importFrom stats median
@@ -165,7 +167,8 @@ runPreprocess <- function(counts,
                           transID_coln = NULL,
                           transGene_coln = "target",
                           cellID_coln = 'CellId', 
-                          spatLocs_colns = c('x','y','z'), 
+                          spatLocs_colns = c('x','y','z'),
+                          invert_y = TRUE,
                           extracellular_cellID = NULL){
   
   
@@ -297,6 +300,7 @@ runPreprocess <- function(counts,
                                                       transGene_coln = transGene_coln,
                                                       cellID_coln = cellID_coln, 
                                                       spatLocs_colns = spatLocs_colns, 
+                                                      invert_y = invert_y,
                                                       extracellular_cellID = extracellular_cellID)
     
     

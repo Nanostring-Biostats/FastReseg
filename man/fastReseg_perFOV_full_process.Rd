@@ -11,6 +11,7 @@ fastReseg_perFOV_full_process(
   transGene_coln = "target",
   cellID_coln = "UMI_cellID",
   spatLocs_colns = c("x", "y", "z"),
+  invert_y = TRUE,
   extracellular_cellID = NULL,
   flagModel_TransNum_cutoff = 50,
   flagCell_lrtest_cutoff = 5,
@@ -45,6 +46,8 @@ fastReseg_perFOV_full_process(
 \item{cellID_coln}{the column name of cell_ID in \code{transcript_df}}
 
 \item{spatLocs_colns}{column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in \code{transcript_df}}
+
+\item{invert_y}{flag to invert y axis of local coordinates during stitching (default = TRUE)}
 
 \item{extracellular_cellID}{a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)}
 

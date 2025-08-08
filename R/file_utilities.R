@@ -1,27 +1,47 @@
 # read in single FOV data
 #' @title myFun_fov_load
-#' @description supporting function for \code{runPreprocess}, \code{fastReseg_full_pipeline} and \code{fastReseg_flag_all_errors}, to load transcript data.frame of each FOV from file path
+#' @description supporting function for \code{runPreprocess}, \code{fastReseg_full_pipeline} and \code{fastReseg_flag_all_errors}, to load a single field-of-view (FOV) transcript data file into a data frame from file path.
 #' @param path_to_fov file path to per fov transcript data.frame 
+#' @return A data frame containing the transcript data.
+#' @details This function automatically detects the file format based on its extension and supports common tabular and binary formats, including 
+#' \itemize{
+#'   \item `.csv`, `.txt`, `.tsv`: tabular text files (comma- or tab-delimited)
+#'   \item `.csv.gz`, `.txt.gz`, `.tsv.gz`: gzip-compressed tabular files
+#'   \item `.RData`: R workspace files containing a single data frame object
+#'   \item `.rds`: serialized R object files
+#' }
+#' @examples
+#' \dontrun{
+#' df <- myFun_fov_load("data/fov1.csv")
+#' df <- myFun_fov_load("data/fov2.tsv.gz")
+#' df <- myFun_fov_load("data/fov3.RData")
+#' }
+#'
 #' @importFrom utils read.csv
-myFun_fov_load <- function(path_to_fov){
-  if(grepl(".RData$", path_to_fov, ignore.case = TRUE)){
-    each_transDF <- get(load(path_to_fov))
-  } else if (grepl(".csv$", path_to_fov)){
-    each_transDF <- read.csv(path_to_fov, sep = ',', header = TRUE)
-    
-  } else if (grepl(".txt$", path_to_fov)){
-    each_transDF <- read.csv(path_to_fov, sep = '\t', header = TRUE)
-    
-  } else if (grepl(".rds$", path_to_fov, ignore.case = TRUE)){
-    each_transDF <- readRDS(path_to_fov)
-    
+myFun_fov_load <- function(path_to_fov) {
+  is_gz <- grepl("\\.gz$", path_to_fov, ignore.case = TRUE)
+  base_path <- sub("\\.gz$", "", path_to_fov, ignore.case = TRUE)
+  
+  if (grepl("\\.RData$", base_path, ignore.case = TRUE)) {
+    each_transDF <- get(load(path_to_fov))  # assume not gzipped
+  } else if (grepl("\\.rds$", base_path, ignore.case = TRUE)) {
+    each_transDF <- readRDS(path_to_fov)    # assume not gzipped
+  } else if (grepl("\\.csv$", base_path, ignore.case = TRUE)) {
+    con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
+    each_transDF <- read.csv(con, sep = ',', header = TRUE)
+  } else if (grepl("\\.txt$", base_path, ignore.case = TRUE)) {
+    con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
+    each_transDF <- read.csv(con, sep = '\t', header = TRUE)
+  } else if (grepl("\\.tsv$", base_path, ignore.case = TRUE)) {
+    con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
+    each_transDF <- read.csv(con, sep = '\t', header = TRUE)
   } else {
-    stop(sprintf('The per FOV transcript data.frame must be RData, rds, csv, or txt file. Current `path_to_fov` = %s', 
-                 path_to_fov))
+    stop(sprintf('Unsupported file type. Must be RData, rds, csv, txt, or tsv (optionally gzipped for tabular formats). Got: %s', path_to_fov))
   }
   
   return(each_transDF)
 }
+
 
 # function to load each FOV's transcript data.frame
 #' @title prepare_perFOV_transDF
@@ -35,6 +55,7 @@ myFun_fov_load <- function(path_to_fov){
 #' @param transGene_coln the column name of target or gene name in `each_transDF`
 #' @param cellID_coln the column name of cell_ID in `each_transDF`; when `prefix_colns` != NULL, unique cell_ID would be generated from `prefix_vals` and `cellID_coln` in each `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `each_transDF` 
+#' @param invert_y flag to invert y axis of local coordinates during stitching (default = TRUE)
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param drop_original flag to drop original per FOV based cell ID and coordinates under columns `CellId`, `pixel_x`, `pixel_y`, `idx_z` (default = FALSE)
 #' @return a list contains transcript_df for downstream process and extracellular transcript data.frame
@@ -52,6 +73,7 @@ prepare_perFOV_transDF <- function(each_transDF,
                                    transGene_coln = "target",
                                    cellID_coln = 'CellId', 
                                    spatLocs_colns = c('x','y','z'), 
+                                   invert_y = TRUE,
                                    extracellular_cellID = NULL, 
                                    drop_original = FALSE){
   
@@ -116,7 +138,10 @@ prepare_perFOV_transDF <- function(each_transDF,
   raw_locs <- each_transDF[, orig_spatLocs_colns]
   
   # flip y coordinates (2nd) to have images shown from top to bottom
-  raw_locs[[orig_spatLocs_colns[2]]] <- 0-raw_locs[[orig_spatLocs_colns[2]]]
+  if(invert_y){
+    raw_locs[[orig_spatLocs_colns[2]]] <- 0-raw_locs[[orig_spatLocs_colns[2]]]
+  }
+  
   # place target coordinates in reference to whole slide 
   raw_locs[, 1:2] <- sweep(raw_locs[, 1:2] * pixel_size, 2, fov_centerLocs,"+")
   
@@ -180,6 +205,7 @@ prepare_perFOV_transDF <- function(each_transDF,
 #' @param transGene_coln the column name of target or gene name in `transcript_df`
 #' @param cellID_coln the column name of cell_ID in `transcript_df`; when `prefix_colns` != NULL, unique cell_ID would be generated from `prefix_colns` and `cellID_coln` in each `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
+#' @param invert_y flag to invert y axis of local coordinates during stitching (default = TRUE)
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @return a list contains transcript_df for downstream process and extracellular transcript data.frame
 #' ' \describe{
@@ -197,6 +223,7 @@ checkTransFileInputsAndLoadFirst <- function(transcript_df = NULL,
                                              transGene_coln = "target",
                                              cellID_coln = 'CellId', 
                                              spatLocs_colns = c('x','y','z'), 
+                                             invert_y = TRUE,
                                              extracellular_cellID = NULL){
   # spatial dimension
   d2_or_d3 <- length(spatLocs_colns)
@@ -279,6 +306,7 @@ checkTransFileInputsAndLoadFirst <- function(transcript_df = NULL,
                                           transGene_coln = transGene_coln,
                                           cellID_coln = cellID_coln, 
                                           spatLocs_colns = spatLocs_colns, 
+                                          invert_y = invert_y,
                                           extracellular_cellID = extracellular_cellID, 
                                           drop_original = TRUE)
   

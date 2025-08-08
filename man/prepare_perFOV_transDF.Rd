@@ -14,6 +14,7 @@ prepare_perFOV_transDF(
   transGene_coln = "target",
   cellID_coln = "CellId",
   spatLocs_colns = c("x", "y", "z"),
+  invert_y = TRUE,
   extracellular_cellID = NULL,
   drop_original = FALSE
 )
@@ -36,6 +37,8 @@ prepare_perFOV_transDF(
 \item{cellID_coln}{the column name of cell_ID in \code{each_transDF}; when \code{prefix_colns} != NULL, unique cell_ID would be generated from \code{prefix_vals} and \code{cellID_coln} in each \code{transcript_df}}
 
 \item{spatLocs_colns}{column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in \code{each_transDF}}
+
+\item{invert_y}{flag to invert y axis of local coordinates during stitching (default = TRUE)}
 
 \item{extracellular_cellID}{a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)}
 
