@@ -367,7 +367,7 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
         # remove edges that are longer than cutoff, check the number of unconnected group
         if(distance_cutoff !='auto'){
           # better to use auto, if not, use distance_cutoff >10 pixel = 1.8um, cutoff = 15 pixel = 2.7um works best 
-          network_igraph <- igraph::delete.edges(network_igraph, igraph::E(network_igraph)[distance > distance_cutoff])
+          network_igraph <- igraph_delete_edges(network_igraph, igraph::E(network_igraph)[distance > distance_cutoff])
         } 
         
         # identify groups
@@ -492,4 +492,20 @@ myFun_3point_singleCell <- function(dfCoord_subset,
   return(dfCoord_subset)
 }
 
+
+#' @title igraph_delete_edges
+#' @description Delete edges from an igraph object with version compatibility
+#' @param graph An igraph object from which edges will be deleted.
+#' @param edges A vector of edge IDs or an edge selector to delete.
+#'
+#' @return An igraph object with the specified edges removed.
+#' @details This function wraps `igraph::delete_edges()` and ensures compatibility
+#' with older versions (<2.0.0) of `igraph` that used `delete.edges()`.
+igraph_delete_edges <- function(graph, edges) {
+  if (packageVersion("igraph") >= "2.0.0") {
+    igraph::delete_edges(graph, edges)
+  } else {
+    igraph::delete.edges(graph, edges)
+  }
+}
 
