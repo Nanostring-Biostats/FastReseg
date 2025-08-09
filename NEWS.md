@@ -1,5 +1,11 @@
 # FastReseg
 
+# FastReseg 1.0.3
+
+* Include an option to turn off Y axis inversion in pipeline functions.  
+* Add support for gzip compressed transcript data file. 
+* Expand version compatibility to igraph 2.1.0 and above.
+
 # FastReseg 1.0.2
 
 * Fix 2d data failure with `runTranscriptErrorDetection()` as identified in issue #39. 

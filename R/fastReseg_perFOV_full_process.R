@@ -7,6 +7,7 @@
 #' @param transGene_coln the column name of target or gene name in `transcript_df`
 #' @param cellID_coln the column name of cell_ID in `transcript_df`
 #' @param spatLocs_colns column names for 1st, 2nd and optional 3rd dimension of spatial coordinates in `transcript_df` 
+#' @param invert_y flag to invert y axis of local coordinates during stitching (default = TRUE)
 #' @param extracellular_cellID a vector of cell_ID for extracellular transcripts which would be removed from the resegmention pipeline (default = NULL)
 #' @param flagModel_TransNum_cutoff the cutoff of transcript number to do spatial modeling for identification of wrongly segmented cells (default = 50)
 #' @param flagCell_lrtest_cutoff the cutoff of lrtest_nlog10P to identify putative wrongly segemented cells with strong spatial dependency in transcript score profile
@@ -104,6 +105,7 @@ fastReseg_perFOV_full_process <- function(score_GeneMatrix,
                                           transGene_coln = "target",
                                           cellID_coln = 'UMI_cellID', 
                                           spatLocs_colns = c('x','y','z'), 
+                                          invert_y = TRUE,
                                           extracellular_cellID = NULL, 
                                           flagModel_TransNum_cutoff = 50, 
                                           flagCell_lrtest_cutoff = 5,

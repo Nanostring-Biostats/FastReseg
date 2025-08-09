@@ -116,6 +116,7 @@ transcript_df_all <- prepare_perFOV_transDF(each_transDF = rawDF,
                                             transGene_coln = 'target', # gene name
                                             cellID_coln = 'CellId', # cell label unique at FOV level 
                                             spatLocs_colns = c('x', 'y', 'z'), # column names for spatial coordinates in pixel for each FOV
+                                            invert_y = TRUE, # flip Y axis (default = TRUE) between local image coordinate and global stage coordinate 
                                             extracellular_cellID = 0, # set this to the cell ID for extracellular transcript, use NULL if your data only contains intracellular transcripts 
                                             drop_original = TRUE) # set to FALSE if want to have columns for original cell ID and spatial coordinates returned in the data.frame
 
