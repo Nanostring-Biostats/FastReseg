@@ -10,3 +10,4 @@
 ^vignettes/articles/$
 ^\\.git$
 ^\\.gitignore$
+^_pkgdown\.yml$

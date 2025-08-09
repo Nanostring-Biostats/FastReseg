@@ -104,6 +104,8 @@ reference:
   - initializeAllSegRes
   - makeDummyOuts_perFOV
   - myFun_3point_singleCell
+  - run_igraph_leiden
+  - igraph_delete_edges
 
 external-articles:
 - name: fastReseg_manuscript
