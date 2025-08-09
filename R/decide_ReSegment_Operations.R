@@ -227,12 +227,13 @@ decide_ReSegment_Operations <- function(neighborhood_df,
             all_index = unique(c(network_edge_dt$from, network_edge_dt$to))
             network_igraph = igraph::graph_from_data_frame(as.data.frame(network_edge_dt), directed = FALSE, vertices = all_index)
             # igraph::community object
-            leid_result <- igraph:::cluster_leiden(network_igraph, 
-                                                   objective_function = leiden_config$objective_function,
-                                                   resolution_parameter = leiden_config$resolution_parameter,
-                                                   beta = leiden_config$ beta,
-                                                   initial_membership = NULL,
-                                                   n_iterations = leiden_config$n_iterations)
+            leid_result <- run_igraph_leiden(
+              network_igraph, 
+              objective_function = leiden_config$objective_function,
+              resolution_parameter = leiden_config$resolution_parameter,
+              beta = leiden_config$ beta,
+              initial_membership = NULL,
+              n_iterations = leiden_config$n_iterations)
             # igraph::membership object
             leid_result <- igraph::membership(leid_result)
             
@@ -434,5 +435,29 @@ check_config_leiden <- function(config){
   return(config)
 }
 
-
+#' @title run_igraph_leiden
+#' @description Run Leiden clustering with version-compatible resolution argument.
+#' @param graph An igraph object representing the graph to cluster.
+#' @param ... Additional arguments passed to `cluster_leiden()`, such as
+#'   `objective_function`, `resolution_parameter`, `beta`, `initial_membership`,
+#'   and `n_iterations`.
+#' @return A clustering object returned by `cluster_leiden()`.
+#' @details This function wraps `igraph::cluster_leiden()` and ensures compatibility
+#' with both older (<2.1.0) and newer versions of the `igraph` package by renaming
+#' the `resolution_parameter` argument to `resolution` if needed.
+#' @importFrom igraph cluster_leiden
+run_igraph_leiden <- function(graph, ...) {
+  args <- list(...)
+  
+  # Rename resolution_parameter to resolution if igraph >= 2.1.0
+  if (packageVersion("igraph") >= "2.1.0") {
+    if ("resolution_parameter" %in% names(args)) {
+      args$resolution <- args$resolution_parameter
+      args$resolution_parameter <- NULL
+    }
+  }
+  
+  # Call cluster_leiden with modified arguments
+  do.call(igraph::cluster_leiden, c(list(graph), args))
+}
 

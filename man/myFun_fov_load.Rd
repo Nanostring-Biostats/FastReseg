@@ -9,6 +9,26 @@ myFun_fov_load(path_to_fov)
 \arguments{
 \item{path_to_fov}{file path to per fov transcript data.frame}
 }
+\value{
+A data frame containing the transcript data.
+}
 \description{
-supporting function for \code{runPreprocess}, \code{fastReseg_full_pipeline} and \code{fastReseg_flag_all_errors}, to load transcript data.frame of each FOV from file path
+supporting function for \code{runPreprocess}, \code{fastReseg_full_pipeline} and \code{fastReseg_flag_all_errors}, to load a single field-of-view (FOV) transcript data file into a data frame from file path.
+}
+\details{
+This function automatically detects the file format based on its extension and supports common tabular and binary formats, including
+\itemize{
+\item \code{.csv}, \code{.txt}, \code{.tsv}: tabular text files (comma- or tab-delimited)
+\item \code{.csv.gz}, \code{.txt.gz}, \code{.tsv.gz}: gzip-compressed tabular files
+\item \code{.RData}: R workspace files containing a single data frame object
+\item \code{.rds}: serialized R object files
+}
+}
+\examples{
+\dontrun{
+df <- myFun_fov_load("data/fov1.csv")
+df <- myFun_fov_load("data/fov2.tsv.gz")
+df <- myFun_fov_load("data/fov3.RData")
+}
+
 }
