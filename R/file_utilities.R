@@ -29,10 +29,7 @@ myFun_fov_load <- function(path_to_fov) {
   } else if (grepl("\\.csv$", base_path, ignore.case = TRUE)) {
     con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
     each_transDF <- read.csv(con, sep = ',', header = TRUE)
-  } else if (grepl("\\.txt$", base_path, ignore.case = TRUE)) {
-    con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
-    each_transDF <- read.csv(con, sep = '\t', header = TRUE)
-  } else if (grepl("\\.tsv$", base_path, ignore.case = TRUE)) {
+  } else if (grepl("\\.txt$|\\.tsv$", base_path, ignore.case = TRUE)) {
     con <- if (is_gz) gzfile(path_to_fov) else path_to_fov
     each_transDF <- read.csv(con, sep = '\t', header = TRUE)
   } else {
@@ -138,7 +135,7 @@ prepare_perFOV_transDF <- function(each_transDF,
   raw_locs <- each_transDF[, orig_spatLocs_colns]
   
   # flip y coordinates (2nd) to have images shown from top to bottom
-  if(invert_y){
+  if(invert_y==TRUE){
     raw_locs[[orig_spatLocs_colns[2]]] <- 0-raw_locs[[orig_spatLocs_colns[2]]]
   }
   
