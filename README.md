@@ -1,9 +1,9 @@
 # FastReseg
  An R package for detection and correction of cell segmentation error based on spatial profile of transcripts
  
-#### [Manuscript](https://www.biorxiv.org/content/10.1101/2024.12.05.627051v1.abstract):
+#### [Manuscript](https://www.nature.com/articles/s41598-025-08733-5):
  
-Wu L, Beechem JM, Danaher P. FastReseg: using transcript locations to refine image-based cell segmentation results in spatial transcriptomics. *bioRxiv* 2024.12.05.627051; doi: https://doi.org/10.1101/2024.12.05.627051
+Wu, L., Beechem, J.M. & Danaher, P. Using transcripts to refine image based cell segmentation with FastReseg. Sci Rep 15, 30508 (2025). https://doi.org/10.1038/s41598-025-08733-5
  
 ### Dev notes 
 `FastReseg` package processes spatial transcriptome data through 5 different modules: 
