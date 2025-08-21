@@ -493,19 +493,3 @@ myFun_3point_singleCell <- function(dfCoord_subset,
 }
 
 
-#' @title igraph_delete_edges
-#' @description Delete edges from an igraph object with version compatibility
-#' @param graph An igraph object from which edges will be deleted.
-#' @param edges A vector of edge IDs or an edge selector to delete.
-#'
-#' @return An igraph object with the specified edges removed.
-#' @details This function wraps `igraph::delete_edges()` and ensures compatibility
-#' with older versions (<2.0.0) of `igraph` that used `delete.edges()`.
-igraph_delete_edges <- function(graph, edges) {
-  if (packageVersion("igraph") >= "2.0.0") {
-    igraph::delete_edges(graph, edges)
-  } else {
-    igraph::delete.edges(graph, edges)
-  }
-}
-
