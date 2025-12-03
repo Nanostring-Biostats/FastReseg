@@ -1,5 +1,9 @@
 # FastReseg
 
+# FastReseg 1.0.4
+
+* Ensure probe order when combining results across FOVs as identified in issue #55.
+
 # FastReseg 1.0.3
 
 * Include an option to turn off Y axis inversion in pipeline functions.  
