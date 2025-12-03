@@ -4,11 +4,12 @@
 #' @param spatLocs_df data.frame for spatial location of each entry for cell or transcript
 #' @param ID_column column name for entry ID in `spatLocs_df`
 #' @param spatLocs_column column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in `spatLocs_df` 
+#' @param verbose flag to print warning message about dropping spatial dimension without positive varaince 
 #' @importFrom data.table as.data.table .SD
 #' @importFrom methods new
-#' @return delaunay_network_Obj, a spatial network object created by `GiottoClass` functions
+#' @return `NULL` or delaunay_network_Obj, a spatial network object created by `GiottoClass` functions
 #' @details This function leverages `GiottoClass` package to create spatial networks from spatial coordinates. An example `config_spatNW` list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for `GiottoClass::createSpatialNetwork`. 
-#'#' ' \describe{
+#' \describe{
 #'    \item{name}{spatial network name; default = 'spatial_network'}
 #'    \item{dimensions}{a vector for which spatial dimensions to use, default = 'all' to use all dimentions}
 #'    \item{method}{method name for creating a spatial network, default = 'Delaunay'}
@@ -20,6 +21,7 @@
 #'    \item{j}{(RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.}
 #'    \item{S}{(RTriangle) Specifies the maximum number of added Steiner points.}
 #' }
+#' If the input spatial coordinates have fewer than 2 dimensions with non-zero variance, the function would return `NULL` instead. 
 #' @export
 createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 'spatial_network',
                                                                        dimensions = "all",
@@ -33,7 +35,8 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
                                                                        S = 0), 
                                                   spatLocs_df, 
                                                   ID_column = 'cell_ID',
-                                                  spatLocs_column = c("sdimx","sdimy","sdimz")){
+                                                  spatLocs_column = c("sdimx","sdimy","sdimz"), 
+                                                  verbose = FALSE){
   if(!'data.frame' %in% class(spatLocs_df)){
     stop("spatLocs_df is not a data.frame with columns for transcript ID and coordinates.")
   }
@@ -79,7 +82,25 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
   spatLocs_matrix <- spatial_locations[, grepl("sdim", colnames(spatial_locations)), 
                                        with = F]
   spatLocs_matrix <- as.matrix(spatLocs_matrix)
+  # drop the dimension without variance in coordinates
+  spatDims_to_drop <- which(apply(spatLocs_matrix, 2, function(x) diff(range(x, na.rm = TRUE)) <= 0))
+  if(length(spatDims_to_drop) >0){
+    if(verbose){
+      warning(sprintf("Drop %d coordinates without variance: `%s` ", length(spatDims_to_drop), 
+                      paste0(colnames(spatLocs_matrix)[spatDims_to_drop], collapse = "`, `")))
+    }
+    
+    spatLocs_matrix <- spatLocs_matrix[, - spatDims_to_drop, drop = F]
+  }
   d2_or_d3 = dim(spatLocs_matrix)[2]
+  
+  if(d2_or_d3 <2){
+    if(verbose){
+      warning(sprintf("Only %d coordinates, skip delaunay network building.", d2_or_d3))
+    }
+    return(NULL)
+  }
+  
   
   if (d2_or_d3 == 2) {
     # 2D network

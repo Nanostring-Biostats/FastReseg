@@ -11,3 +11,4 @@
 ^\\.git$
 ^\\.gitignore$
 ^_pkgdown\.yml$
+^\.Rproj\.user$

@@ -1,5 +1,14 @@
 # FastReseg
 
+# FastReseg 1.1.0
+
+* Add fallback for spatial network building of colinear input points as identified in issue #45
+* Tag release version `v1.1.0`
+
+# FastReseg 1.0.4
+
+* Ensure probe order when combining results across FOVs as identified in issue #55.
+
 # FastReseg 1.0.3
 
 * Include an option to turn off Y axis inversion in pipeline functions.  

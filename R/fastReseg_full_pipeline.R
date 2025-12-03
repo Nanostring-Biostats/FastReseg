@@ -482,7 +482,8 @@ fastReseg_full_pipeline <- function(counts,
     
     # per cell gene expression in gene x cell sparse matrix format, do cbind
     updated_perCellExprs <- lapply(process_outputs, '[[', 'updated_perCellExprs')
-    updated_perCellExprs <- do.call(cbind, updated_perCellExprs)
+    updated_perCellExprs <- combine_matrices_fast(matrix_list = updated_perCellExprs, 
+                                                  bind = "cbind", fill = 0)
     
     # save combined perCell data into `.rds` object as a list
     if(transDF_export_option ==1){
@@ -634,4 +635,148 @@ compartment_and_add_extra <- function(updated_transDF,
 }
 
 
+#' @title combine_matrices_fast
+#' @description Efficiently combines a list of matrices by aligning along the necessary axis and then binding.
+#' @param matrix_list A list of matrices to combine. All matrices must have non-NULL dimension names
+#'   and be of same type, either sparse (`sparseMatrix` class from the Matrix package) or dense (`matrix`).
+#' @param bind Character string, `"cbind"` or `"rbind"`. Controls the bind direction:
+#'   - `"cbind"`: align rows (union of rownames) then column-bind.
+#'   - `"rbind"`: align columns (union of colnames) then row-bind.
+#' @param fill Value to fill missing entries introduced by alignment. Default `0`.
+#'   - If `output_type = "sparse"` or all inputs are sparse and `fill = NA`, the function sets `fill = 0`.
+#'   - If `fill != 0` and sparse output is requested, the function converts to dense and warns.
+#' @param output_type One of `"auto"`, `"dense"`, `"sparse"`. Controls the output class.
+#'   - `"auto"`: if all inputs are sparse → sparse; if all are dense → dense; if mixed → sparse **only when** `fill == 0`,
+#'     otherwise dense.
+#'   - `"dense"`: convert any sparse inputs to dense and return a dense matrix.
+#'   - `"sparse"`: convert any dense inputs to sparse and return a sparse matrix. If `fill != 0`, converts to dense with warning.
+#' @return A combined matrix:
+#'   * If `output_type` resolves to sparse, returns a `Matrix::sparseMatrix` (typically `dgCMatrix`).
+#'   * If `output_type` resolves to dense, returns a base R `matrix`.
+#' @details
+#' - Missing rows or columns are filled with the specified `fill` value.
+#' - For sparse outputs, missing entries are naturally zeros. If `fill = NA`, it is replaced with `0` and a warning is issued.
+#' - If `fill != 0` and sparse output requested, the function converts to dense and warns.
+#' @export
+combine_matrices_fast <- function(matrix_list, 
+                                  bind = c("cbind", "rbind"),
+                                  fill = 0,
+                                  output_type = c("auto", "dense", "sparse")) {
+  stopifnot(is.list(matrix_list))
+  if(length(matrix_list) <2){
+    return(matrix_list[[1]])
+  }
+  
+  bind <- match.arg(bind, choices = c("cbind", "rbind"))
+  output_type <- match.arg(output_type, choices =c("auto", "dense", "sparse"))
+  
+  # Class detection
+  is_sparse_vec <- vapply(matrix_list, function(M) inherits(M, "sparseMatrix"), logical(1))
+  is_dense_vec  <- vapply(matrix_list, is.matrix, logical(1))
+  if (!all(is_sparse_vec | is_dense_vec)) {
+    stop("All matrices must be either Matrix::sparseMatrix or base R dense matrices.")
+  }
+  
+  # Check names presence
+  if (!all(vapply(matrix_list, function(M) !is.null(rownames(M)) && !is.null(colnames(M)), logical(1)))) {
+    stop("All matrices must have non-NULL rownames and colnames.")
+  }
+  
+  # Decide target output type
+  all_sparse <- all(is_sparse_vec)
+  all_dense  <- all(is_dense_vec)
+  target_sparse <- switch(output_type,
+                          auto   = if (all_sparse) TRUE else if (all_dense) FALSE else fill == 0,
+                          dense  = FALSE,
+                          sparse = TRUE
+  )
+  
+  # Handle fill for sparse output
+  if (target_sparse) {
+    if (is.na(fill)) {
+      warning("Sparse output requested; NA fill replaced with 0 for efficiency.")
+      fill <- 0
+    }
+    if (fill != 0) {
+      warning("Sparse output requested but fill is non-zero. Converting to dense output.")
+      target_sparse <- FALSE
+    }
+  }
+  
+  # Coerce inputs to target type if mixed or forced
+  if (target_sparse) {
+    matrix_list <- lapply(matrix_list, function(M) {
+      if (inherits(M, "sparseMatrix")) M else Matrix::Matrix(M, sparse = TRUE)
+    })
+  } else {
+    matrix_list <- lapply(matrix_list, function(M) {
+      if (is.matrix(M)) M else as.matrix(M)
+    })
+  }
+  
+  # Axis universes
+  all_rows <- if (bind == "cbind") Reduce(union, lapply(matrix_list, rownames)) else NULL
+  all_cols <- if (bind == "rbind") Reduce(union, lapply(matrix_list, colnames)) else NULL
+  
+  # Alignment helpers
+  align_dense_rows <- function(M, all_rows, fill) {
+    out <- matrix(fill, nrow = length(all_rows), ncol = ncol(M),
+                  dimnames = list(all_rows, colnames(M)))
+    rn <- rownames(M); pos <- match(rn, all_rows)
+    keep <- !is.na(pos)
+    if (any(keep)) out[pos[keep], ] <- M[keep, , drop = FALSE]
+    out
+  }
+  align_dense_cols <- function(M, all_cols, fill) {
+    out <- matrix(fill, nrow = nrow(M), ncol = length(all_cols),
+                  dimnames = list(rownames(M), all_cols))
+    cn <- colnames(M); pos <- match(cn, all_cols)
+    keep <- !is.na(pos)
+    if (any(keep)) out[, pos[keep]] <- M[, keep, drop = FALSE]
+    out
+  }
+  align_sparse_rows <- function(M, all_rows) {
+    rn <- rownames(M)
+    row_map <- setNames(seq_along(all_rows), all_rows)
+    sm <- Matrix::summary(M)
+    new_i <- row_map[rn[sm$i]]
+    Matrix::sparseMatrix(i = new_i, j = sm$j, x = sm$x,
+                         dims = c(length(all_rows), ncol(M)),
+                         dimnames = list(all_rows, colnames(M)))
+  }
+  align_sparse_cols <- function(M, all_cols) {
+    cn <- colnames(M)
+    col_map <- setNames(seq_along(all_cols), all_cols)
+    sm <- Matrix::summary(M)
+    new_j <- col_map[cn[sm$j]]
+    Matrix::sparseMatrix(i = sm$i, j = new_j, x = sm$x,
+                         dims = c(nrow(M), length(all_cols)),
+                         dimnames = list(rownames(M), all_cols))
+  }
+  
+  if (bind == "cbind") {
+    aligned <- if (target_sparse) {
+      lapply(matrix_list, align_sparse_rows, all_rows = all_rows)
+    } else {
+      lapply(matrix_list, align_dense_rows, all_rows = all_rows, fill = fill)
+    }
+  } else { # bind == "rbind"
+    aligned <- if (target_sparse) {
+      lapply(matrix_list, align_sparse_cols, all_cols = all_cols)
+    } else {
+      lapply(matrix_list, align_dense_cols, all_cols = all_cols, fill = fill)
+    }
+  }
+  
+  
+  # Bind
+  out <- if (target_sparse) {
+    res <- if (bind == "cbind") do.call(Matrix::cbind2, aligned) else do.call(Matrix::rbind2, aligned)
+    Matrix::drop0(res)
+  } else {
+    if (bind == "cbind") do.call(cbind, aligned) else do.call(rbind, aligned)
+  }
+  
+  return(out)
+}
 
