@@ -12,7 +12,7 @@
 
 <meta name="author" content="Lidan Wu" />
 
-<meta name="date" content="2025-08-08" />
+<meta name="date" content="2025-12-03" />
 
 <title>FastReseg to detect and correct segmentation error in spatial transcriptome data</title>
 
@@ -565,7 +565,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <h1 class="title toc-ignore">FastReseg to detect and correct
 segmentation error in spatial transcriptome data</h1>
 <h4 class="author">Lidan Wu</h4>
-<h4 class="date">2025-08-08</h4>
+<h4 class="date">2025-12-03</h4>
 
 
 <div id="TOC">
@@ -710,7 +710,7 @@ dataset.</li>
 <col width="9%" />
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th align="left">UMI_transID</th>
 <th align="left">UMI_cellID</th>
 <th align="right">x</th>
@@ -723,7 +723,7 @@ dataset.</li>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td align="left">t_1_2_10</td>
 <td align="left">c_1_2_5</td>
 <td align="right">914.8070</td>
@@ -734,7 +734,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">5</td>
 </tr>
-<tr>
+<tr class="even">
 <td align="left">t_1_2_100005</td>
 <td align="left">c_1_2_1270</td>
 <td align="right">841.7000</td>
@@ -745,7 +745,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1270</td>
 </tr>
-<tr>
+<tr class="odd">
 <td align="left">t_1_2_100006</td>
 <td align="left">c_1_2_1270</td>
 <td align="right">844.4609</td>
@@ -756,7 +756,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1270</td>
 </tr>
-<tr>
+<tr class="even">
 <td align="left">t_1_2_100007</td>
 <td align="left">c_1_2_1286</td>
 <td align="right">878.1635</td>
@@ -767,7 +767,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1286</td>
 </tr>
-<tr>
+<tr class="odd">
 <td align="left">t_1_2_10001</td>
 <td align="left">c_1_2_201</td>
 <td align="right">1018.2337</td>
@@ -778,7 +778,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">201</td>
 </tr>
-<tr>
+<tr class="even">
 <td align="left">t_1_2_100015</td>
 <td align="left">c_1_2_1292</td>
 <td align="right">885.8180</td>
@@ -1847,15 +1847,13 @@ cells/transcript groups of same cell type).</p>
 <span id="cb29-2"><a href="#cb29-2" tabindex="-1"></a><span class="co"># updated per cell data.table after refinement, with resegmentation operation recorded in `reSeg_action`</span></span>
 <span id="cb29-3"><a href="#cb29-3" tabindex="-1"></a>updated_perCellDT <span class="ot">&lt;-</span> finalRes[[<span class="st">&#39;updated_perCellDT&#39;</span>]]</span>
 <span id="cb29-4"><a href="#cb29-4" tabindex="-1"></a><span class="fu">head</span>(updated_perCellDT)</span>
-<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a><span class="co">#&gt; Key: &lt;updated_cellID&gt;</span></span>
-<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a><span class="co">#&gt;    updated_cellID updated_celltype         x         y        z reSeg_action</span></span>
-<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a><span class="co">#&gt;            &lt;char&gt;           &lt;char&gt;     &lt;num&gt;     &lt;num&gt;    &lt;num&gt;       &lt;char&gt;</span></span>
-<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co">#&gt; 1:     c_1_2_1000                d 1061.5538 -7993.376 2.691633         none</span></span>
-<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="co">#&gt; 2:     c_1_2_1001                f 1195.9138 -7993.106 4.192908         none</span></span>
-<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a><span class="co">#&gt; 3:     c_1_2_1009                d  807.5324 -7996.263 3.311172         none</span></span>
-<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a><span class="co">#&gt; 4:     c_1_2_1010                d  928.8692 -7996.915 3.523333         none</span></span>
-<span id="cb29-12"><a href="#cb29-12" tabindex="-1"></a><span class="co">#&gt; 5:     c_1_2_1011                d 1135.7938 -7996.114 2.759471         none</span></span>
-<span id="cb29-13"><a href="#cb29-13" tabindex="-1"></a><span class="co">#&gt; 6:     c_1_2_1012                d 1146.3545 -7996.048 2.354226         trim</span></span></code></pre></div>
+<span id="cb29-5"><a href="#cb29-5" tabindex="-1"></a><span class="co">#&gt;    updated_cellID updated_celltype         x         y        z reSeg_action</span></span>
+<span id="cb29-6"><a href="#cb29-6" tabindex="-1"></a><span class="co">#&gt; 1:     c_1_2_1000                d 1061.5538 -7993.376 2.691633         none</span></span>
+<span id="cb29-7"><a href="#cb29-7" tabindex="-1"></a><span class="co">#&gt; 2:     c_1_2_1001                f 1195.9138 -7993.106 4.192908         none</span></span>
+<span id="cb29-8"><a href="#cb29-8" tabindex="-1"></a><span class="co">#&gt; 3:     c_1_2_1009                d  807.5324 -7996.263 3.311172         none</span></span>
+<span id="cb29-9"><a href="#cb29-9" tabindex="-1"></a><span class="co">#&gt; 4:     c_1_2_1010                d  928.8692 -7996.915 3.523333         none</span></span>
+<span id="cb29-10"><a href="#cb29-10" tabindex="-1"></a><span class="co">#&gt; 5:     c_1_2_1011                d 1135.7938 -7996.114 2.759471         none</span></span>
+<span id="cb29-11"><a href="#cb29-11" tabindex="-1"></a><span class="co">#&gt; 6:     c_1_2_1012                d 1146.3545 -7996.048 2.354226         trim</span></span></code></pre></div>
 <div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" tabindex="-1"></a></span>
 <span id="cb30-2"><a href="#cb30-2" tabindex="-1"></a></span>
 <span id="cb30-3"><a href="#cb30-3" tabindex="-1"></a><span class="fu">table</span>(updated_perCellDT[[<span class="st">&#39;reSeg_action&#39;</span>]])</span>
@@ -1976,61 +1974,59 @@ refinement process.</p>
 <span id="cb31-10"><a href="#cb31-10" tabindex="-1"></a><span class="do">## segmentation changes for the selected cells with original cell_ID in `UMI_cellID` column</span></span>
 <span id="cb31-11"><a href="#cb31-11" tabindex="-1"></a><span class="fu">print</span>(changes_to_plot[<span class="fu">order</span>(reSeg_action, <span class="sc">-</span> newCellNum_from_oriCell), ])</span>
 <span id="cb31-12"><a href="#cb31-12" tabindex="-1"></a><span class="co">#&gt;     updated_cellID     reSeg_action UMI_cellID oriCellNum_in_newCell</span></span>
-<span id="cb31-13"><a href="#cb31-13" tabindex="-1"></a><span class="co">#&gt;             &lt;char&gt;           &lt;char&gt;     &lt;char&gt;                 &lt;int&gt;</span></span>
-<span id="cb31-14"><a href="#cb31-14" tabindex="-1"></a><span class="co">#&gt;  1:  c_1_2_1481_g5 merge_or_flagged c_1_2_1493                     2</span></span>
-<span id="cb31-15"><a href="#cb31-15" tabindex="-1"></a><span class="co">#&gt;  2:  c_1_2_1481_g5 merge_or_flagged c_1_2_1481                     2</span></span>
-<span id="cb31-16"><a href="#cb31-16" tabindex="-1"></a><span class="co">#&gt;  3:     c_1_2_1655 merge_or_flagged c_1_2_1655                     2</span></span>
-<span id="cb31-17"><a href="#cb31-17" tabindex="-1"></a><span class="co">#&gt;  4:     c_1_2_1655 merge_or_flagged c_1_2_1668                     2</span></span>
-<span id="cb31-18"><a href="#cb31-18" tabindex="-1"></a><span class="co">#&gt;  5:     c_1_2_1683 merge_or_flagged c_1_2_1683                     2</span></span>
-<span id="cb31-19"><a href="#cb31-19" tabindex="-1"></a><span class="co">#&gt;  6:     c_1_2_1683 merge_or_flagged c_1_2_1732                     2</span></span>
-<span id="cb31-20"><a href="#cb31-20" tabindex="-1"></a><span class="co">#&gt;  7:     c_1_2_2243 merge_or_flagged c_1_2_2243                     1</span></span>
-<span id="cb31-21"><a href="#cb31-21" tabindex="-1"></a><span class="co">#&gt;  8:  c_1_2_2549_g2              new c_1_2_2549                     1</span></span>
-<span id="cb31-22"><a href="#cb31-22" tabindex="-1"></a><span class="co">#&gt;  9:  c_1_2_1502_g1              new c_1_2_1502                     1</span></span>
-<span id="cb31-23"><a href="#cb31-23" tabindex="-1"></a><span class="co">#&gt; 10:  c_1_2_1758_g1              new c_1_2_1758                     1</span></span>
-<span id="cb31-24"><a href="#cb31-24" tabindex="-1"></a><span class="co">#&gt; 11:     c_1_2_2549             trim c_1_2_2549                     1</span></span>
-<span id="cb31-25"><a href="#cb31-25" tabindex="-1"></a><span class="co">#&gt; 12:     c_1_2_1341             trim c_1_2_1341                     1</span></span>
-<span id="cb31-26"><a href="#cb31-26" tabindex="-1"></a><span class="co">#&gt; 13:     c_1_2_1485             trim c_1_2_1485                     1</span></span>
-<span id="cb31-27"><a href="#cb31-27" tabindex="-1"></a><span class="co">#&gt; 14:     c_1_2_1646             trim c_1_2_1646                     1</span></span>
-<span id="cb31-28"><a href="#cb31-28" tabindex="-1"></a><span class="co">#&gt; 15:     c_1_2_1751             trim c_1_2_1751                     1</span></span>
-<span id="cb31-29"><a href="#cb31-29" tabindex="-1"></a><span class="co">#&gt; 16:     c_1_2_1763             trim c_1_2_1763                     1</span></span>
-<span id="cb31-30"><a href="#cb31-30" tabindex="-1"></a><span class="co">#&gt; 17:     c_1_2_2062             trim c_1_2_2062                     1</span></span>
-<span id="cb31-31"><a href="#cb31-31" tabindex="-1"></a><span class="co">#&gt; 18:     c_1_2_2332             trim c_1_2_2332                     1</span></span>
-<span id="cb31-32"><a href="#cb31-32" tabindex="-1"></a><span class="co">#&gt; 19:     c_1_2_2623             trim c_1_2_2623                     1</span></span>
-<span id="cb31-33"><a href="#cb31-33" tabindex="-1"></a><span class="co">#&gt; 20:     c_1_2_2688             trim c_1_2_2688                     1</span></span>
-<span id="cb31-34"><a href="#cb31-34" tabindex="-1"></a><span class="co">#&gt; 21:      c_1_2_352             trim  c_1_2_352                     1</span></span>
-<span id="cb31-35"><a href="#cb31-35" tabindex="-1"></a><span class="co">#&gt; 22:      c_1_2_392             trim  c_1_2_392                     1</span></span>
-<span id="cb31-36"><a href="#cb31-36" tabindex="-1"></a><span class="co">#&gt; 23:     c_1_2_4147             trim c_1_2_4147                     1</span></span>
-<span id="cb31-37"><a href="#cb31-37" tabindex="-1"></a><span class="co">#&gt; 24:      c_1_2_521             trim  c_1_2_521                     1</span></span>
-<span id="cb31-38"><a href="#cb31-38" tabindex="-1"></a><span class="co">#&gt; 25:      c_1_2_714             trim  c_1_2_714                     1</span></span>
-<span id="cb31-39"><a href="#cb31-39" tabindex="-1"></a><span class="co">#&gt;     updated_cellID     reSeg_action UMI_cellID oriCellNum_in_newCell</span></span>
-<span id="cb31-40"><a href="#cb31-40" tabindex="-1"></a><span class="co">#&gt;     newCellNum_from_oriCell</span></span>
-<span id="cb31-41"><a href="#cb31-41" tabindex="-1"></a><span class="co">#&gt;                       &lt;int&gt;</span></span>
-<span id="cb31-42"><a href="#cb31-42" tabindex="-1"></a><span class="co">#&gt;  1:                       1</span></span>
-<span id="cb31-43"><a href="#cb31-43" tabindex="-1"></a><span class="co">#&gt;  2:                       1</span></span>
-<span id="cb31-44"><a href="#cb31-44" tabindex="-1"></a><span class="co">#&gt;  3:                       1</span></span>
-<span id="cb31-45"><a href="#cb31-45" tabindex="-1"></a><span class="co">#&gt;  4:                       1</span></span>
-<span id="cb31-46"><a href="#cb31-46" tabindex="-1"></a><span class="co">#&gt;  5:                       1</span></span>
-<span id="cb31-47"><a href="#cb31-47" tabindex="-1"></a><span class="co">#&gt;  6:                       1</span></span>
-<span id="cb31-48"><a href="#cb31-48" tabindex="-1"></a><span class="co">#&gt;  7:                       1</span></span>
-<span id="cb31-49"><a href="#cb31-49" tabindex="-1"></a><span class="co">#&gt;  8:                       2</span></span>
-<span id="cb31-50"><a href="#cb31-50" tabindex="-1"></a><span class="co">#&gt;  9:                       1</span></span>
-<span id="cb31-51"><a href="#cb31-51" tabindex="-1"></a><span class="co">#&gt; 10:                       1</span></span>
-<span id="cb31-52"><a href="#cb31-52" tabindex="-1"></a><span class="co">#&gt; 11:                       2</span></span>
-<span id="cb31-53"><a href="#cb31-53" tabindex="-1"></a><span class="co">#&gt; 12:                       1</span></span>
-<span id="cb31-54"><a href="#cb31-54" tabindex="-1"></a><span class="co">#&gt; 13:                       1</span></span>
-<span id="cb31-55"><a href="#cb31-55" tabindex="-1"></a><span class="co">#&gt; 14:                       1</span></span>
-<span id="cb31-56"><a href="#cb31-56" tabindex="-1"></a><span class="co">#&gt; 15:                       1</span></span>
-<span id="cb31-57"><a href="#cb31-57" tabindex="-1"></a><span class="co">#&gt; 16:                       1</span></span>
-<span id="cb31-58"><a href="#cb31-58" tabindex="-1"></a><span class="co">#&gt; 17:                       1</span></span>
-<span id="cb31-59"><a href="#cb31-59" tabindex="-1"></a><span class="co">#&gt; 18:                       1</span></span>
-<span id="cb31-60"><a href="#cb31-60" tabindex="-1"></a><span class="co">#&gt; 19:                       1</span></span>
-<span id="cb31-61"><a href="#cb31-61" tabindex="-1"></a><span class="co">#&gt; 20:                       1</span></span>
-<span id="cb31-62"><a href="#cb31-62" tabindex="-1"></a><span class="co">#&gt; 21:                       1</span></span>
-<span id="cb31-63"><a href="#cb31-63" tabindex="-1"></a><span class="co">#&gt; 22:                       1</span></span>
-<span id="cb31-64"><a href="#cb31-64" tabindex="-1"></a><span class="co">#&gt; 23:                       1</span></span>
-<span id="cb31-65"><a href="#cb31-65" tabindex="-1"></a><span class="co">#&gt; 24:                       1</span></span>
-<span id="cb31-66"><a href="#cb31-66" tabindex="-1"></a><span class="co">#&gt; 25:                       1</span></span>
-<span id="cb31-67"><a href="#cb31-67" tabindex="-1"></a><span class="co">#&gt;     newCellNum_from_oriCell</span></span></code></pre></div>
+<span id="cb31-13"><a href="#cb31-13" tabindex="-1"></a><span class="co">#&gt;  1:  c_1_2_1481_g5 merge_or_flagged c_1_2_1493                     2</span></span>
+<span id="cb31-14"><a href="#cb31-14" tabindex="-1"></a><span class="co">#&gt;  2:  c_1_2_1481_g5 merge_or_flagged c_1_2_1481                     2</span></span>
+<span id="cb31-15"><a href="#cb31-15" tabindex="-1"></a><span class="co">#&gt;  3:     c_1_2_1655 merge_or_flagged c_1_2_1655                     2</span></span>
+<span id="cb31-16"><a href="#cb31-16" tabindex="-1"></a><span class="co">#&gt;  4:     c_1_2_1655 merge_or_flagged c_1_2_1668                     2</span></span>
+<span id="cb31-17"><a href="#cb31-17" tabindex="-1"></a><span class="co">#&gt;  5:     c_1_2_1683 merge_or_flagged c_1_2_1683                     2</span></span>
+<span id="cb31-18"><a href="#cb31-18" tabindex="-1"></a><span class="co">#&gt;  6:     c_1_2_1683 merge_or_flagged c_1_2_1732                     2</span></span>
+<span id="cb31-19"><a href="#cb31-19" tabindex="-1"></a><span class="co">#&gt;  7:     c_1_2_2243 merge_or_flagged c_1_2_2243                     1</span></span>
+<span id="cb31-20"><a href="#cb31-20" tabindex="-1"></a><span class="co">#&gt;  8:  c_1_2_2549_g2              new c_1_2_2549                     1</span></span>
+<span id="cb31-21"><a href="#cb31-21" tabindex="-1"></a><span class="co">#&gt;  9:  c_1_2_1502_g1              new c_1_2_1502                     1</span></span>
+<span id="cb31-22"><a href="#cb31-22" tabindex="-1"></a><span class="co">#&gt; 10:  c_1_2_1758_g1              new c_1_2_1758                     1</span></span>
+<span id="cb31-23"><a href="#cb31-23" tabindex="-1"></a><span class="co">#&gt; 11:     c_1_2_2549             trim c_1_2_2549                     1</span></span>
+<span id="cb31-24"><a href="#cb31-24" tabindex="-1"></a><span class="co">#&gt; 12:     c_1_2_1341             trim c_1_2_1341                     1</span></span>
+<span id="cb31-25"><a href="#cb31-25" tabindex="-1"></a><span class="co">#&gt; 13:     c_1_2_1485             trim c_1_2_1485                     1</span></span>
+<span id="cb31-26"><a href="#cb31-26" tabindex="-1"></a><span class="co">#&gt; 14:     c_1_2_1646             trim c_1_2_1646                     1</span></span>
+<span id="cb31-27"><a href="#cb31-27" tabindex="-1"></a><span class="co">#&gt; 15:     c_1_2_1751             trim c_1_2_1751                     1</span></span>
+<span id="cb31-28"><a href="#cb31-28" tabindex="-1"></a><span class="co">#&gt; 16:     c_1_2_1763             trim c_1_2_1763                     1</span></span>
+<span id="cb31-29"><a href="#cb31-29" tabindex="-1"></a><span class="co">#&gt; 17:     c_1_2_2062             trim c_1_2_2062                     1</span></span>
+<span id="cb31-30"><a href="#cb31-30" tabindex="-1"></a><span class="co">#&gt; 18:     c_1_2_2332             trim c_1_2_2332                     1</span></span>
+<span id="cb31-31"><a href="#cb31-31" tabindex="-1"></a><span class="co">#&gt; 19:     c_1_2_2623             trim c_1_2_2623                     1</span></span>
+<span id="cb31-32"><a href="#cb31-32" tabindex="-1"></a><span class="co">#&gt; 20:     c_1_2_2688             trim c_1_2_2688                     1</span></span>
+<span id="cb31-33"><a href="#cb31-33" tabindex="-1"></a><span class="co">#&gt; 21:      c_1_2_352             trim  c_1_2_352                     1</span></span>
+<span id="cb31-34"><a href="#cb31-34" tabindex="-1"></a><span class="co">#&gt; 22:      c_1_2_392             trim  c_1_2_392                     1</span></span>
+<span id="cb31-35"><a href="#cb31-35" tabindex="-1"></a><span class="co">#&gt; 23:     c_1_2_4147             trim c_1_2_4147                     1</span></span>
+<span id="cb31-36"><a href="#cb31-36" tabindex="-1"></a><span class="co">#&gt; 24:      c_1_2_521             trim  c_1_2_521                     1</span></span>
+<span id="cb31-37"><a href="#cb31-37" tabindex="-1"></a><span class="co">#&gt; 25:      c_1_2_714             trim  c_1_2_714                     1</span></span>
+<span id="cb31-38"><a href="#cb31-38" tabindex="-1"></a><span class="co">#&gt;     updated_cellID     reSeg_action UMI_cellID oriCellNum_in_newCell</span></span>
+<span id="cb31-39"><a href="#cb31-39" tabindex="-1"></a><span class="co">#&gt;     newCellNum_from_oriCell</span></span>
+<span id="cb31-40"><a href="#cb31-40" tabindex="-1"></a><span class="co">#&gt;  1:                       1</span></span>
+<span id="cb31-41"><a href="#cb31-41" tabindex="-1"></a><span class="co">#&gt;  2:                       1</span></span>
+<span id="cb31-42"><a href="#cb31-42" tabindex="-1"></a><span class="co">#&gt;  3:                       1</span></span>
+<span id="cb31-43"><a href="#cb31-43" tabindex="-1"></a><span class="co">#&gt;  4:                       1</span></span>
+<span id="cb31-44"><a href="#cb31-44" tabindex="-1"></a><span class="co">#&gt;  5:                       1</span></span>
+<span id="cb31-45"><a href="#cb31-45" tabindex="-1"></a><span class="co">#&gt;  6:                       1</span></span>
+<span id="cb31-46"><a href="#cb31-46" tabindex="-1"></a><span class="co">#&gt;  7:                       1</span></span>
+<span id="cb31-47"><a href="#cb31-47" tabindex="-1"></a><span class="co">#&gt;  8:                       2</span></span>
+<span id="cb31-48"><a href="#cb31-48" tabindex="-1"></a><span class="co">#&gt;  9:                       1</span></span>
+<span id="cb31-49"><a href="#cb31-49" tabindex="-1"></a><span class="co">#&gt; 10:                       1</span></span>
+<span id="cb31-50"><a href="#cb31-50" tabindex="-1"></a><span class="co">#&gt; 11:                       2</span></span>
+<span id="cb31-51"><a href="#cb31-51" tabindex="-1"></a><span class="co">#&gt; 12:                       1</span></span>
+<span id="cb31-52"><a href="#cb31-52" tabindex="-1"></a><span class="co">#&gt; 13:                       1</span></span>
+<span id="cb31-53"><a href="#cb31-53" tabindex="-1"></a><span class="co">#&gt; 14:                       1</span></span>
+<span id="cb31-54"><a href="#cb31-54" tabindex="-1"></a><span class="co">#&gt; 15:                       1</span></span>
+<span id="cb31-55"><a href="#cb31-55" tabindex="-1"></a><span class="co">#&gt; 16:                       1</span></span>
+<span id="cb31-56"><a href="#cb31-56" tabindex="-1"></a><span class="co">#&gt; 17:                       1</span></span>
+<span id="cb31-57"><a href="#cb31-57" tabindex="-1"></a><span class="co">#&gt; 18:                       1</span></span>
+<span id="cb31-58"><a href="#cb31-58" tabindex="-1"></a><span class="co">#&gt; 19:                       1</span></span>
+<span id="cb31-59"><a href="#cb31-59" tabindex="-1"></a><span class="co">#&gt; 20:                       1</span></span>
+<span id="cb31-60"><a href="#cb31-60" tabindex="-1"></a><span class="co">#&gt; 21:                       1</span></span>
+<span id="cb31-61"><a href="#cb31-61" tabindex="-1"></a><span class="co">#&gt; 22:                       1</span></span>
+<span id="cb31-62"><a href="#cb31-62" tabindex="-1"></a><span class="co">#&gt; 23:                       1</span></span>
+<span id="cb31-63"><a href="#cb31-63" tabindex="-1"></a><span class="co">#&gt; 24:                       1</span></span>
+<span id="cb31-64"><a href="#cb31-64" tabindex="-1"></a><span class="co">#&gt; 25:                       1</span></span>
+<span id="cb31-65"><a href="#cb31-65" tabindex="-1"></a><span class="co">#&gt;     newCellNum_from_oriCell</span></span></code></pre></div>
 <div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" tabindex="-1"></a></span>
 <span id="cb32-2"><a href="#cb32-2" tabindex="-1"></a></span>
 <span id="cb32-3"><a href="#cb32-3" tabindex="-1"></a><span class="co"># get all transcript in the source cells for plotting</span></span>
@@ -2105,7 +2101,7 @@ refinement process.</p>
 <span id="cb34-22"><a href="#cb34-22" tabindex="-1"></a><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span id="cb34-23"><a href="#cb34-23" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb34-24"><a href="#cb34-24" tabindex="-1"></a><span class="co">#&gt; other attached packages:</span></span>
-<span id="cb34-25"><a href="#cb34-25" tabindex="-1"></a><span class="co">#&gt; [1] FastReseg_1.0.3</span></span>
+<span id="cb34-25"><a href="#cb34-25" tabindex="-1"></a><span class="co">#&gt; [1] FastReseg_1.0.4</span></span>
 <span id="cb34-26"><a href="#cb34-26" tabindex="-1"></a><span class="co">#&gt; </span></span>
 <span id="cb34-27"><a href="#cb34-27" tabindex="-1"></a><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span id="cb34-28"><a href="#cb34-28" tabindex="-1"></a><span class="co">#&gt;  [1] gtable_0.3.6         xfun_0.48            bslib_0.8.0         </span></span>
@@ -2113,7 +2109,7 @@ refinement process.</p>
 <span id="cb34-30"><a href="#cb34-30" tabindex="-1"></a><span class="co">#&gt;  [7] tools_4.4.1          spatstat.utils_3.1-0 generics_0.1.3      </span></span>
 <span id="cb34-31"><a href="#cb34-31" tabindex="-1"></a><span class="co">#&gt; [10] parallel_4.4.1       tibble_3.2.1         proxy_0.4-27        </span></span>
 <span id="cb34-32"><a href="#cb34-32" tabindex="-1"></a><span class="co">#&gt; [13] fansi_1.0.6          highr_0.11           pkgconfig_2.0.3     </span></span>
-<span id="cb34-33"><a href="#cb34-33" tabindex="-1"></a><span class="co">#&gt; [16] Matrix_1.6-5         data.table_1.16.2    checkmate_2.3.2     </span></span>
+<span id="cb34-33"><a href="#cb34-33" tabindex="-1"></a><span class="co">#&gt; [16] Matrix_1.6-5         data.table_1.14.2    checkmate_2.3.2     </span></span>
 <span id="cb34-34"><a href="#cb34-34" tabindex="-1"></a><span class="co">#&gt; [19] RColorBrewer_1.1-3   lifecycle_1.0.4      compiler_4.4.1      </span></span>
 <span id="cb34-35"><a href="#cb34-35" tabindex="-1"></a><span class="co">#&gt; [22] farver_2.1.2         stringr_1.4.0        deldir_2.0-4        </span></span>
 <span id="cb34-36"><a href="#cb34-36" tabindex="-1"></a><span class="co">#&gt; [25] GiottoUtils_0.2.4    munsell_0.5.1        terra_1.7-39        </span></span>
@@ -2128,7 +2124,7 @@ refinement process.</p>
 <span id="cb34-45"><a href="#cb34-45" tabindex="-1"></a><span class="co">#&gt; [52] cli_3.6.3            concaveman_1.1.0     magrittr_2.0.3      </span></span>
 <span id="cb34-46"><a href="#cb34-46" tabindex="-1"></a><span class="co">#&gt; [55] utf8_1.2.4           e1071_1.7-16         spatstat.data_3.1-2 </span></span>
 <span id="cb34-47"><a href="#cb34-47" tabindex="-1"></a><span class="co">#&gt; [58] withr_3.0.2          scales_1.3.0         backports_1.5.0     </span></span>
-<span id="cb34-48"><a href="#cb34-48" tabindex="-1"></a><span class="co">#&gt; [61] rmarkdown_2.26       igraph_2.1.1         zoo_1.8-12          </span></span>
+<span id="cb34-48"><a href="#cb34-48" tabindex="-1"></a><span class="co">#&gt; [61] rmarkdown_2.28       igraph_2.1.1         zoo_1.8-12          </span></span>
 <span id="cb34-49"><a href="#cb34-49" tabindex="-1"></a><span class="co">#&gt; [64] kableExtra_1.4.0     evaluate_1.0.1       knitr_1.46          </span></span>
 <span id="cb34-50"><a href="#cb34-50" tabindex="-1"></a><span class="co">#&gt; [67] lmtest_0.9-40        geometry_0.4.7       viridisLite_0.4.2   </span></span>
 <span id="cb34-51"><a href="#cb34-51" tabindex="-1"></a><span class="co">#&gt; [70] rlang_1.1.1          Rcpp_1.0.12          glue_1.8.0          </span></span>
