@@ -455,10 +455,12 @@ fastReseg_flag_all_errors <- function(counts,
   all_segRes[['combined_flaggedCells']] <- lapply(process_outputs, '[[', 'flagged_cells')
   
   # per cell gene expression in gene x cell sparse matrix format, do cbind
-  trimmed_perCellExprs <- lapply(process_outputs, '[[', 'perCell_expression')
-  trimmed_perCellExprs <- combine_matrices_fast(matrix_list = trimmed_perCellExprs, 
-                                                bind = "cbind", fill = 0)
-  all_segRes[['trimmed_perCellExprs']] <- trimmed_perCellExprs
+  if(return_trimmed_perCell){
+    trimmed_perCellExprs <- lapply(process_outputs, '[[', 'perCell_expression')
+    trimmed_perCellExprs <- combine_matrices_fast(matrix_list = trimmed_perCellExprs, 
+                                                  bind = "cbind", fill = 0)
+    all_segRes[['trimmed_perCellExprs']] <- trimmed_perCellExprs
+  }
   
   if(transDF_export_option ==2){
     all_segRes[['flagged_transDF_list']] <- lapply(process_outputs, '[[', 'flagged_transDF')
