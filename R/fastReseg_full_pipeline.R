@@ -754,19 +754,20 @@ combine_matrices_fast <- function(matrix_list,
                          dimnames = list(rownames(M), all_cols))
   }
   
-  aligned <- if (bind == "cbind") {
-    if (target_sparse) {
+  if (bind == "cbind") {
+    aligned <- if (target_sparse) {
       lapply(matrix_list, align_sparse_rows, all_rows = all_rows)
     } else {
       lapply(matrix_list, align_dense_rows, all_rows = all_rows, fill = fill)
     }
-  } else {
-    if (target_sparse) {
+  } else { # bind == "rbind"
+    aligned <- if (target_sparse) {
       lapply(matrix_list, align_sparse_cols, all_cols = all_cols)
     } else {
       lapply(matrix_list, align_dense_cols, all_cols = all_cols, fill = fill)
     }
   }
+  
   
   # Bind
   out <- if (target_sparse) {
