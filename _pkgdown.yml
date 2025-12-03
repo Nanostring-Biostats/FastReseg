@@ -100,6 +100,7 @@ reference:
   - check_config_spatialNW
   - checkAndPrepInputs_perFOV
   - checkTypeLengthValue
+  - combine_matrices_fast
   - compartment_and_add_extra
   - initializeAllSegRes
   - makeDummyOuts_perFOV

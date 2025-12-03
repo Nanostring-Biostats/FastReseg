@@ -738,7 +738,7 @@ combine_matrices_fast <- function(matrix_list,
   align_sparse_rows <- function(M, all_rows) {
     rn <- rownames(M)
     row_map <- setNames(seq_along(all_rows), all_rows)
-    sm <- summary(M)
+    sm <- Matrix::summary(M)
     new_i <- row_map[rn[sm$i]]
     Matrix::sparseMatrix(i = new_i, j = sm$j, x = sm$x,
                          dims = c(length(all_rows), ncol(M)),
@@ -747,7 +747,7 @@ combine_matrices_fast <- function(matrix_list,
   align_sparse_cols <- function(M, all_cols) {
     cn <- colnames(M)
     col_map <- setNames(seq_along(all_cols), all_cols)
-    sm <- summary(M)
+    sm <- Matrix::summary(M)
     new_j <- col_map[cn[sm$j]]
     Matrix::sparseMatrix(i = sm$i, j = new_j, x = sm$x,
                          dims = c(nrow(M), length(all_cols)),
