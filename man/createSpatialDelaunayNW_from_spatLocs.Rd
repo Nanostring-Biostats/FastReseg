@@ -10,7 +10,8 @@ createSpatialDelaunayNW_from_spatLocs(
     "auto", options = "Pp", Y = TRUE, j = TRUE, S = 0),
   spatLocs_df,
   ID_column = "cell_ID",
-  spatLocs_column = c("sdimx", "sdimy", "sdimz")
+  spatLocs_column = c("sdimx", "sdimy", "sdimz"),
+  verbose = FALSE
 )
 }
 \arguments{
@@ -21,16 +22,18 @@ createSpatialDelaunayNW_from_spatLocs(
 \item{ID_column}{column name for entry ID in \code{spatLocs_df}}
 
 \item{spatLocs_column}{column name for 1st, 2nd, optional 3rd dimension of spatial coordinates in \code{spatLocs_df}}
+
+\item{verbose}{flag to print warning message about dropping spatial dimension without positive varaince}
 }
 \value{
-delaunay_network_Obj, a spatial network object created by \code{GiottoClass} functions
+\code{NULL} or delaunay_network_Obj, a spatial network object created by \code{GiottoClass} functions
 }
 \description{
 generate delaunay network based on provided config and spatial location using \code{GiottoClass} functions
 }
 \details{
 This function leverages \code{GiottoClass} package to create spatial networks from spatial coordinates. An example \code{config_spatNW} list is shown below with possible options on controlling the spatial network generation. For more details, see the manual for \code{GiottoClass::createSpatialNetwork}.
-#' ' \describe{
+\describe{
 \item{name}{spatial network name; default = 'spatial_network'}
 \item{dimensions}{a vector for which spatial dimensions to use, default = 'all' to use all dimentions}
 \item{method}{method name for creating a spatial network, default = 'Delaunay'}
@@ -42,4 +45,5 @@ This function leverages \code{GiottoClass} package to create spatial networks fr
 \item{j}{(RTriangle) If TRUE jettisons vertices that are not part of the final triangulation from the output.}
 \item{S}{(RTriangle) Specifies the maximum number of added Steiner points.}
 }
+If the input spatial coordinates have fewer than 2 dimensions with non-zero variance, the function would return \code{NULL} instead.
 }
