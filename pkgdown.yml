@@ -1,0 +1,9 @@
+pandoc: '3.5'
+pkgdown: 2.1.1
+pkgdown_sha: ~
+articles:
+  tutorial: tutorial.html
+last_built: 2025-12-06T01:13Z
+urls:
+  reference: https://nanostring-biostats.github.io/FastReseg/reference
+  article: https://nanostring-biostats.github.io/FastReseg/articles
