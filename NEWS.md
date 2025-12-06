@@ -1,9 +1,13 @@
 # FastReseg
 
+# FastReseg 1.1.1
+
+* Fix logic and add tests for `combine_matrices_fast()` (issue #59)
+* Tag release version `v1.1.1`
+
 # FastReseg 1.1.0
 
 * Add fallback for spatial network building of colinear input points as identified in issue #45
-* Tag release version `v1.1.0`
 
 # FastReseg 1.0.4
 
