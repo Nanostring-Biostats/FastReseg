@@ -101,6 +101,8 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
     return(NULL)
   }
   
+  # Cache centered coordinates for later use (collinearity check in 3D branch)
+  centered_coords <- scale(spatLocs_matrix, center = TRUE, scale = FALSE)
   
   if (d2_or_d3 == 2) {
     # 2D network
@@ -168,7 +170,7 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       # 1D line). The existing zero-variance drop only catches exact duplicates; floating-point
       # near-identical values would pass through and cause qhull's cospherical error.
       # The rank of the centered coordinate matrix is < 2 precisely when all points are collinear.
-      centered_coords <- scale(spatLocs_matrix, center = TRUE, scale = FALSE)
+      # Use cached centered_coords from earlier to avoid recomputation.
       if(qr(centered_coords)$rank < 2){
         if(verbose){
           warning("All 3D points are effectively collinear (e.g. identical x,y with only z varying). Skip Delaunay network building.")
