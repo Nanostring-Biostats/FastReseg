@@ -127,6 +127,7 @@ groupTranscripts_dbscan <- function(chosen_transcripts = NULL,
 #' } 
 #' @details for query cell, build network on flagged transcripts only to identify groups. In case of no more than 3 transcripts, determine the grouping based on distance cutoff directly; when distance cutoff = 'auto', no additional edge filtering based on delaunay network output but use 20% average XY cell range as cutoff when no more than 3 transcript.  
 #' @importFrom data.table ':=' .N .SD
+#' @importFrom dbscan dbscan
 #' @export
 groupTranscripts_Delaunay <- function(chosen_transcripts = NULL, 
                                       config_spatNW_transcript = list(name = 'transcript_delaunay_network',
@@ -412,10 +413,28 @@ groupTranscripts_Delaunay <- function(chosen_transcripts = NULL,
         }
         
       }else{
-        # if still NULL network, get assign separate groupID
-        dfCoord_subset[['transcript_group']] <- seq_len(nrow(dfCoord_subset))
-        message(sprintf("%s return NULL delaunay network, has %d unique coordinates as separate group. ", 
-                        each_cell, nrow(dfCoord_subset)))
+        # NULL network: originally designed for exact-duplicate coordinates (all same location →
+        # nrow(dfCoord_subset) == 1 → group 1). Now also triggered for collinear points (e.g.
+        # same x,y, distinct z) where seq_len would wrongly give each z-level its own group,
+        # causing spurious cell splitting. Fall back to distance-based grouping instead.
+        #
+        # orphan_cutoff is derived from all transcripts of the cell (not just flagged ones),
+        # using 20% of mean(x-range, y-range). When the whole cell has zero 2D footprint
+        # (all transcripts at the same x,y), orphan_cutoff == 0 and dbscan with eps = 0
+        # would again split everything. In that degenerate case keep all as one group.
+        if(orphan_cutoff[each_cell] <= 0){
+          dfCoord_subset[['transcript_group']] <- 1
+          message(sprintf("%s return NULL delaunay network with zero 2D cell footprint, keep all %d unique coordinates as one group.",
+                          each_cell, nrow(dfCoord_subset)))
+        } else {
+          dfCoord_subset[['transcript_group']] <- dbscan::dbscan(
+            as.data.frame(dfCoord_subset)[, transSpatLocs_coln],
+            eps = orphan_cutoff[each_cell], minPts = 1)$cluster
+          message(sprintf("%s return NULL delaunay network, fall back to distance-based grouping with cutoff %.4f, resulting in %d groups for %d unique coordinates.",
+                          each_cell, orphan_cutoff[each_cell],
+                          length(unique(dfCoord_subset[['transcript_group']])),
+                          nrow(dfCoord_subset)))
+        }
         
       }
       # data. table

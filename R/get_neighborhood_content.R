@@ -362,7 +362,7 @@ get_neighborhood_content <- function(chosen_cells = NULL,
     
     
     # get score matrix for each transcript in query cell
-    cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
+    cell_score <- score_GeneMatrix[query_df[[transGene_coln]], , drop = FALSE]
     if(nrow(query_df) >1 ){
       cell_score <- colSums(cell_score)
     }

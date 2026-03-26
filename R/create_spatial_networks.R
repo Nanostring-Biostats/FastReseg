@@ -163,11 +163,34 @@ createSpatialDelaunayNW_from_spatLocs <- function(config_spatNW = list(name = 's
       first_dimension = colnames(spatLocs_matrix)[[1]]
       second_dimension = colnames(spatLocs_matrix)[[2]]
       third_dimension = colnames(spatLocs_matrix)[[3]]
+      
+      # Defensively check for collinear points (e.g. nearly identical x,y but distinct z, all on a
+      # 1D line). The existing zero-variance drop only catches exact duplicates; floating-point
+      # near-identical values would pass through and cause qhull's cospherical error.
+      # The rank of the centered coordinate matrix is < 2 precisely when all points are collinear.
+      centered_coords <- scale(spatLocs_matrix, center = TRUE, scale = FALSE)
+      if(qr(centered_coords)$rank < 2){
+        if(verbose){
+          warning("All 3D points are effectively collinear (e.g. identical x,y with only z varying). Skip Delaunay network building.")
+        }
+        return(NULL)
+      }
+      
       spatLoc_in_use <- spatial_locations[, c("cell_ID", first_dimension, second_dimension,third_dimension), with = F]
-      delaunay_output <- GiottoClass:::.create_delaunaynetwork_geometry_3d(
-        spatial_locations = spatLoc_in_use, 
-        sdimx = first_dimension, sdimy = second_dimension, 
-        sdimz = third_dimension, options = config_spatNW$options)
+      # The rank check above catches the collinear case (e.g. identical x,y varying only in z).
+      # tryCatch here as a last-resort safety net for any remaining degenerate geometry
+      # (e.g. cospherical points that are non-collinear but still cause qhull to fail).
+      delaunay_output <- tryCatch(
+        GiottoClass:::.create_delaunaynetwork_geometry_3d(
+          spatial_locations = spatLoc_in_use,
+          sdimx = first_dimension, sdimy = second_dimension,
+          sdimz = third_dimension, options = config_spatNW$options),
+        error = function(e) {
+          warning(sprintf("3D Delaunay failed despite rank >= 2 (cospherical or other degenerate geometry): %s", 
+                          conditionMessage(e)))
+          NULL
+        })
+      if(is.null(delaunay_output)) return(NULL)
       
       outputObj = delaunay_output$geometry_obj
       delaunay_network_DT = delaunay_output$delaunay_network_DT
