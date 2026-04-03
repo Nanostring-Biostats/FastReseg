@@ -196,6 +196,11 @@ runPreprocess <- function(counts,
                                            s = Matrix::rowSums(counts), 
                                            bg = rep(0, nrow(counts)))
     }
+
+    # Normalize to base matrix to keep downstream coercion/subsetting behavior stable
+    if(!is.matrix(refProfiles)){
+      refProfiles <- as.matrix(refProfiles)
+    }
     
     # # `get_baselineCT` function gets cluster-specific quantile distribution of transcript number and per cell per molecule transcript score in the provided cell x gene expression matrix based on the reference profiles and cell cluster assignment. 
     # # The function returns a list containing the following elements:
@@ -209,6 +214,10 @@ runPreprocess <- function(counts,
     
   } else {
     # reference profiles exists, but no cluster assignment
+    if(!is.matrix(refProfiles)){
+      refProfiles <- as.matrix(refProfiles)
+    }
+
     baselineData <- get_baselineCT(refProfiles = refProfiles, counts = counts, clust = NULL)
     clust <- baselineData[['clust_used']]
   }
