@@ -74,7 +74,7 @@ flag_bad_transcripts <- function(chosen_cells,
     stop("Too few common cells or genes to proceed. Check if score_GeneMatrix is a gene x cell-type matrix.")
   }
   
-  score_GeneMatrix <- score_GeneMatrix[common_genes, ]
+  score_GeneMatrix <- score_GeneMatrix[common_genes, , drop = FALSE]
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
   
   
@@ -121,14 +121,14 @@ flag_bad_transcripts <- function(chosen_cells,
   
   warning(sprintf("Skip %d cells with all transcripts in same class given `score_cutoff = %s`. Move forward with remaining %d cells.", 
                   length(chosen_cells2) - length(chosen_cells3), as.character(score_cutoff), length(chosen_cells3)))
-  transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% chosen_cells3), ]
+  transcript_df <- transcript_df[transcript_df[[cellID_coln]] %in% chosen_cells3]
   
   if(nrow(transcript_df)<1){
     message("No single transcript left for the evaluation.")
     return(NULL)
   }
   
-  coord_df <- coord_df[which(coord_df[['cell_ID']] %in% chosen_cells3)]
+  coord_df <- coord_df[coord_df[['cell_ID']] %in% chosen_cells3]
   
   # (3) perform svm by group, not working for near-zero variance predictors
   my_fun <- function(data){
@@ -256,7 +256,7 @@ flagTranscripts_LDA_hyperplane <- function(chosen_cells,
     stop("Too few common cells or genes to proceed. Check if score_GeneMatrix is a gene x cell-type matrix.")
   }
   
-  score_GeneMatrix <- score_GeneMatrix[common_genes, ]
+  score_GeneMatrix <- score_GeneMatrix[common_genes, , drop = FALSE]
   transcript_df <- transcript_df[which(transcript_df[[cellID_coln]] %in% common_cells & transcript_df[[transGene_coln]] %in% common_genes), ]
   
   

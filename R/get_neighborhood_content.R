@@ -237,8 +237,8 @@ get_neighborhood_content <- function(chosen_cells = NULL,
                     paste0(names(dist_profile), collapse = ", ")))
     # define cutoff as 5 times of 90% quantile value
     distance_cutoff <- 5*dist_profile[['90%']]
-    message(sprintf("Use 5 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutofff` = %.4f for defining direct neighbor cells.", 
-                    length(spatLocs_to_use), molecular_distance_cutoff))
+    message(sprintf("Use 5 times of 90%% quantile of minimal %dD molecular distance between picked cells as `distance_cutoff` = %.4f for defining direct neighbor cells.", 
+                    length(spatLocs_to_use), distance_cutoff))
     rm(queryTrans_pp, cutoff_transDF)
   }
   
@@ -362,7 +362,7 @@ get_neighborhood_content <- function(chosen_cells = NULL,
     
     
     # get score matrix for each transcript in query cell
-    cell_score <- score_GeneMatrix[query_df[[transGene_coln]], ]
+    cell_score <- score_GeneMatrix[query_df[[transGene_coln]], , drop = FALSE]
     if(nrow(query_df) >1 ){
       cell_score <- colSums(cell_score)
     }

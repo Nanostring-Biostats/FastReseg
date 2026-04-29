@@ -1,5 +1,11 @@
 # FastReseg
 
+# FastReseg 1.1.2
+
+* Add defensive code to convert input `refProfiles` as base matrix in `runPreprocess()`.
+* Add check for xy colinearity edge case in `createSpatialDelaunayNW_from_spatLocs()`.
+* Add fallback transcript grouping for `groupTranscripts_Delaunay()` in case of failed Delaunay. 
+
 # FastReseg 1.1.1
 
 * Fix logic and add tests for `combine_matrices_fast()` (issue #59)
