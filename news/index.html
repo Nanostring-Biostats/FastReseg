@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">FastReseg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,12 @@
       <small>Source: <a href="https://github.com/Nanostring-Biostats/FastReseg/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.1.2" id="fastreseg-112">FastReseg 1.1.2<a class="anchor" aria-label="anchor" href="#fastreseg-112"></a></h2>
+<ul><li>Add defensive code to convert input <code>refProfiles</code> as base matrix in <code><a href="../reference/runPreprocess.html">runPreprocess()</a></code>.</li>
+<li>Add check for xy colinearity edge case in <code><a href="../reference/createSpatialDelaunayNW_from_spatLocs.html">createSpatialDelaunayNW_from_spatLocs()</a></code>.</li>
+<li>Add fallback transcript grouping for <code><a href="../reference/groupTranscripts_Delaunay.html">groupTranscripts_Delaunay()</a></code> in case of failed Delaunay.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.1.1" id="fastreseg-111">FastReseg 1.1.1<a class="anchor" aria-label="anchor" href="#fastreseg-111"></a></h2>
 <ul><li>Fix logic and add tests for <code><a href="../reference/combine_matrices_fast.html">combine_matrices_fast()</a></code> (issue <a href="https://github.com/Nanostring-Biostats/FastReseg/issues/59" class="external-link">#59</a>)</li>

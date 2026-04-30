@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">FastReseg</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.1.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,7 +62,7 @@
       <h1>FastReseg to detect and correct segmentation error in spatial transcriptome data</h1>
                         <h4 data-toc-skip class="author">Lidan Wu</h4>
             
-            <h4 data-toc-skip class="date">2025-12-06</h4>
+            <h4 data-toc-skip class="date">2026-04-30</h4>
       
       <small class="dont-index">Source: <a href="https://github.com/Nanostring-Biostats/FastReseg/blob/HEAD/vignettes/tutorial.Rmd" class="external-link"><code>vignettes/tutorial.Rmd</code></a></small>
       <div class="d-none name"><code>tutorial.Rmd</code></div>
@@ -182,7 +182,7 @@ dataset.</li>
 <col width="5%">
 <col width="9%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th align="left">UMI_transID</th>
 <th align="left">UMI_cellID</th>
 <th align="right">x</th>
@@ -194,7 +194,7 @@ dataset.</li>
 <th align="right">CellId</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td align="left">t_1_2_10</td>
 <td align="left">c_1_2_5</td>
 <td align="right">914.8070</td>
@@ -205,7 +205,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">5</td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">t_1_2_100005</td>
 <td align="left">c_1_2_1270</td>
 <td align="right">841.7000</td>
@@ -216,7 +216,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1270</td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="left">t_1_2_100006</td>
 <td align="left">c_1_2_1270</td>
 <td align="right">844.4609</td>
@@ -227,7 +227,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1270</td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">t_1_2_100007</td>
 <td align="left">c_1_2_1286</td>
 <td align="right">878.1635</td>
@@ -238,7 +238,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">1286</td>
 </tr>
-<tr class="odd">
+<tr>
 <td align="left">t_1_2_10001</td>
 <td align="left">c_1_2_201</td>
 <td align="right">1018.2337</td>
@@ -249,7 +249,7 @@ dataset.</li>
 <td align="right">2</td>
 <td align="right">201</td>
 </tr>
-<tr class="even">
+<tr>
 <td align="left">t_1_2_100015</td>
 <td align="left">c_1_2_1292</td>
 <td align="right">885.8180</td>
@@ -1361,7 +1361,9 @@ cells/transcript groups of same cell type).</p>
 <span><span class="co"># updated per cell data.table after refinement, with resegmentation operation recorded in `reSeg_action`</span></span>
 <span><span class="va">updated_perCellDT</span> <span class="op">&lt;-</span> <span class="va">finalRes</span><span class="op">[[</span><span class="st">'updated_perCellDT'</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">updated_perCellDT</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Key: &lt;updated_cellID&gt;</span></span>
 <span><span class="co">#&gt;    updated_cellID updated_celltype         x         y        z reSeg_action</span></span>
+<span><span class="co">#&gt;            &lt;char&gt;           &lt;char&gt;     &lt;num&gt;     &lt;num&gt;    &lt;num&gt;       &lt;char&gt;</span></span>
 <span><span class="co">#&gt; 1:     c_1_2_1000                d 1061.5538 -7993.376 2.691633         none</span></span>
 <span><span class="co">#&gt; 2:     c_1_2_1001                f 1195.9138 -7993.106 4.192908         none</span></span>
 <span><span class="co">#&gt; 3:     c_1_2_1009                d  807.5324 -7996.263 3.311172         none</span></span>
@@ -1489,6 +1491,7 @@ refinement process.</p>
 <span><span class="co">## segmentation changes for the selected cells with original cell_ID in `UMI_cellID` column</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">changes_to_plot</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">reSeg_action</span>, <span class="op">-</span> <span class="va">newCellNum_from_oriCell</span><span class="op">)</span>, <span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     updated_cellID     reSeg_action UMI_cellID oriCellNum_in_newCell</span></span>
+<span><span class="co">#&gt;             &lt;char&gt;           &lt;char&gt;     &lt;char&gt;                 &lt;int&gt;</span></span>
 <span><span class="co">#&gt;  1:  c_1_2_1481_g5 merge_or_flagged c_1_2_1493                     2</span></span>
 <span><span class="co">#&gt;  2:  c_1_2_1481_g5 merge_or_flagged c_1_2_1481                     2</span></span>
 <span><span class="co">#&gt;  3:     c_1_2_1655 merge_or_flagged c_1_2_1655                     2</span></span>
@@ -1516,6 +1519,7 @@ refinement process.</p>
 <span><span class="co">#&gt; 25:      c_1_2_714             trim  c_1_2_714                     1</span></span>
 <span><span class="co">#&gt;     updated_cellID     reSeg_action UMI_cellID oriCellNum_in_newCell</span></span>
 <span><span class="co">#&gt;     newCellNum_from_oriCell</span></span>
+<span><span class="co">#&gt;                       &lt;int&gt;</span></span>
 <span><span class="co">#&gt;  1:                       1</span></span>
 <span><span class="co">#&gt;  2:                       1</span></span>
 <span><span class="co">#&gt;  3:                       1</span></span>
@@ -1620,7 +1624,7 @@ refinement process.</p>
 <span><span class="co">#&gt; [1] stats     graphics  grDevices utils     datasets  methods   base     </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; other attached packages:</span></span>
-<span><span class="co">#&gt; [1] FastReseg_1.1.1</span></span>
+<span><span class="co">#&gt; [1] FastReseg_1.1.2</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; loaded via a namespace (and not attached):</span></span>
 <span><span class="co">#&gt;  [1] gtable_0.3.6         xfun_0.48            bslib_0.8.0         </span></span>
@@ -1628,7 +1632,7 @@ refinement process.</p>
 <span><span class="co">#&gt;  [7] vctrs_0.6.3          tools_4.4.1          spatstat.utils_3.1-0</span></span>
 <span><span class="co">#&gt; [10] generics_0.1.3       parallel_4.4.1       proxy_0.4-27        </span></span>
 <span><span class="co">#&gt; [13] tibble_3.2.1         fansi_1.0.6          highr_0.11          </span></span>
-<span><span class="co">#&gt; [16] pkgconfig_2.0.3      Matrix_1.6-5         data.table_1.14.2   </span></span>
+<span><span class="co">#&gt; [16] pkgconfig_2.0.3      Matrix_1.6-5         data.table_1.16.2   </span></span>
 <span><span class="co">#&gt; [19] checkmate_2.3.2      RColorBrewer_1.1-3   desc_1.4.3          </span></span>
 <span><span class="co">#&gt; [22] lifecycle_1.0.4      compiler_4.4.1       farver_2.1.2        </span></span>
 <span><span class="co">#&gt; [25] stringr_1.4.0        deldir_2.0-4         GiottoUtils_0.2.4   </span></span>
@@ -1644,11 +1648,11 @@ refinement process.</p>
 <span><span class="co">#&gt; [55] colorspace_2.1-1     cli_3.6.3            concaveman_1.1.0    </span></span>
 <span><span class="co">#&gt; [58] magrittr_2.0.3       utf8_1.2.4           e1071_1.7-16        </span></span>
 <span><span class="co">#&gt; [61] spatstat.data_3.1-2  withr_3.0.2          scales_1.3.0        </span></span>
-<span><span class="co">#&gt; [64] backports_1.5.0      rmarkdown_2.28       igraph_2.1.1        </span></span>
+<span><span class="co">#&gt; [64] backports_1.5.0      rmarkdown_2.26       igraph_2.1.1        </span></span>
 <span><span class="co">#&gt; [67] ragg_1.3.3           zoo_1.8-12           kableExtra_1.4.0    </span></span>
 <span><span class="co">#&gt; [70] evaluate_1.0.1       knitr_1.46           lmtest_0.9-40       </span></span>
 <span><span class="co">#&gt; [73] geometry_0.4.7       viridisLite_0.4.2    rlang_1.1.1         </span></span>
-<span><span class="co">#&gt; [76] Rcpp_1.0.12          glue_1.8.0           xml2_1.3.6          </span></span>
+<span><span class="co">#&gt; [76] Rcpp_1.0.13          glue_1.8.0           xml2_1.3.6          </span></span>
 <span><span class="co">#&gt; [79] svglite_2.1.3        rstudioapi_0.17.1    jsonlite_1.8.9      </span></span>
 <span><span class="co">#&gt; [82] plyr_1.8.7           R6_2.5.1             systemfonts_1.1.0   </span></span>
 <span><span class="co">#&gt; [85] fs_1.5.2</span></span></code></pre></div>
